@@ -644,6 +644,9 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 	nmtd->mtd.owner    = THIS_MODULE;
 	nmtd->set	   = set;
 
+#ifdef CONFIG_MTD_NAND_S3C2410_NOECC
+	chip->ecc.mode = NAND_ECC_NONE;
+#else
 	if (hardware_ecc) {
 		chip->ecc.calculate = s3c2410_nand_calculate_ecc;
 		chip->ecc.correct   = s3c2410_nand_correct_data;
@@ -672,6 +675,7 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 	} else {
 		chip->ecc.mode	    = NAND_ECC_SOFT;
 	}
+#endif
 }
 
 /* s3c2410_nand_probe
