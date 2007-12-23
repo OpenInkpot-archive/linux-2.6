@@ -240,6 +240,10 @@ typedef enum {
 /* Create an empty BBT with no vendor information if the BBT is available */
 #define NAND_CREATE_EMPTY_BBT		0x00200000
 
+#ifdef CONFIG_MTD_NAND_DUMB_BADBLOCK_TRANSLATION
+#define NAND_USE_DUMB_BB_TRANSLATION 0x00100000
+#endif
+
 /* Options set by nand scan */
 /* Nand scan has allocated controller struct */
 #define NAND_CONTROLLER_ALLOC	0x80000000
@@ -539,7 +543,14 @@ struct nand_chip {
 
 	struct nand_bbt_descr *badblock_pattern;
 
-	void *priv;
+#ifdef CONFIG_MTD_NAND_DUMB_BADBLOCK_TRANSLATION
+	#define NAND_BB_MAP_SPARE_BLOCKS	64
+
+	int				bb_translation_table[NAND_BB_MAP_SPARE_BLOCKS];
+	int				bb_translation_table_size;
+#endif
+
+	void		*priv;
 };
 
 /*

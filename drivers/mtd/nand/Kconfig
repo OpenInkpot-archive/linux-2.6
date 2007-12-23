@@ -33,7 +33,13 @@ config MTD_NAND_VERIFY_WRITE
 
 config MTD_SM_COMMON
 	tristate
-	default n
+
+config MTD_NAND_DUMB_BADBLOCK_TRANSLATION
+	bool "Dumb badblock translation"
+	help
+	  "Dumb" badblock translation using spare area in flash 
+	  (by default --- first 64 eraseblocks). Used in Jinke/lBook 
+	  eReader V3 bootloader.
 
 config MTD_NAND_MUSEUM_IDS
 	bool "Enable chip ids for obsolete ancient NAND devices"
