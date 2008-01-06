@@ -74,7 +74,6 @@ static int fb_deferred_io_mkwrite(struct vm_area_struct *vma,
 {
 	struct fb_info *info = vma->vm_private_data;
 	struct fb_deferred_io *fbdefio = info->fbdefio;
-	struct page *cur;
 
 	/* this is a callback we get when userspace first tries to
 	write to the page. we schedule a workqueue. that workqueue
@@ -84,13 +83,6 @@ static int fb_deferred_io_mkwrite(struct vm_area_struct *vma,
 
 	/* protect against the workqueue changing the page list */
 	mutex_lock(&fbdefio->lock);
-	dump_stack();
-	list_for_each_entry(cur, &fbdefio->pagelist, lru) {
-		if (cur == page) { /* already in list */
-			mutex_unlock(&fbdefio->lock);
-			return 0;
-		}
-	}
 	list_add(&page->lru, &fbdefio->pagelist);
 	mutex_unlock(&fbdefio->lock);
 
