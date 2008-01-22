@@ -501,4 +501,13 @@ config KEYBOARD_W90P910
 	  To compile this driver as a module, choose M here: the
 	  module will be called w90p910_keypad.
 
+config KEYBOARD_LBOOK_V3
+       tristate "lBook eReader V3 Buttons"
+       depends on GENERIC_GPIO && ARCH_LBOOK_V3
+       help
+         Driver for lBook/Jinke eReader V3 keys.
+
+         To compile this driver as a module, choose M here: the
+         module will be called gpio-keys.
+
 endif
