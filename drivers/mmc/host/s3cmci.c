@@ -201,7 +201,7 @@ static inline int get_data_buffer(struct s3cmci_host *host,
 	sg = &host->mrq->data->sg[host->pio_sgptr];
 
 	*words	= sg->length >> 2;
-	*pointer= page_address(sg->page) + sg->offset;
+	*pointer= page_address(sg_page(sg)) + sg->offset;
 
 	host->pio_sgptr++;
 
