@@ -99,8 +99,7 @@ deb-pkg: FORCE
 	$(MAKE) KBUILD_SRC=
 	$(call cmd,builddeb)
 
-clean-dirs += $(objtree)/debian/
-
+#clean-dirs += $(objtree)/debian/
 
 # tarball targets
 # ---------------------------------------------------------------------------
