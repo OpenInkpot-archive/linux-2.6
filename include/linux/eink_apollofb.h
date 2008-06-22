@@ -1,7 +1,7 @@
 
 enum eink_apollo_controls {
 	H_CD = 0,
-	H_RW = 1,	
+	H_RW = 1,
 	H_DS = 2,
 	H_ACK = 3,
 	H_WUP = 4,
@@ -48,6 +48,10 @@ struct eink_apollo_operations {
 #define APOLLO_READ_REFRESH_TIMER	0xFD
 
 #define APOLLO_WAVEFORMS_FLASH_SIZE	(1024 * 1024 * 2)
+
+#define APOLLO_STATUS_MODE_MASK		(1 << 0)
+#define APOLLO_STATUS_MODE_SLEEP	0x01
+#define APOLLO_STATUS_MODE_NORMAL	0x00
 
 struct eink_apollofb_platdata {
 	struct eink_apollo_operations ops;
