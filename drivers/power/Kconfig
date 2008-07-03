@@ -49,4 +49,10 @@ config BATTERY_OLPC
 	help
 	  Say Y to enable support for the battery on the OLPC laptop.
 
+config BATTERY_LBOOKV3
+	tristate "HanLin/lBook eReader V3 battery"
+	depends on ARCH_LBOOK_V3
+	help
+	  Say Y to enable support for the battery in HanLin/lBook eReader V3.
+
 endif # POWER_SUPPLY
