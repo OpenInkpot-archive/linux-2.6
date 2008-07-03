@@ -185,4 +185,10 @@ config CHARGER_TWL4030
 	help
 	  Say Y here to enable support for TWL4030 Battery Charge Interface.
 
+config BATTERY_LBOOKV3
+	tristate "HanLin/lBook eReader V3 battery"
+	depends on ARCH_LBOOK_V3
+	help
+	  Say Y to enable support for the battery in HanLin/lBook eReader V3.
+
 endif # POWER_SUPPLY
