@@ -327,10 +327,10 @@ static int get_color(struct vc_data *vc, struct fb_info *info,
 		 */
 		switch (color) {
 		case 0:
-			color = 0; /* black */
+			color = 3; /* white */
 			break;
 		default:
-			color = 3; /* intense white */
+			color = 0; /* black */
 			break;
 		}
 		break;
