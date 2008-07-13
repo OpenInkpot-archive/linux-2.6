@@ -1111,6 +1111,7 @@ static int s3cmci_probe(struct platform_device *pdev, int is2440)
 	struct s3cmci_host 	*host;
 
 	int ret;
+	int dma_channel;
 
 	mmc = mmc_alloc_host(sizeof(struct s3cmci_host), &pdev->dev);
 	if (!mmc) {
@@ -1204,9 +1205,10 @@ static int s3cmci_probe(struct platform_device *pdev, int is2440)
 		s3c2410_gpio_cfgpin(host->pdata->gpio_wprotect,
 				    S3C2410_GPIO_INPUT);
 
-	if (s3c2410_dma_request(S3CMCI_DMA, &s3cmci_dma_client, NULL)) {
+	dma_channel = s3c2410_dma_request(S3CMCI_DMA, &s3cmci_dma_client, NULL);
+	if (dma_channel < 0) {
 		dev_err(&pdev->dev, "unable to get DMA channel.\n");
-		ret = -EBUSY;
+		ret = dma_channel;
 		goto probe_free_irq_cd;
 	}
 
