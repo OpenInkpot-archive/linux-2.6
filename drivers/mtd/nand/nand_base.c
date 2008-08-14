@@ -3274,6 +3274,15 @@ int nand_scan_tail(struct mtd_info *mtd)
 	int i;
 	struct nand_chip *chip = mtd->priv;
 
+#ifdef CONFIG_MTD_NAND_DUMB_BADBLOCK_TRANSLATION
+	if (chip->options & NAND_USE_DUMB_BB_TRANSLATION) {
+		chip->bb_translation_table = kzalloc(sizeof(*chip->bb_translation_table) * 
+				chip->bb_spare_blocks, GFP_KERNEL);
+		if (!chip->bb_translation_table)
+			return -ENOMEM;
+	}
+#endif
+
 	if (!(chip->options & NAND_OWN_BUFFERS))
 		chip->buffers = kmalloc(sizeof(*chip->buffers), GFP_KERNEL);
 	if (!chip->buffers)
@@ -3553,6 +3562,11 @@ void nand_release(struct mtd_info *mtd)
 	if (chip->badblock_pattern && chip->badblock_pattern->options
 			& NAND_BBT_DYNAMICSTRUCT)
 		kfree(chip->badblock_pattern);
+
+#ifdef CONFIG_MTD_NAND_DUMB_BADBLOCK_TRANSLATION
+	if (!chip->bb_translation_table)
+		kfree(chip->bb_translation_table);
+#endif
 }
 EXPORT_SYMBOL_GPL(nand_release);
 
