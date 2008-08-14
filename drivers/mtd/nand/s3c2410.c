@@ -849,6 +849,7 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 		}
 	} else {
 		chip->ecc.mode	    = NAND_ECC_SOFT;
+		chip->ecc.layout    = &nand_hw_eccoob;
 	}
 
 	if (set->ecc_layout != NULL)
@@ -901,12 +902,17 @@ static void s3c2410_nand_update_chip(struct s3c2410_nand_info *info,
 	if (chip->ecc.mode != NAND_ECC_HW)
 		return;
 
-		/* change the behaviour depending on wether we are using
-		 * the large or small page nand device */
+	/* change the behaviour depending on wether we are using
+	 * the large or small page nand device */
 
 	if (chip->page_shift > 10) {
-		chip->ecc.size	    = 256;
 		chip->ecc.bytes	    = 3;
+#ifdef CONFIG_ARCH_LBOOK_V3
+		chip->ecc.size	    = 2048;
+		chip->ecc.layout    = &nand_hw_eccoob;
+#else
+		chip->ecc.size	    = 256;
+#endif
 	} else {
 		chip->ecc.size	    = 512;
 		chip->ecc.bytes	    = 3;
