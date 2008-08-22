@@ -1896,7 +1896,7 @@ static int s3c2410_udc_probe(struct platform_device *pdev)
 	}
 
 	s3c2410_modify_misccr(S3C2410_MISCCR_USBHOST|S3C2410_MISCCR_USBSUSPND0|
-				S3C2410_MISCCR_USBSUSPND1, 0);
+			S3C2410_MISCCR_USBSUSPND1, 0);
 
 	if (s3c2410_udc_debugfs_root) {
 		udc->regs_info = debugfs_create_file("registers", S_IRUGO,
@@ -1971,6 +1971,9 @@ static int s3c2410_udc_suspend(struct platform_device *pdev, pm_message_t messag
 	if (udc_info && udc_info->udc_command)
 		udc_info->udc_command(S3C2410_UDC_P_DISABLE);
 
+	s3c2410_modify_misccr(S3C2410_MISCCR_USBSUSPND0|S3C2410_MISCCR_USBSUSPND1,
+			S3C2410_MISCCR_USBSUSPND0|S3C2410_MISCCR_USBSUSPND1);
+
 	return 0;
 }
 
@@ -1978,6 +1981,8 @@ static int s3c2410_udc_resume(struct platform_device *pdev)
 {
 	if (udc_info && udc_info->udc_command)
 		udc_info->udc_command(S3C2410_UDC_P_ENABLE);
+	
+	s3c2410_modify_misccr(S3C2410_MISCCR_USBSUSPND0|S3C2410_MISCCR_USBSUSPND1, 0);
 
 	return 0;
 }
