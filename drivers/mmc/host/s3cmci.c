@@ -42,8 +42,8 @@ enum dbg_channels {
 };
 
 static const int dbgmap_err   = dbg_err | dbg_fail;
-static const int dbgmap_info  = dbg_info | dbg_conf;
-static const int dbgmap_debug = dbg_debug;
+static const int dbgmap_info  = dbg_info;
+static const int dbgmap_debug = dbg_debug | dbg_conf;
 
 #define dbg(host, channels, args...)		 \
 	if (dbgmap_err & channels) 		 \
