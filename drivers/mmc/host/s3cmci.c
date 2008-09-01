@@ -1201,6 +1201,8 @@ static int s3cmci_probe(struct platform_device *pdev, int is2440)
 		goto probe_free_irq;
 	}
 
+	enable_irq_wake(host->irq_cd);
+
 	if (host->pdata->gpio_wprotect)
 		s3c2410_gpio_cfgpin(host->pdata->gpio_wprotect,
 				    S3C2410_GPIO_INPUT);
@@ -1262,6 +1264,7 @@ static int s3cmci_probe(struct platform_device *pdev, int is2440)
 	clk_put(host->clk);
 
  probe_free_irq_cd:
+	disable_irq_wake(host->irq_cd);
  	free_irq(host->irq_cd, host);
 
  probe_free_irq:
@@ -1288,6 +1291,7 @@ static int s3cmci_remove(struct platform_device *pdev)
 	clk_disable(host->clk);
 	clk_put(host->clk);
 	s3c2410_dma_free(S3CMCI_DMA, &s3cmci_dma_client);
+	disable_irq_wake(host->irq_cd);
  	free_irq(host->irq_cd, host);
  	free_irq(host->irq, host);
 	iounmap(host->base);
