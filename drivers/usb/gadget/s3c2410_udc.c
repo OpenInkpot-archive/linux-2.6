@@ -1901,6 +1901,8 @@ static int s3c2410_udc_probe(struct platform_device *pdev)
 			goto err_gpio_claim;
 		}
 
+		enable_irq_wake(irq);
+
 		dev_dbg(dev, "got irq %i\n", irq);
 	} else {
 		udc->vbus = 1;
@@ -1950,6 +1952,8 @@ static int s3c2410_udc_remove(struct platform_device *pdev)
 
 	if (udc_info && udc_info->vbus_pin > 0) {
 		irq = gpio_to_irq(udc_info->vbus_pin);
+		irq = s3c2410_gpio_getirq(udc_info->vbus_pin);
+		disable_irq_wake(irq);
 		free_irq(irq, udc);
 	}
 
