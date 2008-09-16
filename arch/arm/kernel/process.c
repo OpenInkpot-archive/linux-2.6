@@ -25,11 +25,13 @@
 #include <linux/cpu.h>
 #include <linux/elfcore.h>
 #include <linux/pm.h>
+#include <linux/suspend.h>
 #include <linux/tick.h>
 #include <linux/utsname.h>
 #include <linux/uaccess.h>
 #include <linux/random.h>
 #include <linux/hw_breakpoint.h>
+#include <linux/kernel_stat.h>
 
 #include <asm/cacheflush.h>
 #include <asm/leds.h>
@@ -38,6 +40,8 @@
 #include <asm/thread_notify.h>
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
+#include <asm/hardware.h>
+#include <asm/arch/regs-gpio.h>
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
@@ -156,12 +160,48 @@ void cpu_idle_wait(void)
 }
 EXPORT_SYMBOL_GPL(cpu_idle_wait);
 
+#ifdef CONFIG_AUTOSUSPEND_ENABLED
+
+#define AUTOSUSPEND_TIMEOUT (1 * HZ)
+
+static unsigned long sleep_idle_time = AUTOSUSPEND_TIMEOUT;
+static struct delayed_work suspend_worktask;
+
+static int lbookv3_usb_connected(void)
+{
+		return s3c2410_gpio_getpin(S3C2410_GPF4);
+}
+
+static void do_idle_suspend(struct work_struct *work)
+{
+	pm_suspend(PM_SUSPEND_MEM);
+	sleep_idle_time = jiffies + AUTOSUSPEND_TIMEOUT;
+}
+#endif
+
 /*
  * This is our default idle handler.  We need to disable
  * interrupts here to ensure we don't miss a wakeup call.
  */
 static void default_idle(void)
 {
+#ifdef CONFIG_AUTOSUSPEND_ENABLED
+	static u64 last_cpustat_procs = 0;
+	u64 curr_cpustat_procs = kstat_this_cpu.cpustat.user + kstat_this_cpu.cpustat.system;
+
+
+	if (curr_cpustat_procs > last_cpustat_procs)
+		sleep_idle_time = jiffies + AUTOSUSPEND_TIMEOUT;
+
+	last_cpustat_procs = curr_cpustat_procs;
+
+	if (time_after(jiffies, sleep_idle_time) && !lbookv3_usb_connected()) {
+		INIT_DELAYED_WORK(&suspend_worktask, do_idle_suspend);
+		schedule_delayed_work(&suspend_worktask, 1);
+		sleep_idle_time = jiffies + AUTOSUSPEND_TIMEOUT;
+	}
+#endif
+
 	if (!need_resched())
 		arch_idle();
 	local_irq_enable();
