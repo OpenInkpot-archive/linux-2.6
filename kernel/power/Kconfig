@@ -104,6 +104,13 @@ config SUSPEND
 	  powered and thus its contents are preserved, such as the
 	  suspend-to-RAM state (e.g. the ACPI S3 state).
 
+config PM_AUTOSUSPEND
+	bool "Enable autosuspend on idle"
+	depends on SUSPEND
+	default n
+	help
+	  Enable automatic suspend to RAM on idle
+
 config SUSPEND_FREEZER
 	bool "Enable freezer for suspend to RAM/standby" \
 		if ARCH_WANTS_FREEZER_CONTROL || BROKEN

@@ -97,6 +97,11 @@ struct pm_dev
 /* Functions above this comment are list-based old-style power
  * management. Please avoid using them.  */
 
+#ifdef CONFIG_PM_AUTOSUSPEND
+extern int pm_autosuspend_enabled;
+extern unsigned int pm_autosuspend_timeout;
+#endif
+
 /*
  * Callbacks for platform drivers to implement.
  */
