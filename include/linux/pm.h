@@ -501,6 +501,10 @@ struct dev_pm_info {
 
 extern void update_pm_runtime_accounting(struct device *dev);
 
+#ifdef CONFIG_PM_AUTOSUSPEND
+extern int pm_autosuspend_enabled;
+extern unsigned int pm_autosuspend_timeout;
+#endif
 
 /*
  * The PM_EVENT_ messages are also used by drivers implementing the legacy
