@@ -40,8 +40,8 @@
 #include <asm/thread_notify.h>
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
-#include <asm/hardware.h>
-#include <asm/arch/regs-gpio.h>
+#include <mach/hardware.h>
+#include <mach/regs-gpio.h>
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
@@ -163,13 +163,16 @@ EXPORT_SYMBOL_GPL(cpu_idle_wait);
 #ifdef CONFIG_PM_AUTOSUSPEND
 
 static unsigned long sleep_idle_time = HZ;
-static struct delayed_work suspend_worktask;
+static struct work_struct suspend_worktask;
+static int autosuspend_in_progress = 0;
 
 static void do_idle_suspend(struct work_struct *work)
 {
 	pm_suspend(PM_SUSPEND_MEM);
 	sleep_idle_time = jiffies + pm_autosuspend_timeout;
+	autosuspend_in_progress = 0;
 }
+
 #endif
 
 /*
@@ -182,17 +185,19 @@ static void default_idle(void)
 	static u64 last_cpustat_procs = 0;
 	u64 curr_cpustat_procs = kstat_this_cpu.cpustat.user + kstat_this_cpu.cpustat.system;
 
-
-	if (pm_autosuspend_enabled) {
+	if (pm_autosuspend_enabled && !autosuspend_in_progress) {
 		if (curr_cpustat_procs > last_cpustat_procs)
 			sleep_idle_time = jiffies + pm_autosuspend_timeout;
 
 		last_cpustat_procs = curr_cpustat_procs;
 
 		if (time_after(jiffies, sleep_idle_time)) {
-			INIT_DELAYED_WORK(&suspend_worktask, do_idle_suspend);
-			schedule_delayed_work(&suspend_worktask, 1);
-			sleep_idle_time = jiffies + pm_autosuspend_timeout;
+			if (pm_autosuspend_workqueue) {
+				autosuspend_in_progress = 1;
+				INIT_WORK(&suspend_worktask, do_idle_suspend);
+				queue_work(pm_autosuspend_workqueue, &suspend_worktask);
+				sleep_idle_time = jiffies + pm_autosuspend_timeout;
+			}
 		}
 	}
 #endif

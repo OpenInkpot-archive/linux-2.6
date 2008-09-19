@@ -504,6 +504,7 @@ extern void update_pm_runtime_accounting(struct device *dev);
 #ifdef CONFIG_PM_AUTOSUSPEND
 extern int pm_autosuspend_enabled;
 extern unsigned int pm_autosuspend_timeout;
+extern struct workqueue_struct *pm_autosuspend_workqueue;
 #endif
 
 /*
