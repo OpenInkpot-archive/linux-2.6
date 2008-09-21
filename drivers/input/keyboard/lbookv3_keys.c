@@ -40,15 +40,15 @@ struct gpio_line {
 
 static struct gpio_line lines[3] = {
 	[0] = {
-		.codes = { KEY_KP1, KEY_KP7, KEY_KP4, KEY_KP0, KEY_KPPLUS,
+		.codes = { KEY_1, KEY_7, KEY_4, KEY_0, KEY_KPPLUS,
 			   KEY_ENTER, KEY_UP },
 	},
 	[1] = {
-		.codes = { KEY_KP6, KEY_KP3, KEY_KP9, KEY_RESERVED, KEY_KPMINUS,
+		.codes = { KEY_6, KEY_3, KEY_9, KEY_RESERVED, KEY_KPMINUS,
 			   KEY_ESC, KEY_DOWN },
 	},
 	[2] = {
-		.codes = { KEY_KP2, KEY_KP8, KEY_KP5, KEY_RESERVED,
+		.codes = { KEY_2, KEY_8, KEY_5, KEY_RESERVED,
 			   KEY_RESERVED, KEY_RESERVED, KEY_RESERVED },
 	},
 };
@@ -82,7 +82,7 @@ static irqreturn_t lbookv3_keys_isr(int irq, void *dev_id)
 
 	for (i = S3C2410_GPF0; i <= S3C2410_GPF2; i++) {
 		line = &lines[i - S3C2410_GPF0];
-		if (gpio_get_value(i)) {
+		if (s3c2410_gpio_getpin(i)) {
 			if (!line->state)
 				continue;
 			for (j = 0; j < 7; j++)
@@ -99,7 +99,7 @@ static irqreturn_t lbookv3_keys_isr(int irq, void *dev_id)
 		for (j = 0; j < ARRAY_SIZE(pullups); j++)
 			do {
 				s3c2410_gpio_setpin(pullups[j], 1);
-			} while (!gpio_get_value(pullups[j]));
+			} while (!s3c2410_gpio_getpin(pullups[j]));
 
 		mdelay(10);
 
@@ -107,7 +107,7 @@ static irqreturn_t lbookv3_keys_isr(int irq, void *dev_id)
 			s3c2410_gpio_setpin(pullups[j], 0);
 			udelay(10);
 
-			if (!gpio_get_value(i)) {
+			if (!s3c2410_gpio_getpin(i)) {
 				line->state |= 1 << j;
 				input_event(input, EV_KEY, line->codes[j], 1);
 				input_sync(input);
