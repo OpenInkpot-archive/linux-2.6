@@ -40,6 +40,7 @@
 #include <mach/regs-gpio.h>
 #include <mach/regs-mem.h>
 #include <mach/regs-irq.h>
+#include <asm/mach-types.h>
 
 #include <asm/mach/time.h>
 
@@ -143,7 +144,19 @@ void s3c_pm_restore_core(void)
 
 void s3c_pm_save_core(void)
 {
+#ifdef CONFIG_ARCH_LBOOK_V3
+	if (machine_is_lbook_v3()) {
+		s3c2410_gpio_setpin(S3C2410_GPC6, 1);
+	}
+#endif
+
 	s3c_pm_do_save(misc_save, ARRAY_SIZE(misc_save));
 	s3c_pm_do_save(core_save, ARRAY_SIZE(core_save));
+
+#ifdef CONFIG_ARCH_LBOOK_V3
+	if (machine_is_lbook_v3()) {
+		s3c2410_gpio_setpin(S3C2410_GPC6, 1);
+	}
+#endif
 }
 
