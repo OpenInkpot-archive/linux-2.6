@@ -332,6 +332,9 @@ int do_settimeofday(struct timespec *tv)
 
 	write_sequnlock_irqrestore(&xtime_lock, flags);
 
+#ifdef CONFIG_RTC_SYSTOHC
+	rtc_systohc(sec);
+#endif
 	/* signal hrtimers about time change */
 	clock_was_set();
 

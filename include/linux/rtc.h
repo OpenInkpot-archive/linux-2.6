@@ -245,6 +245,11 @@ extern int rtc_hctosys(void);
 #define rtc_hctosys_ret -ENODEV
 #endif
 
+#ifdef CONFIG_RTC_SYSTOHC
+extern int rtc_systohc(unsigned long time);
+#endif
+
+
 #endif /* __KERNEL__ */
 
 #endif /* _LINUX_RTC_H_ */
