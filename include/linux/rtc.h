@@ -215,6 +215,11 @@ irqreturn_t rtc_interrupt(int irq, void *dev_id);
 extern int rtc_hctosys(void);
 #endif
 
+#ifdef CONFIG_RTC_SYSTOHC
+extern int rtc_systohc(unsigned long time);
+#endif
+
+
 #endif /* __KERNEL__ */
 
 #endif /* _LINUX_RTC_H_ */
