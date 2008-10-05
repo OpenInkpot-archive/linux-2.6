@@ -32,6 +32,7 @@
 #include <linux/random.h>
 #include <linux/hw_breakpoint.h>
 #include <linux/kernel_stat.h>
+#include <linux/rtc.h>
 
 #include <asm/cacheflush.h>
 #include <asm/leds.h>
@@ -169,6 +170,9 @@ static int autosuspend_in_progress = 0;
 static void do_idle_suspend(struct work_struct *work)
 {
 	pm_suspend(PM_SUSPEND_MEM);
+#ifdef CONFIG_RTC_HCTOSYS
+	rtc_hctosys();
+#endif
 	sleep_idle_time = jiffies + pm_autosuspend_timeout;
 	autosuspend_in_progress = 0;
 }

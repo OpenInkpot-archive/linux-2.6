@@ -240,6 +240,7 @@ static inline bool is_leap_year(unsigned int year)
 
 #ifdef CONFIG_RTC_HCTOSYS
 extern int rtc_hctosys_ret;
+extern int rtc_hctosys(void);
 #else
 #define rtc_hctosys_ret -ENODEV
 #endif
