@@ -633,6 +633,9 @@ void mmc_rescan(struct work_struct *work)
 	u32 ocr;
 	int err;
 
+#ifdef CONFIG_MMC_UNSAFE_RESUME
+	mutex_lock(&host->carddetect_lock);
+#endif
 	mmc_bus_get(host);
 
 	if (host->bus_ops == NULL) {
@@ -656,7 +659,7 @@ void mmc_rescan(struct work_struct *work)
 		if (!err) {
 			if (mmc_attach_sdio(host, ocr))
 				mmc_power_off(host);
-			return;
+			goto finish;
 		}
 
 		/*
@@ -666,7 +669,7 @@ void mmc_rescan(struct work_struct *work)
 		if (!err) {
 			if (mmc_attach_sd(host, ocr))
 				mmc_power_off(host);
-			return;
+			goto finish;
 		}
 
 		/*
@@ -676,7 +679,7 @@ void mmc_rescan(struct work_struct *work)
 		if (!err) {
 			if (mmc_attach_mmc(host, ocr))
 				mmc_power_off(host);
-			return;
+			goto finish;
 		}
 
 		mmc_release_host(host);
@@ -687,6 +690,11 @@ void mmc_rescan(struct work_struct *work)
 
 		mmc_bus_put(host);
 	}
+
+finish:
+#ifdef CONFIG_MMC_UNSAFE_RESUME
+	mutex_unlock(&host->carddetect_lock);
+#endif
 }
 
 void mmc_start_host(struct mmc_host *host)
