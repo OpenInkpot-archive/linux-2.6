@@ -1444,6 +1444,9 @@ void mmc_rescan(struct work_struct *work)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 
+	if (host->suspended)
+		return;
+
 	mmc_bus_get(host);
 
 	/* if there is a card registered, check whether it is still present */
@@ -1703,6 +1706,8 @@ int mmc_suspend_host(struct mmc_host *host)
 	if (!err && !(host->pm_flags & MMC_PM_KEEP_POWER))
 		mmc_power_off(host);
 
+	host->suspended = 1;
+
 	return err;
 }
 
@@ -1732,6 +1737,8 @@ int mmc_resume_host(struct mmc_host *host)
 		}
 	}
 	mmc_bus_put(host);
+
+	host->suspended = 0;
 
 	return err;
 }
