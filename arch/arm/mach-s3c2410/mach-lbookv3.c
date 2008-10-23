@@ -45,6 +45,7 @@
 #include <linux/mtd/partitions.h>
 #include <linux/mmc/host.h>
 #include <linux/eink_apollofb.h>
+#include <linux/delay.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -431,7 +432,6 @@ static struct platform_device *lbookv3_devices[] __initdata = {
 	&s3c_device_nand,
 	&s3c_device_rtc,
 	&s3c_device_adc,
-	&s3c_device_hsmmc,
 	&s3c_device_spi0,
 	&s3c_device_sdi,
 	&s3c_device_timer[0],
@@ -449,6 +449,16 @@ static void lbookv3_power_off(void)
 	s3c2410_gpio_setpin(S3C2410_GPB8, 0);
 	udelay(1000);
 	s3c2410_gpio_setpin(S3C2410_GPB5, 0);
+}
+
+static long lbookv3_panic_blink(long time)
+{
+	s3c2410_gpio_setpin(S3C2410_GPC5, 1);
+	mdelay(200);
+	s3c2410_gpio_setpin(S3C2410_GPC5, 0);
+	mdelay(200);
+
+	return 400;
 }
 
 static void __init lbookv3_init_gpio(void)
@@ -542,6 +552,7 @@ static void __init lbookv3_init(void)
 	platform_add_devices(lbookv3_devices, ARRAY_SIZE(lbookv3_devices));
 
 	pm_power_off = &lbookv3_power_off;
+	panic_blink = lbookv3_panic_blink;
 	s3c2410_pm_init();
 }
 
