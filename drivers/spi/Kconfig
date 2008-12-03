@@ -158,6 +158,12 @@ config SPI_IMX_VER_0_7
 config SPI_IMX_VER_2_3
 	def_bool y if ARCH_MX51
 
+config SPI_IC2201
+	tristate "IC2201 MP3 decoder"
+	depends on ARCH_LBOOK_V3
+	help
+	  This enables support of IC2201 MP3 decoder.
+
 config SPI_IMX
 	tristate "Freescale i.MX SPI controllers"
 	depends on ARCH_MXC

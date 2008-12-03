@@ -46,6 +46,7 @@
 #include <linux/mmc/host.h>
 #include <linux/eink_apollofb.h>
 #include <linux/delay.h>
+#include <linux/spi/spi.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -60,6 +61,7 @@
 #include <mach/leds-gpio.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-clock.h>
+#include <mach/spi.h>
 
 #include <asm/plat-s3c/regs-serial.h>
 #include <asm/plat-s3c/nand.h>
@@ -428,6 +430,18 @@ static struct platform_device lbookv3_speaker = {
 	.id		= -1,
 };
 
+static unsigned long lbookv3_spi0_cs_pins[2] = {S3C2410_GPD8, S3C2410_GPD9};
+
+static void lbookv3_spi0_set_cs(struct s3c2410_spi_info *spi, int cs, int pol)
+{
+	s3c2410_gpio_setpin(lbookv3_spi0_cs_pins[cs], pol);
+}
+
+static struct s3c2410_spi_info lbookv3_spi_info = {
+	.num_cs		= 2,
+	.set_cs		= lbookv3_spi0_set_cs,
+};
+
 static struct platform_device *lbookv3_devices[] __initdata = {
 	&s3c_device_wdt,
 	&s3c_device_i2c,
@@ -447,6 +461,14 @@ static struct platform_device *lbookv3_devices[] __initdata = {
 	&lbookv3_keys,
 	&lbookv3_battery,
 	&lbookv3_speaker,
+};
+
+struct spi_board_info lbookv3_mp3_info = {
+	.modalias	= "ic2201",
+	.max_speed_hz	= 3000000,
+	.bus_num	= 0,
+	.chip_select	= 0,
+	.platform_data	= 0,
 };
 
 static void lbookv3_power_off(void)
@@ -554,8 +576,11 @@ static void __init lbookv3_init(void)
 	s3c_device_nand.dev.platform_data = &lbookv3_nand_info;
 	s3c_device_sdi.dev.platform_data = &lbookv3_mmc_cfg;
 	s3c_device_usbgadget.dev.platform_data = &lbookv3_udc_platform_data;
+	s3c_device_spi0.dev.platform_data = &lbookv3_spi_info;
 
 	platform_add_devices(lbookv3_devices, ARRAY_SIZE(lbookv3_devices));
+
+	spi_register_board_info(&lbookv3_mp3_info, 1);
 
 	pm_power_off = &lbookv3_power_off;
 	panic_blink = lbookv3_panic_blink;
