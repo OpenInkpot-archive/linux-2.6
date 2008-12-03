@@ -42,7 +42,6 @@
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
 #include <mach/hardware.h>
-#include <mach/regs-gpio.h>
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
