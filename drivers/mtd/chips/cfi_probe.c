@@ -18,7 +18,7 @@
 #include <linux/mtd/cfi.h>
 #include <linux/mtd/gen_probe.h>
 
-//#define DEBUG_CFI
+#define DEBUG_CFI
 
 #ifdef DEBUG_CFI
 static void print_cfi_ident(struct cfi_ident *);

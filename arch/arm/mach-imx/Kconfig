@@ -27,6 +27,12 @@ config MACH_SCB9328
 	help
 	  Say Y here if you are using a Synertronixx scb9328 board
 
+config MACH_SONY_PRS505
+       bool "Sony PRS-505 book reader"
+       depends on ARCH_IMX
+         help
+         Say Y here if you are using the Sony PRS-505 book reader.
+
 endif
 
 if ARCH_MX2

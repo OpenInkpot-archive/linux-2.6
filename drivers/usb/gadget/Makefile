@@ -24,6 +24,7 @@ obj-$(CONFIG_USB_FSL_QE)	+= fsl_qe_udc.o
 obj-$(CONFIG_USB_CI13XXX)	+= ci13xxx_udc.o
 obj-$(CONFIG_USB_S3C_HSOTG)	+= s3c-hsotg.o
 obj-$(CONFIG_USB_LANGWELL)	+= langwell_udc.o
+obj-$(CONFIG_USB_S1R72V17_GADGET)	+= s1r72v17_udc.o
 
 #
 # USB gadget drivers

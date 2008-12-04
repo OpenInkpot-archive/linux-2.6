@@ -500,6 +500,32 @@ config USB_LANGWELL
 # LAST -- dummy/emulated controller
 #
 
+
+config USB_GADGET_S1R72V17
+	boolean "EPSON S1R72V17"
+	depends on MACH_SONY_PRS505
+	select USB_GADGET_DUALSPEED
+	help
+	   EPSON S1R72V17 is USB device controller.
+	   S1R72V17 supports both full and high speed USB 2.0 data transfers.
+	   It has 4 endpoints. 1 is only for endpoint0 and others could configure
+           bulk or interrupt respectively.
+
+	   Say "y" to link the driver statically, or "m" to build a
+	   dynamically linked module called "s1r72xxx_udc" and force all
+	   gadget drivers to also be dynamically linked.
+
+config USB_S1R72V17_GADGET
+	tristate
+	depends on USB_GADGET_S1R72V17
+	default USB_GADGET
+	select USB_GADGET_SELECTED
+
+config USB_S1R72V17_GADGET_16BIT_FIX
+	boolean "16BIT FIXED BUS"
+	depends on USB_GADGET_S1R72V17
+
+
 config USB_GADGET_DUMMY_HCD
 	boolean "Dummy HCD (DEVELOPMENT)"
 	depends on USB=y || (USB=m && USB_GADGET=m)
