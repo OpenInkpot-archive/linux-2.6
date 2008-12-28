@@ -628,6 +628,7 @@ struct platform_nand_chip {
 	int nr_partitions;
 	struct mtd_partition *partitions;
 	struct nand_ecclayout *ecclayout;
+	nand_ecc_modes_t eccmode;
 	int chip_delay;
 	unsigned int options;
 	const char **part_probe_types;
