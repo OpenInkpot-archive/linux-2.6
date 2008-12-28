@@ -217,6 +217,7 @@ static struct platform_nand_data prs505_nand_flash_data = {
 	.chip	= {
 		.nr_chips	= 1,
 		.chip_delay	= 25,
+		.part_probe_types = (const char *[]) {"SDM", NULL},
 	},
 	.ctrl	= {
 		.dev_ready	= prs505_nand_dev_ready,

@@ -171,6 +171,13 @@ config MTD_AR7_PARTS
 	---help---
 	  TI AR7 partitioning support
 
+config MTD_SDM_PARTS
+	tristate "Sony SDM partitioning support"
+	depends on MTD_PARTITIONS
+	help
+	  This provides limited support for SDM partition tables. Only
+	  one device is supported.
+
 comment "User Modules And Translation Layers"
 
 config MTD_CHAR
