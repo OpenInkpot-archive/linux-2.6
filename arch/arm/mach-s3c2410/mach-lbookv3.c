@@ -63,16 +63,16 @@
 #include <mach/regs-clock.h>
 #include <mach/spi.h>
 
-#include <asm/plat-s3c/regs-serial.h>
+#include <plat/regs-serial.h>
 #include <asm/plat-s3c/nand.h>
 
-#include <asm/plat-s3c24xx/devs.h>
-#include <asm/plat-s3c24xx/cpu.h>
+#include <plat/devs.h>
+#include <plat/cpu.h>
 #include <asm/plat-s3c24xx/udc.h>
-#include <asm/plat-s3c24xx/pm.h>
+#include <plat/pm.h>
 #include <asm/plat-s3c24xx/mci.h>
 
-#include <asm/plat-s3c24xx/common-smdk.h>
+#include <plat/common-smdk.h>
 
 static struct map_desc lbookv3_iodesc[] __initdata = {
 	{0xe8000000, __phys_to_pfn(S3C2410_CS5), 0x100000, MT_DEVICE}

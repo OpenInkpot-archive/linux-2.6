@@ -20,7 +20,7 @@
 #include <linux/interrupt.h>
 
 #include <mach/regs-gpio.h>
-#include <asm/plat-s3c/regs-adc.h>
+#include <plat/regs-adc.h>
 #include <mach/io.h>
 #include <asm/mach/map.h>
 #include <asm/io.h>
