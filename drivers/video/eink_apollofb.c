@@ -108,18 +108,29 @@ static inline int apollo_wait_for_ack_value(struct apollofb_par *par,
 
 static int apollo_send_data(struct apollofb_par *par, unsigned char data)
 {
-	int res = 0;;
+	int res = 0;
 
 	res = apollo_wait_for_ack_clear(par);
 	par->ops->write_value(data);
 	par->ops->set_ctl_pin(H_DS, 0);
-	if (!res)
+	if (likely(!res))
 		res = apollo_wait_for_ack(par);
 	par->ops->set_ctl_pin(H_DS, 1);
 
 	return res;
 }
 
+static int apollo_send_data_fast(struct apollofb_par *par, unsigned char data)
+{
+	int res = 0;
+
+	par->ops->write_value(data);
+	par->ops->set_ctl_pin(H_DS, 0);
+	res = apollo_wait_for_ack(par);
+	par->ops->set_ctl_pin(H_DS, 1);
+
+	return res;
+}
 
 static int apollo_send_command(struct apollofb_par *par, unsigned char cmd)
 {
@@ -225,7 +236,7 @@ static void apollofb_apollo_update_part(struct apollofb_par *par,
 			tmp = (tmp << bpp) | (buf[i * width + j] & mask);
 			k++;
 			if (k % pixels_in_byte == 0)
-				apollo_send_data(par, tmp);
+				apollo_send_data_fast(par, tmp);
 		}
 
 	dev_dbg(info->dev, "%s: stop loading\n", __FUNCTION__);
