@@ -195,7 +195,7 @@ static void default_idle(void)
 
 #ifdef CONFIG_PM_AUTOSUSPEND_WITH_TIMERS
 		if (time_before(get_next_timer_interrupt(jiffies), sleep_idle_time))
-			sleep_idle_time = next_timer_interrupt() + pm_autosuspend_timeout;
+			sleep_idle_time = get_next_timer_interrupt(jiffies) + pm_autosuspend_timeout;
 #endif
 
 		last_cpustat_procs = curr_cpustat_procs;

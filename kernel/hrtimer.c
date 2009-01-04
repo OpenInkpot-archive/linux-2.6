@@ -1108,7 +1108,7 @@ ktime_t hrtimer_get_remaining(const struct hrtimer *timer)
 }
 EXPORT_SYMBOL_GPL(hrtimer_get_remaining);
 
-#ifdef CONFIG_NO_HZ
+//#ifdef CONFIG_NO_HZ
 /**
  * hrtimer_get_next_event - get the time until next expiry event
  *
@@ -1146,7 +1146,7 @@ ktime_t hrtimer_get_next_event(void)
 		mindelta.tv64 = 0;
 	return mindelta;
 }
-#endif
+//#endif
 
 static void __hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
 			   enum hrtimer_mode mode)
