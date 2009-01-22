@@ -64,3 +64,5 @@ ncscope.*
 *.orig
 *~
 \#*#
+*.rej
+*uImage
