@@ -420,4 +420,103 @@ config MTD_NAND_SH_FLCTL
 	  Several Renesas SuperH CPU has FLCTL. This option enables support
 	  for NAND Flash using FLCTL. This driver support SH7723.
 
+config MTD_NAND_JZ4730
+	tristate "Support NAND Flash device on Jz4730 board"
+	depends on SOC_JZ4730
+	help
+	Support NAND Flash device on Jz4730 board
+
+config MTD_NAND_JZ4740
+	tristate "Support NAND Flash device on Jz4740 board"
+	depends on SOC_JZ4740
+	help
+	Support NAND Flash device on Jz4740 board
+
+config MTD_NAND_JZ4750
+	tristate "Support NAND Flash device on Jz4750 board"
+	depends on SOC_JZ4750
+	help
+	Support NAND Flash device on Jz4750 board
+
+if     MTD_NAND_JZ4740 || MTD_NAND_JZ4730 || MTD_NAND_JZ4750
+choice
+	prompt "ECC type"
+	default CONFIG_MTD_SW_HM_ECC
+	
+config 	MTD_HW_HM_ECC
+	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4730
+	bool 'Select hardware HM ECC'
+	 
+config  MTD_SW_HM_ECC
+	bool 'Select software HM ECC'
+
+config  MTD_HW_RS_ECC
+	depends on MTD_NAND_JZ4740
+	bool 'Select hardware RS ECC'
+
+config  MTD_HW_BCH_ECC
+	depends on MTD_NAND_JZ4750
+	bool 'Select hardware BCH ECC'
+endchoice
+
+choice
+	prompt "DMA mode"
+	depends on MTD_HW_BCH_ECC
+	default CONFIG_MTD_NAND_DMA
+
+config 	MTD_NAND_DMA
+	bool 'use DMA'
+
+config 	MTD_NAND_NO_DMA
+	bool "don't use DMA"
+
+endchoice
+
+choice
+	prompt "4 bit or 8 bit BCH ecc"
+	depends on MTD_HW_BCH_ECC
+	default CONFIG_MTD_HW_BCH_4BIT
+
+config 	MTD_HW_BCH_4BIT
+	bool '4 bit'
+
+config 	MTD_HW_BCH_8BIT
+	bool '8 bit'
+
+endchoice
+
+endif
+
+config  MTD_MTDBLOCK_WRITE_VERIFY_ENABLE
+	bool "MTDBLOCK write verify enable"
+	default n
+	help
+	    This will enable the write verification, which will read back data to check
+            after doing a write opetaion.
+
+            It will be used by the JZ mtdblock driver (mtdblock-jz.c).
+
+config  MTD_OOB_COPIES
+	int "how many copies of the fs info in the oob area"
+	default 3
+	range 0 128
+	depends on MTD
+	help
+	    This defines the copies of the fs info in the oob area inside a block.
+	    Value ranges from 0 to (pages_per_block - 1).
+
+	    It will be used by the JZ mtdblock driver (mtdblock-jz.c).
+
+config  MTD_BADBLOCK_FLAG_PAGE
+	int "which page inside a block will store the badblock mark"
+	default 0
+	range 0 127
+	depends on MTD
+	help
+            This defines which page of a block will store the badblock mark.
+	    Value ranges from 0 to (pages_per_block - 1).
+
+	    Old SLC NANDs store the badblock mark in the first page of a block, but
+            most modern MLC NANDs store it in the last page of a block.
+
 endif # MTD_NAND
