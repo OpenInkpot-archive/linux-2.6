@@ -70,6 +70,8 @@
 #include <plat/pm.h>
 #include <plat/irq.h>
 
+#warning FIXME: add support for second set of interrupt controller registers
+
 /* wakeup irq control */
 
 #ifdef CONFIG_PM

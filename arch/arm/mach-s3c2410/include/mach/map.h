@@ -67,6 +67,11 @@
 #define S3C2443_PA_HSMMC   (0x4A800000)
 #define S3C2443_SZ_HSMMC   (256)
 
+/* S3C2416 HSMMC */
+#define S3C2416_PA_HSMMC0  (0x4AC00000)
+#define S3C2416_PA_HSMMC1  (0x4A800000)
+#define S3C2416_SZ_HSMMC   (256)
+
 /* physical addresses of all the chip-select areas */
 
 #define S3C2410_CS0 (0x00000000)

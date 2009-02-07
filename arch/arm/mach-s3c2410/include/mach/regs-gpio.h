@@ -1026,6 +1026,7 @@
 #define S3C2412_MISCCR_CLK1_CLKsrc  (0<<8)
 
 #define S3C2410_MISCCR_USBSUSPND0   (1<<12)
+#define S3C2416_MISCCR_SEL_SUSPND   (1<<12)
 #define S3C2410_MISCCR_USBSUSPND1   (1<<13)
 
 #define S3C2410_MISCCR_nRSTCON	    (1<<16)
@@ -1034,6 +1035,9 @@
 #define S3C2410_MISCCR_nEN_SCLK1    (1<<18)
 #define S3C2410_MISCCR_nEN_SCLKE    (1<<19)	/* not 2412 */
 #define S3C2410_MISCCR_SDSLEEP	    (7<<17)
+
+#define S3C2416_MISCCR_FLT_I2C      (1<<24)
+#define S3C2416_MISCCR_HSSPI_EN2    (1<<31)
 
 /* external interrupt control... */
 /* S3C2410_EXTINT0 -> irq sense control for EINT0..EINT7
@@ -1102,8 +1106,10 @@
 #define S3C2410_GSTATUS1_IDMASK	   (0xffff0000)
 #define S3C2410_GSTATUS1_2410	   (0x32410000)
 #define S3C2410_GSTATUS1_2412	   (0x32412001)
+#define S3C2410_GSTATUS1_2416	   (0x32416003)
 #define S3C2410_GSTATUS1_2440	   (0x32440000)
 #define S3C2410_GSTATUS1_2442	   (0x32440aaa)
+#define S3C2410_GSTATUS1_2450	   (0x32450003) /* some 2416 CPUs reported this value also */
 
 #define S3C2410_GSTATUS2_WTRESET   (1<<2)
 #define S3C2410_GSTATUS2_OFFRESET  (1<<1)

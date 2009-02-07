@@ -1,0 +1,197 @@
+/* arch/arm/mach-s3c2410/include/mach/regs-s3c2416-clock.h
+ *
+ * Copyright (c) 2009 Yauhen Kharuzhy <jekhor@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * S3C2416 clock register definitions
+*/
+
+#ifndef __ASM_ARM_REGS_S3C2416_CLOCK
+#define __ASM_ARM_REGS_S3C2416_CLOCK
+
+#define S3C2416_CLKREG(x)		((x) + S3C24XX_VA_CLKPWR)
+
+#define S3C2416_PLLCON_MDIVSHIFT	14
+#define S3C2416_PLLCON_PDIVSHIFT	5
+#define S3C2416_PLLCON_SDIVSHIFT	0
+#define S3C2416_PLLCON_MDIVMASK		((1<<(1+(23-14)))-1)
+#define S3C2416_PLLCON_PDIVMASK		((1<<(1+(10-5)))-1)
+#define S3C2416_PLLCON_SDIVMASK		(3)
+
+#define S3C2416_MPLLCON			S3C2416_CLKREG(0x10)
+#define S3C2416_EPLLCON			S3C2416_CLKREG(0x18)
+#define S3C2416_EPLLCON_K		S3C2416_CLKREG(0x1C)
+#define S3C2416_CLKSRC			S3C2416_CLKREG(0x20)
+#define S3C2416_CLKDIV0			S3C2416_CLKREG(0x24)
+#define S3C2416_CLKDIV1			S3C2416_CLKREG(0x28)
+#define S3C2416_HCLKCON			S3C2416_CLKREG(0x30)
+#define S3C2416_PCLKCON			S3C2416_CLKREG(0x34)
+#define S3C2416_SCLKCON			S3C2416_CLKREG(0x38)
+#define S3C2416_PWRMODE			S3C2416_CLKREG(0x40)
+#define S3C2416_SWRST			S3C2416_CLKREG(0x44)
+#define S3C2416_BUSPRI0			S3C2416_CLKREG(0x50)
+#define S3C2416_SYSID			S3C2416_CLKREG(0x5C)
+#define S3C2416_PWRCFG			S3C2416_CLKREG(0x60)
+#define S3C2416_RSTCON			S3C2416_CLKREG(0x64)
+
+#define S3C2416_SWRST_RESET		(0x533c2416)
+
+#define S3C2416_PLLCON_OFF		(1<<24)
+
+#define S3C2416_CLKSRC_I2S_EXT		(1<<14)
+#define S3C2416_CLKSRC_I2S_EPLLDIV	(0<<14)
+#define S3C2416_CLKSRC_I2S_EPLLREF	(2<<14)
+#define S3C2416_CLKSRC_I2S_EPLLREF3	(3<<14)
+#define S3C2416_CLKSRC_I2S_MASK		(3<<14)
+
+#define S3C2416_CLKSRC_EPLLREF_XTAL	(2<<7)
+#define S3C2416_CLKSRC_EPLLREF_EXTCLK	(3<<7)
+#define S3C2416_CLKSRC_EPLLREF_MPLLREF	(0<<7)
+#define S3C2416_CLKSRC_EPLLREF_MPLLREF2	(1<<7)
+#define S3C2416_CLKSRC_EPLLREF_MASK	(3<<7)
+
+#define S3C2416_CLKSRC_ESYSCLK_EPLL	(1<<6)
+#define S3C2416_CLKSRC_MSYSCLK_MPLL	(1<<4)
+#define S3C2416_CLKSRC_EXTCLK_DIV	(1<<3)
+
+#define S3C2416_CLKDIV0_DVS		(1<<13)
+#define S3C2416_CLKDIV0_HALF_HCLK	(1<<3)
+#define S3C2416_CLKDIV0_HALF_PCLK	(1<<2)
+
+#define S3C2416_CLKDIV0_HCLKDIV_MASK	(3<<0)
+
+#define S3C2416_CLKDIV0_EXTDIV_MASK	(3<<6)
+#define S3C2416_CLKDIV0_EXTDIV_SHIFT	(6)
+
+#define S3C2416_CLKDIV0_PREDIV_MASK	(3<<4)
+#define S3C2416_CLKDIV0_PREDIV_SHIFT	(4)
+
+#define S3C2416_CLKDIV0_ARMDIV_MASK	(7<<9)
+#define S3C2416_CLKDIV0_ARMDIV_SHIFT	(9)
+#define S3C2416_CLKDIV0_ARMDIV_1	(0<<9)
+#define S3C2416_CLKDIV0_ARMDIV_2	(1<<9)
+#define S3C2416_CLKDIV0_ARMDIV_3	(2<<9)
+#define S3C2416_CLKDIV0_ARMDIV_4	(3<<9)
+#define S3C2416_CLKDIV0_ARMDIV_6	(5<<9)
+#define S3C2416_CLKDIV0_ARMDIV_8	(7<<9)
+
+/* S3C2416_CLKDIV1 */
+
+#define S3C2416_CLKDIV1_CAMDIV_MASK	(15<<26)
+#define S3C2416_CLKDIV1_CAMDIV_SHIFT	(26)
+
+#define S3C2416_CLKDIV1_HSSPIDIV_MASK	(3<<24)
+#define S3C2416_CLKDIV1_HSSPIDIV_SHIFT	(24)
+
+#define S3C2416_CLKDIV1_DISPDIV_MASK	(0xff<<16)
+#define S3C2416_CLKDIV1_DISPDIV_SHIFT	(16)
+
+#define S3C2416_CLKDIV1_I2SDIV_MASK	(15<<12)
+#define S3C2416_CLKDIV1_I2SDIV_SHIFT	(12)
+
+#define S3C2416_CLKDIV1_UARTDIV_MASK	(15<<8)
+#define S3C2416_CLKDIV1_UARTDIV_SHIFT	(8)
+
+#define S3C2416_CLKDIV1_HSMMCDIV_MASK	(3<<6)
+#define S3C2416_CLKDIV1_HSMMCDIV_SHIFT	(6)
+
+#define S3C2416_CLKDIV1_USBHOSTDIV_MASK	(3<<4)
+#define S3C2416_CLKDIV1_USBHOSTDIV_SHIFT (4)
+
+#define S3C2416_CLKCON_NAND
+
+#define S3C2416_HCLKCON_DMA0		(1<<0)
+#define S3C2416_HCLKCON_DMA1		(1<<1)
+#define S3C2416_HCLKCON_DMA2		(1<<2)
+#define S3C2416_HCLKCON_DMA3		(1<<3)
+#define S3C2416_HCLKCON_DMA4		(1<<4)
+#define S3C2416_HCLKCON_DMA5		(1<<5)
+#define S3C2416_HCLKCON_CAMIF		(1<<8)
+#define S3C2416_HCLKCON_DISP		(1<<9)
+#define S3C2416_HCLKCON_LCDC		(1<<10)
+#define S3C2416_HCLKCON_USBH		(1<<11)
+#define S3C2416_HCLKCON_USBD		(1<<12)
+#define S3C2416_HCLKCON_HSMMC		(1<<16)
+#define S3C2416_HCLKCON_CFC		(1<<17)
+#define S3C2416_HCLKCON_SSMC		(1<<18)
+#define S3C2416_HCLKCON_DRAMC		(1<<19)
+
+#define S3C2416_PCLKCON_UART0		(1<<0)
+#define S3C2416_PCLKCON_UART1		(1<<1)
+#define S3C2416_PCLKCON_UART2		(1<<2)
+#define S3C2416_PCLKCON_UART3		(1<<3)
+#define S3C2416_PCLKCON_IIC		(1<<4)
+#define S3C2416_PCLKCON_SDI		(1<<5)
+#define S3C2416_PCLKCON_ADC		(1<<7)
+#define S3C2416_PCLKCON_AC97		(1<<8)
+#define S3C2416_PCLKCON_IIS		(1<<9)
+#define S3C2416_PCLKCON_PWMT		(1<<10)
+#define S3C2416_PCLKCON_WDT		(1<<11)
+#define S3C2416_PCLKCON_RTC		(1<<12)
+#define S3C2416_PCLKCON_GPIO		(1<<13)
+#define S3C2416_PCLKCON_SPI0		(1<<14)
+#define S3C2416_PCLKCON_SPI1		(1<<15)
+
+#define S3C2416_SCLKCON_DDRCLK		(1<<16)
+#define S3C2416_SCLKCON_SSMCCLK		(1<<15)
+#define S3C2416_SCLKCON_HSSPICLK	(1<<14)
+#define S3C2416_SCLKCON_HSMMCCLK_EXT	(1<<13)
+#define S3C2416_SCLKCON_HSMMCCLK_EPLL	(1<<12)
+#define S3C2416_SCLKCON_CAMCLK		(1<<11)
+#define S3C2416_SCLKCON_DISPCLK		(1<<10)
+#define S3C2416_SCLKCON_I2SCLK		(1<<9)
+#define S3C2416_SCLKCON_UARTCLK		(1<<8)
+#define S3C2416_SCLKCON_USBHOST		(1<<1)
+
+#include <asm/div64.h>
+
+extern void printascii(const char *);
+static inline unsigned int
+s3c2416_get_mpll(unsigned int pllval, unsigned int baseclk)
+{
+	unsigned int mdiv, pdiv, sdiv;
+	uint64_t fout;
+	char buf[100];
+
+	mdiv = pllval >> S3C2416_PLLCON_MDIVSHIFT;
+	pdiv = pllval >> S3C2416_PLLCON_PDIVSHIFT;
+	sdiv = pllval >> S3C2416_PLLCON_SDIVSHIFT;
+
+	mdiv &= S3C2416_PLLCON_MDIVMASK;
+	pdiv &= S3C2416_PLLCON_PDIVMASK;
+	sdiv &= S3C2416_PLLCON_SDIVMASK;
+
+	fout = (uint64_t)baseclk * mdiv;
+	do_div(fout, pdiv << sdiv);
+
+	snprintf(buf, 100, "pllval: %08x mdiv: %u pdiv: %u sdiv: %u\n", pllval, mdiv, pdiv, sdiv);
+	printascii(buf);
+	return (unsigned int)fout;
+}
+
+static inline unsigned int
+s3c2416_get_epll(unsigned int pllval, unsigned int baseclk)
+{
+	unsigned int mdiv, pdiv, sdiv;
+	uint64_t fout;
+
+	mdiv = pllval >> S3C2416_PLLCON_MDIVSHIFT;
+	pdiv = pllval >> S3C2416_PLLCON_PDIVSHIFT;
+	sdiv = pllval >> S3C2416_PLLCON_SDIVSHIFT;
+
+	mdiv &= S3C2416_PLLCON_MDIVMASK;
+	pdiv &= S3C2416_PLLCON_PDIVMASK;
+	sdiv &= S3C2416_PLLCON_SDIVMASK;
+
+	/* FIXME: we don't see to KDIV (fractional part) */
+	fout = (uint64_t)baseclk * mdiv;
+	do_div(fout, pdiv << sdiv);
+
+	return (unsigned int)fout;
+}
+
+#endif /*  __ASM_ARM_REGS_S3C2416_CLOCK */
+
