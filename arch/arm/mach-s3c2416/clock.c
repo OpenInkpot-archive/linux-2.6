@@ -43,8 +43,6 @@
 #include <plat/clock.h>
 #include <plat/cpu.h>
 
-#warning FIXME: add HSSPI & HSMMC clocks
-
 /* We currently have to assume that the system is running
  * from the XTPll input, and that all ***REFCLKs are being
  * fed from it, as we cannot read the state of OM[4] from
@@ -143,6 +141,12 @@ static unsigned long s3c2416_roundrate_clksrc256(struct clk *clk,
 						 unsigned long rate)
 {
 	return s3c2416_roundrate_clksrc(clk, rate, 256);
+}
+
+static unsigned long s3c2416_roundrate_clksrc512(struct clk *clk,
+						 unsigned long rate)
+{
+	return s3c2416_roundrate_clksrc(clk, rate, 512);
 }
 
 /* clock selections */
@@ -361,12 +365,8 @@ static struct clk clk_uart = {
 	.round_rate	= s3c2416_roundrate_clksrc16,
 };
 
-/* hsspi
- *
- * high-speed spi clock, sourced from esysclk
-*/
 
-static unsigned long s3c2416_getrate_hsspi(struct clk *clk)
+static unsigned long s3c2416_getrate_hsspi_ediv(struct clk *clk)
 {
 	unsigned long parent_rate = clk_get_rate(clk->parent);
 	unsigned long div = __raw_readl(S3C2416_CLKDIV1);
@@ -378,7 +378,7 @@ static unsigned long s3c2416_getrate_hsspi(struct clk *clk)
 }
 
 
-static int s3c2416_setrate_hsspi(struct clk *clk, unsigned long rate)
+static int s3c2416_setrate_hsspi_ediv(struct clk *clk, unsigned long rate)
 {
 	unsigned long parent_rate = clk_get_rate(clk->parent);
 	unsigned long clkdivn = __raw_readl(S3C2416_CLKDIV1);
@@ -393,15 +393,84 @@ static int s3c2416_setrate_hsspi(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
-static struct clk clk_hsspi = {
-	.name		= "hsspi",
+
+static struct clk clk_hsspi_ediv = {
+	.name		= "hsspi-ediv",
 	.id		= -1,
 	.parent		= &clk_esysclk,
 	.ctrlbit	= S3C2416_SCLKCON_HSSPICLK,
 	.enable		= s3c2416_clkcon_enable_s,
-	.get_rate	= s3c2416_getrate_hsspi,
-	.set_rate	= s3c2416_setrate_hsspi,
+	.get_rate	= s3c2416_getrate_hsspi_ediv,
+	.set_rate	= s3c2416_setrate_hsspi_ediv,
 	.round_rate	= s3c2416_roundrate_clksrc4,
+};
+
+static unsigned long s3c2416_getrate_hsspi_mdiv(struct clk *clk)
+{
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+	unsigned long div = __raw_readl(S3C2416_CLKDIV2);
+
+	div &= S3C2416_CLKDIV2_SPIDIV0_MPLL_MASK;
+	div >>= S3C2416_CLKDIV2_SPIDIV0_MPLL_SHIFT;
+
+	return parent_rate / (div + 1);
+}
+
+
+static int s3c2416_setrate_hsspi_mdiv(struct clk *clk, unsigned long rate)
+{
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+	unsigned long clkdivn = __raw_readl(S3C2416_CLKDIV2);
+
+	rate = s3c2416_roundrate_clksrc512(clk, rate);
+	rate = parent_rate / rate;
+
+	clkdivn &= ~S3C2416_CLKDIV2_SPIDIV0_MPLL_MASK;
+	clkdivn |= (rate - 1) << S3C2416_CLKDIV2_SPIDIV0_MPLL_SHIFT;
+
+	__raw_writel(clkdivn, S3C2416_CLKDIV2);
+	return 0;
+}
+
+
+static struct clk clk_hsspi_mdiv = {
+	.name		= "hsspi-mdiv",
+	.id		= -1,
+	.parent		= &clk_msysclk,
+	.ctrlbit	= S3C2416_SCLKCON_HSSPICLK_MPLL,
+	.enable		= s3c2416_clkcon_enable_s,
+	.get_rate	= s3c2416_getrate_hsspi_mdiv,
+	.set_rate	= s3c2416_setrate_hsspi_mdiv,
+	.round_rate	= s3c2416_roundrate_clksrc512,
+};
+
+/* hsspi
+ *
+ * high-speed spi clock, sourced from esysclk or msysclk
+*/
+
+static int s3c2416_setparent_hsspi(struct clk *clk, struct clk *parent)
+{
+	unsigned long clksrc = __raw_readl(S3C2416_CLKSRC);
+
+	if (parent == &clk_hsspi_mdiv)
+		clksrc |= S3C2416_CLKSRC_SELHSSPI0_MPLL;
+	else if (parent == &clk_hsspi_ediv)
+		clksrc &= ~S3C2416_CLKSRC_SELHSSPI0_MPLL;
+	else
+		return -EINVAL;
+
+	__raw_writel(clksrc, S3C2416_CLKSRC);
+	clk->parent = parent;
+
+	return 0;
+}
+
+static struct clk clk_hsspi = {
+	.name		= "hsspi",
+	.id		= -1,
+	.parent		= &clk_hsspi_ediv,
+	.set_parent	= s3c2416_setparent_hsspi,
 };
 
 /* usbhost
@@ -453,18 +522,55 @@ static struct clk clk_usb_bus_host = {
  * be fed to the hsmmc block
 */
 
-static unsigned long s3c2416_getrate_hsmmc_div(struct clk *clk)
+static unsigned long s3c2416_getrate_hsmmc0_div(struct clk *clk)
 {
 	unsigned long parent_rate = clk_get_rate(clk->parent);
-	unsigned long div = __raw_readl(S3C2416_CLKDIV1);
+	unsigned long div = __raw_readl(S3C2416_CLKDIV2);
 
-	div &= S3C2416_CLKDIV1_HSMMCDIV_MASK;
-	div >>= S3C2416_CLKDIV1_HSMMCDIV_SHIFT;
+	div &= S3C2416_CLKDIV2_HSMMCDIV0_MASK;
+	div >>= S3C2416_CLKDIV2_HSMMCDIV0_SHIFT;
 
 	return parent_rate / (div + 1);
 }
 
-static int s3c2416_setrate_hsmmc_div(struct clk *clk, unsigned long rate)
+static int s3c2416_setrate_hsmmc0_div(struct clk *clk, unsigned long rate)
+{
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+	unsigned long clkdivn = __raw_readl(S3C2416_CLKDIV2);
+
+	rate = s3c2416_roundrate_clksrc4(clk, rate);
+	rate = parent_rate / rate;
+
+	clkdivn &= ~S3C2416_CLKDIV2_HSMMCDIV0_MASK;
+	clkdivn |= (rate - 1) << S3C2416_CLKDIV2_HSMMCDIV0_SHIFT;
+
+	__raw_writel(clkdivn, S3C2416_CLKDIV2);
+	return 0;
+}
+
+static struct clk clk_hsmmc0_div = {
+	.name		= "hsmmc-div",
+	.id		= 0,
+	.parent		= &clk_esysclk,
+	.ctrlbit	= S3C2416_SCLKCON_HSMMCCLK0_EPLL,
+	.enable		= s3c2416_clkcon_enable_s,
+	.get_rate	= s3c2416_getrate_hsmmc0_div,
+	.set_rate	= s3c2416_setrate_hsmmc0_div,
+	.round_rate	= s3c2416_roundrate_clksrc4,
+};
+
+static unsigned long s3c2416_getrate_hsmmc1_div(struct clk *clk)
+{
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+	unsigned long div = __raw_readl(S3C2416_CLKDIV1);
+
+	div &= S3C2416_CLKDIV1_HSMMCDIV1_MASK;
+	div >>= S3C2416_CLKDIV1_HSMMCDIV1_SHIFT;
+
+	return parent_rate / (div + 1);
+}
+
+static int s3c2416_setrate_hsmmc1_div(struct clk *clk, unsigned long rate)
 {
 	unsigned long parent_rate = clk_get_rate(clk->parent);
 	unsigned long clkdivn = __raw_readl(S3C2416_CLKDIV1);
@@ -472,38 +578,45 @@ static int s3c2416_setrate_hsmmc_div(struct clk *clk, unsigned long rate)
 	rate = s3c2416_roundrate_clksrc4(clk, rate);
 	rate = parent_rate / rate;
 
-	clkdivn &= ~S3C2416_CLKDIV1_HSMMCDIV_MASK;
-	clkdivn |= (rate - 1) << S3C2416_CLKDIV1_HSMMCDIV_SHIFT;
+	clkdivn &= ~S3C2416_CLKDIV1_HSMMCDIV1_MASK;
+	clkdivn |= (rate - 1) << S3C2416_CLKDIV1_HSMMCDIV1_SHIFT;
 
 	__raw_writel(clkdivn, S3C2416_CLKDIV1);
 	return 0;
 }
 
-static struct clk clk_hsmmc_div = {
+static struct clk clk_hsmmc1_div = {
 	.name		= "hsmmc-div",
-	.id		= -1,
+	.id		= 1,
 	.parent		= &clk_esysclk,
-	.get_rate	= s3c2416_getrate_hsmmc_div,
-	.set_rate	= s3c2416_setrate_hsmmc_div,
+	.ctrlbit	= S3C2416_SCLKCON_HSMMCCLK1_EPLL,
+	.enable		= s3c2416_clkcon_enable_s,
+	.get_rate	= s3c2416_getrate_hsmmc1_div,
+	.set_rate	= s3c2416_setrate_hsmmc1_div,
 	.round_rate	= s3c2416_roundrate_clksrc4,
 };
 
+
 static int s3c2416_setparent_hsmmc(struct clk *clk, struct clk *parent)
 {
-	unsigned long clksrc = __raw_readl(S3C2416_SCLKCON);
+	unsigned long clksrc = __raw_readl(S3C2416_CLKSRC);
+	unsigned long bit = (S3C2416_CLKSRC_SELHSMMC0_EXTCLK << clk->id);
+	struct clk *clk_div;
 
-	clksrc &= ~(S3C2416_SCLKCON_HSMMCCLK_EXT |
-		    S3C2416_SCLKCON_HSMMCCLK_EPLL);
+	if (clk->id == 0)
+		clk_div = &clk_hsmmc0_div;
+	else
+		clk_div = &clk_hsmmc1_div;
 
-	if (parent == &clk_epll)
-		clksrc |= S3C2416_SCLKCON_HSMMCCLK_EPLL;
-	else if (parent == &clk_ext)
-		clksrc |= S3C2416_SCLKCON_HSMMCCLK_EXT;
+	if (parent == &clk_ext)
+		clksrc |= bit;
+	else if (parent == clk_div)
+		clksrc &= ~bit;
 	else
 		return -EINVAL;
 
 	if (clk->usage > 0) {
-		__raw_writel(clksrc, S3C2416_SCLKCON);
+		__raw_writel(clksrc, S3C2416_CLKSRC);
 	}
 
 	clk->parent = parent;
@@ -512,13 +625,34 @@ static int s3c2416_setparent_hsmmc(struct clk *clk, struct clk *parent)
 
 static int s3c2416_enable_hsmmc(struct clk *clk, int enable)
 {
-	return s3c2416_setparent_hsmmc(clk, clk->parent);
+	unsigned long clksrc = __raw_readl(S3C2416_CLKSRC);
+	unsigned long bit = (S3C2416_CLKSRC_SELHSMMC0_EXTCLK << clk->id);
+
+	s3c2416_clkcon_enable_s(clk, enable);
+
+	/* for disable EXTCLK-driven clock, switch to EPLL HSMMC divide clock */
+	if ((clk->parent == &clk_ext) && !enable) {
+		clksrc &= ~bit;
+		__raw_writel(clksrc, S3C2416_CLKSRC);
+		return 0;
+	} else
+		return s3c2416_setparent_hsmmc(clk, clk->parent);
 }
 
-static struct clk clk_hsmmc = {
+static struct clk clk_hsmmc0 = {
 	.name		= "hsmmc-if",
-	.id		= -1,
-	.parent		= &clk_hsmmc_div,
+	.id		= 0,
+	.parent		= &clk_hsmmc0_div,
+	.ctrlbit	= S3C2416_SCLKCON_HSMMCCLK0_EPLL,
+	.enable		= s3c2416_enable_hsmmc,
+	.set_parent	= s3c2416_setparent_hsmmc,
+};
+
+static struct clk clk_hsmmc1 = {
+	.name		= "hsmmc-if",
+	.id		= 1,
+	.parent		= &clk_hsmmc1_div,
+	.ctrlbit	= S3C2416_SCLKCON_HSMMCCLK1_EPLL,
 	.enable		= s3c2416_enable_hsmmc,
 	.set_parent	= s3c2416_setparent_hsmmc,
 };
@@ -669,12 +803,6 @@ static struct clk init_clocks_disable[] = {
 		.id		= -1,
 		.parent		= &clk_h,
 	}, {
-		.name		= "sdi",
-		.id		= -1,
-		.parent		= &clk_p,
-		.enable		= s3c2416_clkcon_enable_p,
-		.ctrlbit	= S3C2416_PCLKCON_SDI,
-	}, {
 		.name		= "adc",
 		.id		= -1,
 		.parent		= &clk_p,
@@ -691,19 +819,18 @@ static struct clk init_clocks_disable[] = {
 		.id		= -1,
 		.parent		= &clk_p,
 		.enable		= s3c2416_clkcon_enable_p,
-		.ctrlbit	= S3C2416_PCLKCON_IIS,
+		.ctrlbit	= S3C2416_PCLKCON_I2S0,
 	}, {
-		.name		= "spi",
-		.id		= 0,
+		.name		= "spi-hs0",
+		.id		= -1,
 		.parent		= &clk_p,
 		.enable		= s3c2416_clkcon_enable_p,
-		.ctrlbit	= S3C2416_PCLKCON_SPI0,
+		.ctrlbit	= S3C2416_PCLKCON_SPI_HS0,
 	}, {
-		.name		= "spi",
-		.id		= 1,
-		.parent		= &clk_p,
-		.enable		= s3c2416_clkcon_enable_p,
-		.ctrlbit	= S3C2416_PCLKCON_SPI1,
+		.name		= "pcm-ext",
+		.id		= -1,
+		.enable		= s3c2416_clkcon_enable_s,
+		.ctrlbit	= S3C2416_SCLKCON_PCM0_EXT,
 	}
 };
 
@@ -749,7 +876,7 @@ static struct clk init_clocks[] = {
 		.id		= -1,
 		.parent		= &clk_h,
 		.enable		= s3c2416_clkcon_enable_h,
-		.ctrlbit	= S3C2416_HCLKCON_LCDC,
+		.ctrlbit	= S3C2416_HCLKCON_DISP,
 	}, {
 		.name		= "gpio",
 		.id		= -1,
@@ -769,17 +896,41 @@ static struct clk init_clocks[] = {
 		.enable		= s3c2416_clkcon_enable_h,
 		.ctrlbit	= S3C2416_HCLKCON_USBD,
 	}, {
-		.name		= "hsmmc",
+		.name		= "irom",
 		.id		= -1,
 		.parent		= &clk_h,
 		.enable		= s3c2416_clkcon_enable_h,
-		.ctrlbit	= S3C2416_HCLKCON_HSMMC,
+		.ctrlbit	= S3C2416_HCLKCON_IROM,
+	}, {
+		.name		= "hsmmc",
+		.id		= 0,
+		.parent		= &clk_h,
+		.enable		= s3c2416_clkcon_enable_h,
+		.ctrlbit	= S3C2416_HCLKCON_HSMMC0,
+	}, {
+		.name		= "hsmmc",
+		.id		= 1,
+		.parent		= &clk_h,
+		.enable		= s3c2416_clkcon_enable_h,
+		.ctrlbit	= S3C2416_HCLKCON_HSMMC1,
 	}, {
 		.name		= "ssmc",
 		.id		= -1,
 		.parent		= &clk_h,
 		.enable		= s3c2416_clkcon_enable_h,
 		.ctrlbit	= S3C2416_HCLKCON_SSMC,
+	}, {
+		.name		= "dramc",
+		.id		= -1,
+		.parent		= &clk_h,
+		.enable		= s3c2416_clkcon_enable_h,
+		.ctrlbit	= S3C2416_HCLKCON_DRAMC,
+	}, {
+		.name		= "2d",
+		.id		= -1,
+		.parent		= &clk_h,
+		.enable		= s3c2416_clkcon_enable_h,
+		.ctrlbit	= S3C2416_HCLKCON_2D,
 	}, {
 		.name		= "timers",
 		.id		= -1,
@@ -822,15 +973,26 @@ static struct clk init_clocks[] = {
 		.parent		= &clk_p,
 		.ctrlbit	= S3C2416_PCLKCON_WDT,
 	}, {
+		.name		= "ac97",
+		.id		= -1,
+		.parent		= &clk_p,
+		.enable		= s3c2416_clkcon_enable_p,
+		.ctrlbit	= S3C2416_PCLKCON_AC97,
+	}, {
+		.name		= "pcm",
+		.id		= -1,
+		.parent		= &clk_p,
+		.enable		= s3c2416_clkcon_enable_p,
+		.ctrlbit	= S3C2416_PCLKCON_PCM,
+	}, {
 		.name		= "usb-bus-host",
 		.id		= -1,
 		.parent		= &clk_usb_bus_host,
 	}, {
-		.name		= "ac97",
+		.name		= "usb-bus-gadget",
 		.id		= -1,
-		.parent		= &clk_p,
-		.ctrlbit	= S3C2416_PCLKCON_AC97,
-	}
+		.parent		= &clk_usb_bus,
+	},
 };
 
 /* clocks to add where we need to check their parentage */
@@ -904,6 +1066,32 @@ static void __init s3c2416_clk_initparents(void)
 
 	clk_init_set_parent(&clk_msysclk, parent);
 
+	/* hsmmc0 source */
+
+	if (clksrc & S3C2416_CLKSRC_SELHSMMC0_EXTCLK)
+		parent = &clk_ext;
+	else
+		parent = &clk_hsmmc0_div;
+
+	clk_init_set_parent(&clk_hsmmc0, parent);
+
+	/* hsmmc1 source */
+
+	if (clksrc & S3C2416_CLKSRC_SELHSMMC1_EXTCLK)
+		parent = &clk_ext;
+	else
+		parent = &clk_hsmmc1_div;
+
+	clk_init_set_parent(&clk_hsmmc1, parent);
+
+	/* hsspi source */
+
+	if (clksrc & S3C2416_CLKSRC_SELHSSPI0_MPLL)
+		parent = &clk_hsspi_mdiv;
+	else
+		parent = &clk_hsspi_ediv;
+
+	clk_init_set_parent(&clk_hsspi, parent);
 	/* arm */
 
 	if (__raw_readl(S3C2416_CLKDIV0) & S3C2416_CLKDIV0_DVS)
@@ -954,9 +1142,13 @@ static struct clk *clks[] __initdata = {
 	&clk_display,
 	&clk_i2s_eplldiv,
 	&clk_i2s,
+	&clk_hsspi_ediv,
+	&clk_hsspi_mdiv,
 	&clk_hsspi,
-	&clk_hsmmc_div,
-	&clk_hsmmc,
+	&clk_hsmmc0_div,
+	&clk_hsmmc1_div,
+	&clk_hsmmc0,
+	&clk_hsmmc1,
 	&clk_armdiv,
 	&clk_arm,
 	&clk_prediv,
