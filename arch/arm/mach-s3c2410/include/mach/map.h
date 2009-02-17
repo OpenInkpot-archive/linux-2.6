@@ -21,6 +21,10 @@
 /* USB host controller */
 #define S3C2410_PA_USBHOST (0x49000000)
 
+/* USB 2.0 device controller */
+#define S3C24XX_PA_USB2DEV (0x49800000)
+#define S3C24XX_SZ_USB2DEV SZ_1M
+
 /* DMA controller */
 #define S3C2410_PA_DMA	   (0x4B000000)
 #define S3C24XX_SZ_DMA	   SZ_1M
