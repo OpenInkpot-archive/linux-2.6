@@ -235,15 +235,12 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x20;
 	else if (gadget_is_m66592(gadget))
 		return 0x21;
-<<<<<<< HEAD:drivers/usb/gadget/gadget_chips.h
 	else if (gadget_is_fsl_qe(gadget))
 		return 0x22;
-=======
 	else if (gadget_is_jz4730(gadget))
-		return 0x22;
-	else if (gadget_is_jz4740(gadget))
 		return 0x23;
->>>>>>> JZ: add USB gadget controller driver:drivers/usb/gadget/gadget_chips.h
+	else if (gadget_is_jz4740(gadget))
+		return 0x24;
 	return -ENOENT;
 }
 
