@@ -99,7 +99,7 @@ static char *state_names[] = {
 /*
  * Local declarations.
  */
-static int jz4740_ep_enable(struct usb_ep *_ep, 
+static int jz4740_ep_enable(struct usb_ep *_ep,
 			    const struct usb_endpoint_descriptor *desc);
 static int jz4740_ep_disable(struct usb_ep *_ep);
 static struct usb_request *jz4740_alloc_request(struct usb_ep *_ep, gfp_t gfp_flags);
@@ -150,67 +150,67 @@ static struct usb_ep_ops jz4740_ep_ops = {
 
 /* inline functions of register read/write/set/clear  */
 
-static __inline__ u8 usb_readb(u32 port)
+static inline u8 usb_readb(u32 port)
 {
 	return *(volatile u8 *)port;
 }
 
-static __inline__ u16 usb_readw(u32 port)
+static inline u16 usb_readw(u32 port)
 {
 	return *(volatile u16 *)port;
 }
 
-static __inline__ u32 usb_readl(u32 port)
+static inline u32 usb_readl(u32 port)
 {
 	return *(volatile u32 *)port;
 }
 
-static __inline__ void usb_writeb(u32 port, u8 val)
+static inline void usb_writeb(u32 port, u8 val)
 {
 	*(volatile u8 *)port = val;
 }
 
-static __inline__ void usb_writew(u32 port, u16 val)
+static inline void usb_writew(u32 port, u16 val)
 {
 	*(volatile u16 *)port = val;
 }
 
-static __inline__ void usb_writel(u32 port, u32 val)
+static inline void usb_writel(u32 port, u32 val)
 {
 	*(volatile u32 *)port = val;
 }
 
-static __inline__ void usb_setb(u32 port, u8 val)
+static inline void usb_setb(u32 port, u8 val)
 {
 	volatile u8 *ioport = (volatile u8 *)(port);
 	*ioport = (*ioport) | val;
 }
 
-static __inline__ void usb_setw(u32 port, u16 val)
+static inline void usb_setw(u32 port, u16 val)
 {
 	volatile u16 *ioport = (volatile u16 *)(port);
 	*ioport = (*ioport) | val;
 }
 
-static __inline__ void usb_setl(u32 port, u32 val)
+static inline void usb_setl(u32 port, u32 val)
 {
 	volatile u32 *ioport = (volatile u32 *)(port);
 	*ioport = (*ioport) | val;
 }
 
-static __inline__ void usb_clearb(u32 port, u8 val)
+static inline void usb_clearb(u32 port, u8 val)
 {
 	volatile u8 *ioport = (volatile u8 *)(port);
 	*ioport = (*ioport) & ~val;
 }
 
-static __inline__ void usb_clearw(u32 port, u16 val)
+static inline void usb_clearw(u32 port, u16 val)
 {
 	volatile u16 *ioport = (volatile u16 *)(port);
 	*ioport = (*ioport) & ~val;
 }
 
-static __inline__ void usb_clearl(u32 port, u32 val)
+static inline void usb_clearl(u32 port, u32 val)
 {
 	volatile u32 *ioport = (volatile u32 *)(port);
 	*ioport = (*ioport) & ~val;
@@ -218,10 +218,10 @@ static __inline__ void usb_clearl(u32 port, u32 val)
 
 /*-------------------------------------------------------------------------*/
 
-static __inline__ int write_packet(struct jz4740_ep *ep,
+static inline int write_packet(struct jz4740_ep *ep,
 				   struct jz4740_request *req, int max)
 {
-	u8 *buf;	
+	u8 *buf;
 	int length, nlong, nbyte;
 	volatile u32 *fifo = (volatile u32 *)ep->fifo;
 
@@ -247,7 +247,7 @@ static __inline__ int write_packet(struct jz4740_ep *ep,
 	return length;
 }
 
-static __inline__ int read_packet(struct jz4740_ep *ep, 
+static inline int read_packet(struct jz4740_ep *ep,
 				  struct jz4740_request *req, int count)
 {
 	u8 *buf;
@@ -279,7 +279,7 @@ static __inline__ int read_packet(struct jz4740_ep *ep,
 /*-------------------------------------------------------------------------*/
 
 /*
- * 	udc_disable - disable USB device controller
+ *	udc_disable - disable USB device controller
  */
 static void udc_disable(struct jz4740_udc *dev)
 {
@@ -412,7 +412,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
 	if (!driver
 	    || !driver->bind
-	    || !driver->unbind || !driver->disconnect || !driver->setup)
+	    || !driver->disconnect || !driver->setup)
 	{
 		printk("\n-EINVAL");
 		return -EINVAL;
@@ -430,6 +430,15 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
 	/* hook up the driver */
 	dev->driver = driver;
+	dev->gadget.dev.driver = &driver->driver;
+
+	/* Bind the driver */
+	retval = device_add(&dev->gadget.dev);
+	if (retval) {
+		printk(KERN_ERR "Error in device_add(): %d\n", retval);
+		goto register_error;
+	}
+
 	retval = driver->bind(&dev->gadget);
 	if (retval) {
 		DEBUG("%s: bind to driver %s --> error %d\n", dev->gadget.name,
@@ -442,10 +451,14 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	 * for set_configuration as well as eventual disconnect.
 	 */
 	udc_enable(dev);
-	DEBUG("%s: registered gadget driver '%s'\n", dev->gadget.name, 
+	DEBUG("%s: registered gadget driver '%s'\n", dev->gadget.name,
 	      driver->driver.name);
 
 	return 0;
+register_error:
+	dev->driver = NULL;
+	dev->gadget.dev.driver = NULL;
+	return retval;
 }
 
 EXPORT_SYMBOL(usb_gadget_register_driver);
@@ -819,7 +832,7 @@ static void pio_irq_disable(struct jz4740_ep *ep)
 }
 
 /*
- * 	nuke - dequeue ALL requests
+ *	nuke - dequeue ALL requests
  */
 static void nuke(struct jz4740_ep *ep, int status)
 {
@@ -1389,7 +1402,7 @@ static int write_fifo_ep0(struct jz4740_ep *ep, struct jz4740_request *req)
 	return 0;
 }
 
-static __inline__ int jz4740_fifo_read(struct jz4740_ep *ep,
+static inline int jz4740_fifo_read(struct jz4740_ep *ep,
 				       unsigned char *cp, int max)
 {
 	int bytes;
@@ -1404,7 +1417,7 @@ static __inline__ int jz4740_fifo_read(struct jz4740_ep *ep,
 	return bytes;
 }
 
-static __inline__ void jz4740_fifo_write(struct jz4740_ep *ep,
+static inline void jz4740_fifo_write(struct jz4740_ep *ep,
 					 unsigned char *cp, int count)
 {
 	volatile u8 *fifo = (volatile u8 *)ep->fifo;
@@ -1490,7 +1503,7 @@ static void udc_set_address(struct jz4740_udc *dev, unsigned char address)
  *              set USB_CSR0_SVDOUTPKTRDY | USB_CSR0_DATAEND | USB_CSR0_SENDSTALL bits
  *      - else
  *              set USB_CSR0_SVDOUTPKTRDY bit
- 				if last set USB_CSR0_DATAEND bit
+				if last set USB_CSR0_DATAEND bit
  */
 static void jz4740_ep0_out(struct jz4740_udc *dev, u32 csr)
 {
@@ -1754,7 +1767,7 @@ static void jz4740_ep0_setup(struct jz4740_udc *dev, u32 csr)
 				jz4740_set_halt(&qep->ep, 0);
 			}
 			spin_lock(&dev->lock);
-			
+
 			usb_set_index(0);
 
 			/* Reply with a ZLP on next IN token */
@@ -2148,7 +2161,6 @@ static struct jz4740_udc udc_dev = {
 static int jz4740_udc_probe(struct platform_device *pdev)
 {
 	struct jz4740_udc *dev = &udc_dev;
-	int rc;
 
 	DEBUG("%s\n", __FUNCTION__);
 
@@ -2159,10 +2171,7 @@ static int jz4740_udc_probe(struct platform_device *pdev)
 	device_initialize(&dev->gadget.dev);
 	dev->gadget.dev.parent = &pdev->dev;
 
-//	strcpy (dum->gadget.dev.bus_id, "gadget");
 	dev->gadget.dev.release = jz4740_udc_release;
-	if ((rc = device_register (&dev->gadget.dev)) < 0)
-		return rc;
 	platform_set_drvdata(pdev, dev);
 
 	udc_disable(dev);
@@ -2190,9 +2199,6 @@ static int jz4740_udc_remove(struct platform_device *pdev)
 		return -EBUSY;
 
 	udc_disable(dev);
-#ifdef	UDC_PROC_FILE
-	remove_proc_entry(proc_node_name, NULL);
-#endif
 
 	free_irq(IRQ_UDC, dev);
 	platform_set_drvdata(pdev, 0);
