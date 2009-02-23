@@ -45,8 +45,8 @@ static struct clock_event_device jz_clockevent_device = {
 	.name		= "jz-timer",
 	.features	= CLOCK_EVT_FEAT_PERIODIC,
 
-	/* .mult, .shift, .max_delta_ns and .min_delta_ns left uninitialized */
-
+	/* .shift, .max_delta_ns and .min_delta_ns left uninitialized */
+	.mult		= 1,
 	.rating		= 300,
 	.irq		= JZ_TIMER_IRQ,
 	.set_mode	= jz_set_mode,
