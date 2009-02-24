@@ -11,6 +11,7 @@ obj-$(CONFIG_PROC_FS)		+= proc.o
 
 # board specific support
 
+obj-$(CONFIG_JZ4740_N516)	+= board-n516.o
 obj-$(CONFIG_JZ4740_PAVO)	+= board-pavo.o
 obj-$(CONFIG_JZ4740_LEO)	+= board-leo.o
 obj-$(CONFIG_JZ4740_LYRA)	+= board-lyra.o

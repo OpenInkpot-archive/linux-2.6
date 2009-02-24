@@ -23,6 +23,10 @@
 /*------------------------------------------------------------------
  * Platform definitions
  */
+#ifdef CONFIG_JZ4740_N516
+#include <asm/mach-jz4740/board-n516.h>
+#endif
+
 #ifdef CONFIG_JZ4740_PAVO
 #include <asm/mach-jz4740/board-pavo.h>
 #endif

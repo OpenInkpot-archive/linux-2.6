@@ -144,7 +144,7 @@ static void jz_board_do_sleep(unsigned long *ptr)
          * system to avoid chip select crashing with sdram when resuming from sleep mode.
          */
 
-#if defined(CONFIG_JZ4740_PAVO)   
+#if defined(CONFIG_JZ4740_PAVO) || defined(CONFIG_JZ4740_N516)
         /* GPB25/CS1_N is used as chip select for nand flash, shouldn't be change. */ 
 
         /* GPB26/CS2_N is connected to nand flash, needn't be changed. */
@@ -159,7 +159,7 @@ static void jz_board_do_sleep(unsigned long *ptr)
          * Enable pull for NC pins here according to your system 
 	 */
 
-#if defined(CONFIG_JZ4740_PAVO)
+#if defined(CONFIG_JZ4740_PAVO) || defined(CONFIG_JZ4740_N516)
  	/* GPB30-27 <-> J1: WE_N RD_N CS4_N EXT_INT */
 	for(i=27;i<31;i++) {
 		__gpio_enable_pull(32+i);
@@ -182,7 +182,7 @@ static void jz_board_do_sleep(unsigned long *ptr)
          * __gpio_set_pin(n); or  __gpio_clear_pin(n);
 	 */
 
-#if defined(CONFIG_JZ4740_PAVO)
+#if defined(CONFIG_JZ4740_PAVO) || defined(CONFIG_JZ4740_N516)
 	/* GPD16 which is used as AMPEN_N should be set to high to disable audio amplifier */
 	__gpio_set_pin(32*3+4);
 #endif
