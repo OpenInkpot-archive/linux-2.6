@@ -7,6 +7,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
 #include <linux/dma-mapping.h>
 #include <linux/mmc/host.h>
 #include <linux/module.h>
@@ -23,7 +24,6 @@
 #include <linux/mm.h>
 #include <linux/signal.h>
 #include <linux/pm.h>
-#include <linux/pm_legacy.h>
 #include <linux/scatterlist.h>
 
 #include <asm/io.h>
@@ -68,7 +68,6 @@ struct jz_mmc_host {
 	struct jzsoc_dma_desc *sg_cpu;
 	unsigned int dma_len;
 	unsigned int dma_dir;
-	struct pm_dev *pmdev;
 };
 
 static int r_type = 0;
@@ -749,8 +748,6 @@ static const struct mmc_host_ops jz_mmc_ops = {
 	.get_ro = jz_mmc_get_ro,
 	.set_ios = jz_mmc_set_ios,
 };
-static int jz_mmc_pm_callback(struct pm_dev *pm_dev,
-			      pm_request_t req, void *data);
 
 static int jz_mmc_probe(struct platform_device *pdev)
 {
@@ -811,7 +808,7 @@ static int jz_mmc_probe(struct platform_device *pdev)
 	mmc->ocr_avail = host->pdata ?
 		host->pdata->ocr_mask : MMC_VDD_32_33 | MMC_VDD_33_34;
 	host->mmc->caps =
-		MMC_CAP_4_BIT_DATA | MMC_CAP_MULTIWRITE | MMC_CAP_SD_HIGHSPEED
+		MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED
 		| MMC_CAP_MMC_HIGHSPEED;
 	/*
 	 *MMC_CAP_4_BIT_DATA    (1 << 0)    The host can do 4 bit transfers  
@@ -866,12 +863,7 @@ static int jz_mmc_probe(struct platform_device *pdev)
 #endif
 	platform_set_drvdata(pdev, mmc);
 	mmc_add_host(mmc);
-#ifdef CONFIG_PM
-	/* Register MMC slot as as power-managed device */
-	host->pmdev = pm_register(PM_UNKNOWN_DEV, PM_SYS_UNKNOWN, jz_mmc_pm_callback);
-	if (host->pmdev)
-		host->pmdev->data = pdev;
-#endif
+
 	printk("JZ SD/MMC card driver registered\n");
 
 	/* Detect card during initialization */
@@ -969,25 +961,7 @@ static int jz_mmc_resume(struct platform_device *dev)
 
 	return ret;
 }
-static int jz_mmc_pm_callback(struct pm_dev *pm_dev,
-                               pm_request_t req, void *data)
-{
-	struct platform_device *pdev = (struct platform_device *)pm_dev->data; 
 
-	switch(req) {
-	case PM_RESUME:
-		jz_mmc_resume(pdev);
-		break;
-	case PM_SUSPEND:
-	/* state has no use */
-		jz_mmc_suspend(pdev, state);
-		break;
-	default:
-		printk("MMC/SD: invalid PM request %d\n", req);
-		break;
-	}
-	return 0;
-}
 #else
 #define jz_mmc_suspend	NULL
 #define jz_mmc_resume	NULL
