@@ -22,7 +22,6 @@
 #include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
-#include <linux/pm_legacy.h>
 #include <linux/kthread.h>
 
 #include <asm/irq.h>
@@ -1413,32 +1412,7 @@ static int jzfb_resume(void)
 }
 #endif  /* CONFIG_MIPS_JZ4730 */
 
-/*
- * Power management hook.  Note that we won't be called from IRQ context,
- * unlike the blank functions above, so we may sleep.
- */
-static int jzlcd_pm_callback(struct pm_dev *pm_dev, pm_request_t req, void *data)
-{
-	int ret;
-	struct lcd_cfb_info *cfb = pm_dev->data;
 
-	if (!cfb) return -EINVAL;
-
-	switch (req) {
-	case PM_SUSPEND:
-		ret = jzfb_suspend();
-		break;
-
-	case PM_RESUME:
-		ret = jzfb_resume();
-		break;
-
-	default:
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
 #else
 #define jzfb_suspend      NULL
 #define jzfb_resume       NULL
@@ -1513,15 +1487,6 @@ static int __init jzfb_init(void)
 	printk("fb%d: %s frame buffer device, using %dK of video memory\n",
 	       cfb->fb.node, cfb->fb.fix.id, cfb->fb.fix.smem_len>>10);
 
-#ifdef CONFIG_PM
-	/*
-	 * Note that the console registers this as well, but we want to
-	 * power down the display prior to sleeping.
-	 */
-	cfb->pm = pm_register(PM_SYS_DEV, PM_SYS_VGA, jzlcd_pm_callback);
-	if (cfb->pm)
-		cfb->pm->data = cfb;
-#endif
 
 	__lcd_display_on();
 
