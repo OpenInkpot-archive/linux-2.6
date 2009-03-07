@@ -95,10 +95,33 @@ static struct s3c2410_uartcfg v3c_uartcfgs[] __initdata = {
 	}
 };
 
+static struct resource s3c_usb2gadget_resource[] = {
+	[0] = {
+		.start = S3C24XX_PA_USB2DEV,
+		.end   = S3C24XX_PA_USB2DEV + S3C24XX_SZ_USB2DEV - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_USBD,
+		.end   = IRQ_USBD,
+		.flags = IORESOURCE_IRQ,
+	}
+
+};
+
+struct platform_device s3c_device_usb2gadget = {
+	.name		  = "s3c24xx-usb2gadget",
+	.id		  = -1,
+	.num_resources	  = ARRAY_SIZE(s3c_usb2gadget_resource),
+	.resource	  = s3c_usb2gadget_resource,
+};
+
+
 static struct platform_device *v3c_devices[] __initdata = {
 	&s3c_device_wdt,
 	&s3c_device_i2c,
 	&s3c_device_hsmmc,
+	&s3c_device_usb2gadget,
 };
 
 extern void printascii(const char *);
