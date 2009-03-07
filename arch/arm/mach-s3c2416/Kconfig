@@ -24,6 +24,7 @@ menu "S3C2416 Machines"
 config MACH_HANLIN_V3C
 	bool "Hanlin eBook Reader V3c"
 	select CPU_S3C2416
+	select S3C_DEV_HSMMC
 	help
 	  Say Y here if you are using an Hanlin V3c
 

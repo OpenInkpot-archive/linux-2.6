@@ -32,6 +32,7 @@
 
 #include <mach/idle.h>
 #include <mach/fb.h>
+#include <plat/iic.h>
 
 #include <plat/s3c2416.h>
 #include <plat/clock.h>
@@ -119,8 +120,8 @@ struct platform_device s3c_device_usb2gadget = {
 
 static struct platform_device *v3c_devices[] __initdata = {
 	&s3c_device_wdt,
-	&s3c_device_i2c,
-	&s3c_device_hsmmc,
+	&s3c_device_i2c0,
+	&s3c_device_hsmmc0,
 	&s3c_device_usb2gadget,
 };
 
@@ -137,9 +138,9 @@ static void __init v3c_map_io(void)
 static void __init v3c_machine_init(void)
 {
 	printascii("v3c_machine_init\n");
+	s3c_i2c0_set_platdata(NULL);
 	platform_add_devices(v3c_devices, ARRAY_SIZE(v3c_devices));
 	printascii("v3c_machine_init end\n");
-//	smdk_machine_init();
 }
 
 MACHINE_START(SMDK2416, "HANLIN V3C")
