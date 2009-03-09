@@ -26,10 +26,12 @@
 #include <asm/mach/irq.h>
 
 #include <mach/hardware.h>
+#include <asm/proc-fns.h>
 #include <asm/irq.h>
 
-#include <mach/regs-s3c2443-clock.h>
+#include <mach/regs-s3c2416-clock.h>
 #include <mach/reset.h>
+#include <mach/idle.h>
 
 #include <plat/s3c2416.h>
 #include <plat/devs.h>
@@ -51,7 +53,20 @@ static struct sys_device s3c2416_sysdev = {
 
 static void s3c2416_hard_reset(void)
 {
-	__raw_writel(S3C2443_SWRST_RESET, S3C2443_SWRST);
+	__raw_writel(S3C2416_SWRST_RESET, S3C2416_SWRST);
+}
+
+static void s3c2416_idle(void)
+{
+	unsigned long tmp;
+
+	/* ensure our idle mode is to go to idle */
+
+	tmp = __raw_readl(S3C2416_PWRCFG);
+	tmp |= S3C2416_PWRCFG_STANDBYWFI_EN;
+	__raw_writel(tmp, S3C2416_PWRCFG);
+
+	cpu_do_idle();
 }
 
 int __init s3c2416_init(void)
@@ -59,6 +74,8 @@ int __init s3c2416_init(void)
 	printk("S3C2443: Initialising architecture\n");
 
 	s3c24xx_reset_hook = s3c2416_hard_reset;
+
+	s3c24xx_idle = s3c2416_idle;
 
 	s3c_device_nand.name = "s3c2412-nand";
 
