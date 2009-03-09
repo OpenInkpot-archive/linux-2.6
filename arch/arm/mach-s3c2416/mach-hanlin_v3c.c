@@ -38,6 +38,7 @@
 #include <plat/clock.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
+#include <plat/nand.h>
 
 #include <plat/common-smdk.h>
 
@@ -117,12 +118,33 @@ struct platform_device s3c_device_usb2gadget = {
 	.resource	  = s3c_usb2gadget_resource,
 };
 
+static struct s3c2410_nand_set v3c_nand_sets[] = {
+	[0] = {
+		.name           = "flash",
+		.nr_chips       = 1,
+		.nr_partitions	= 0,
+//		.nr_partitions  = ARRAY_SIZE(v3c_nand_part),
+//		.partitions     = v3c_nand_part,
+	},
+};
+
+
+static struct s3c2410_platform_nand v3c_nand_info = {
+	/* FIXME: set real timings */
+	.tacls		= 30,
+	.twrph0		= 55,
+	.twrph1		= 40,
+	.sets		= v3c_nand_sets,
+	.nr_sets	= ARRAY_SIZE(v3c_nand_sets),
+};
+
 
 static struct platform_device *v3c_devices[] __initdata = {
 	&s3c_device_wdt,
 	&s3c_device_i2c0,
 	&s3c_device_hsmmc0,
 	&s3c_device_usb2gadget,
+	&s3c_device_nand,
 };
 
 extern void printascii(const char *);
@@ -138,7 +160,10 @@ static void __init v3c_map_io(void)
 static void __init v3c_machine_init(void)
 {
 	printascii("v3c_machine_init\n");
+
 	s3c_i2c0_set_platdata(NULL);
+	s3c_device_nand.dev.platform_data = &v3c_nand_info;
+
 	platform_add_devices(v3c_devices, ARRAY_SIZE(v3c_devices));
 	printascii("v3c_machine_init end\n");
 }
