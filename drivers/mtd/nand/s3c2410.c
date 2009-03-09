@@ -86,6 +86,7 @@ enum s3c_cpu_type {
 	TYPE_S3C2410,
 	TYPE_S3C2412,
 	TYPE_S3C2440,
+	TYPE_S3C2416,
 };
 
 /* overview of the s3c2410 nand state */
@@ -215,6 +216,7 @@ static int s3c2410_nand_setrate(struct s3c2410_nand_info *info)
 
 	case TYPE_S3C2440:
 	case TYPE_S3C2412:
+	case TYPE_S3C2416:
 		mask = (S3C2410_NFCONF_TACLS(tacls_max - 1) |
 			S3C2410_NFCONF_TWRPH0(7) |
 			S3C2410_NFCONF_TWRPH1(7));
@@ -260,6 +262,7 @@ static int s3c2410_nand_inithw(struct s3c2410_nand_info *info)
 
  	case TYPE_S3C2440:
  	case TYPE_S3C2412:
+ 	case TYPE_S3C2416:
 		/* enable the controller and de-assert nFCE */
 
 		writel(S3C2440_NFCONT_ENABLE, info->regs + S3C2440_NFCONT);
@@ -717,6 +720,12 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 			dev_info(info->device, "System booted from NAND\n");
 
 		break;
+	case TYPE_S3C2416:
+		chip->IO_ADDR_W = regs + S3C2440_NFDATA;
+		info->sel_reg   = regs + S3C2440_NFCONT;
+		info->sel_bit	= S3C2412_NFCONT_nFCE0;
+		chip->cmd_ctrl  = s3c2440_nand_hwcontrol;
+		chip->dev_ready = s3c2412_nand_devready;
   	}
 
 	chip->IO_ADDR_R = chip->IO_ADDR_W;
@@ -738,6 +747,7 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 			break;
 
 		case TYPE_S3C2412:
+		case TYPE_S3C2416:
   			chip->ecc.hwctl     = s3c2412_nand_enable_hwecc;
   			chip->ecc.calculate = s3c2412_nand_calculate_ecc;
 			break;
@@ -998,6 +1008,11 @@ static int s3c2412_nand_probe(struct platform_device *dev)
 	return s3c24xx_nand_probe(dev, TYPE_S3C2412);
 }
 
+static int s3c2416_nand_probe(struct platform_device *dev)
+{
+	return s3c24xx_nand_probe(dev, TYPE_S3C2416);
+}
+
 static struct platform_driver s3c2410_nand_driver = {
 	.probe		= s3c2410_nand_probe,
 	.remove		= s3c2410_nand_remove,
@@ -1027,6 +1042,17 @@ static struct platform_driver s3c2412_nand_driver = {
 	.resume		= s3c24xx_nand_resume,
 	.driver		= {
 		.name	= "s3c2412-nand",
+		.owner	= THIS_MODULE,
+	},
+};
+
+static struct platform_driver s3c2416_nand_driver = {
+	.probe		= s3c2416_nand_probe,
+	.remove		= s3c2410_nand_remove,
+	.suspend	= s3c24xx_nand_suspend,
+	.resume		= s3c24xx_nand_resume,
+	.driver		= {
+		.name	= "s3c2416-nand",
 		.owner	= THIS_MODULE,
 	},
 };
