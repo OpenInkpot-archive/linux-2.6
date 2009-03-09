@@ -235,7 +235,6 @@ s3c2416_get_mpll(unsigned int pllval, unsigned int baseclk)
 {
 	unsigned int mdiv, pdiv, sdiv;
 	uint64_t fout;
-	char buf[100];
 
 	mdiv = pllval >> S3C2416_PLLCON_MDIVSHIFT;
 	pdiv = pllval >> S3C2416_PLLCON_PDIVSHIFT;
