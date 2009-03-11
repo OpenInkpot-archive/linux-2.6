@@ -17,6 +17,7 @@
 #include <linux/serial_core.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/mtd/partitions.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -118,13 +119,22 @@ struct platform_device s3c_device_usb2gadget = {
 	.resource	  = s3c_usb2gadget_resource,
 };
 
+static struct mtd_partition v3c_nand_part[] = {
+	[0] = {
+		.name		= "all",
+		.offset		= 0,
+		.size		= MTDPART_SIZ_FULL,
+	},
+};
+
+
 static struct s3c2410_nand_set v3c_nand_sets[] = {
 	[0] = {
 		.name           = "flash",
 		.nr_chips       = 1,
 		.nr_partitions	= 0,
-//		.nr_partitions  = ARRAY_SIZE(v3c_nand_part),
-//		.partitions     = v3c_nand_part,
+		.nr_partitions  = ARRAY_SIZE(v3c_nand_part),
+		.partitions     = v3c_nand_part,
 	},
 };
 
