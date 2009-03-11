@@ -33,6 +33,7 @@
 
 #include <mach/idle.h>
 #include <mach/fb.h>
+#include <mach/leds-gpio.h>
 #include <plat/iic.h>
 
 #include <plat/s3c2416.h>
@@ -148,6 +149,66 @@ static struct s3c2410_platform_nand v3c_nand_info = {
 	.nr_sets	= ARRAY_SIZE(v3c_nand_sets),
 };
 
+static struct s3c24xx_led_platdata v3c_pdata_led1_red = {
+	.gpio		= S3C2410_GPD1,
+	.flags		= 0,
+	.name		= "led1:red",
+	.def_trigger	= "v3c_battery-charging",
+};
+
+static struct s3c24xx_led_platdata v3c_pdata_led1_green = {
+	.gpio		= S3C2410_GPD2,
+	.flags		= 0,
+	.name		= "led1:green",
+	.def_trigger	= "nand-disk",
+};
+
+static struct s3c24xx_led_platdata v3c_pdata_led2_red = {
+	.gpio		= S3C2410_GPD3,
+	.flags		= 0,
+	.name		= "led2:red",
+	.def_trigger	= "v3c_battery-charging",
+};
+
+static struct s3c24xx_led_platdata v3c_pdata_led2_green = {
+	.gpio		= S3C2410_GPD4,
+	.flags		= 0,
+	.name		= "led2:green",
+	.def_trigger	= "v3c_battery-charging",
+};
+
+static struct platform_device v3c_led1_red = {
+	.name		= "s3c24xx_led",
+	.id		= 0,
+	.dev		= {
+		.platform_data = &v3c_pdata_led1_red,
+	},
+};
+
+static struct platform_device v3c_led1_green = {
+	.name		= "s3c24xx_led",
+	.id		= 1,
+	.dev		= {
+		.platform_data = &v3c_pdata_led1_green,
+	},
+};
+
+static struct platform_device v3c_led2_red = {
+	.name		= "s3c24xx_led",
+	.id		= 2,
+	.dev		= {
+		.platform_data = &v3c_pdata_led2_red,
+	},
+};
+
+static struct platform_device v3c_led2_green = {
+	.name		= "s3c24xx_led",
+	.id		= 3,
+	.dev		= {
+		.platform_data = &v3c_pdata_led2_green,
+	},
+};
+
 
 static struct platform_device *v3c_devices[] __initdata = {
 	&s3c_device_wdt,
@@ -155,6 +216,10 @@ static struct platform_device *v3c_devices[] __initdata = {
 	&s3c_device_hsmmc0,
 	&s3c_device_usb2gadget,
 	&s3c_device_nand,
+	&v3c_led1_red,
+	&v3c_led1_green,
+	&v3c_led2_red,
+	&v3c_led2_green,
 };
 
 extern void printascii(const char *);
