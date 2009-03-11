@@ -141,9 +141,9 @@ static struct s3c2410_nand_set v3c_nand_sets[] = {
 
 static struct s3c2410_platform_nand v3c_nand_info = {
 	/* FIXME: set real timings */
-	.tacls		= 30,
-	.twrph0		= 55,
-	.twrph1		= 40,
+	.tacls		= 25,
+	.twrph0		= 25,
+	.twrph1		= 25,
 	.sets		= v3c_nand_sets,
 	.nr_sets	= ARRAY_SIZE(v3c_nand_sets),
 };
