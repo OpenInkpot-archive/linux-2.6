@@ -232,6 +232,16 @@ static void __init v3c_map_io(void)
 
 }
 
+static void __init v3c_setup_wake_sources(void)
+{
+	/* Power button */
+	enable_irq_wake(IRQ_EINT7);
+	/* Joystick keys */
+	enable_irq_wake(IRQ_EINT0);
+	enable_irq_wake(IRQ_EINT1);
+	enable_irq_wake(IRQ_EINT2);
+}
+
 static void __init v3c_machine_init(void)
 {
 	printascii("v3c_machine_init\n");
@@ -240,6 +250,9 @@ static void __init v3c_machine_init(void)
 	s3c_device_nand.dev.platform_data = &v3c_nand_info;
 
 	platform_add_devices(v3c_devices, ARRAY_SIZE(v3c_devices));
+
+	v3c_setup_wake_sources();
+
 	printascii("v3c_machine_init end\n");
 }
 
