@@ -1061,6 +1061,7 @@ static int __init s3c2410_nand_init(void)
 {
 	printk("S3C24XX NAND Driver, (c) 2004 Simtec Electronics\n");
 
+	platform_driver_register(&s3c2416_nand_driver);
 	platform_driver_register(&s3c2412_nand_driver);
 	platform_driver_register(&s3c2440_nand_driver);
 	return platform_driver_register(&s3c2410_nand_driver);
@@ -1068,6 +1069,7 @@ static int __init s3c2410_nand_init(void)
 
 static void __exit s3c2410_nand_exit(void)
 {
+	platform_driver_unregister(&s3c2416_nand_driver);
 	platform_driver_unregister(&s3c2412_nand_driver);
 	platform_driver_unregister(&s3c2440_nand_driver);
 	platform_driver_unregister(&s3c2410_nand_driver);
