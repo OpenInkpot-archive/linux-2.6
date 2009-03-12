@@ -135,6 +135,30 @@ int s3c2410_gpio_getpull(unsigned int pin)
 
 EXPORT_SYMBOL(s3c2410_gpio_getpull);
 
+#ifdef CONFIG_CPU_S3C2416
+void s3c24xx_gpio_pullupdown(unsigned int pin, unsigned int to)
+{
+	void __iomem *base = S3C24XX_GPIO_BASE(pin);
+	unsigned long offs = S3C2410_GPIO_OFFSET(pin) * 2;
+	unsigned long flags;
+	unsigned long up;
+
+	if (pin < S3C2410_GPIO_BANKB)
+		return;
+
+	local_irq_save(flags);
+
+	up = __raw_readl(base + 0x08);
+	up &= ~(3L << offs);
+	up |= to << offs;
+	__raw_writel(up, base + 0x08);
+
+	local_irq_restore(flags);
+}
+
+EXPORT_SYMBOL(s3c24xx_gpio_pullupdown);
+#endif
+
 void s3c2410_gpio_setpin(unsigned int pin, unsigned int to)
 {
 	void __iomem *base = S3C24XX_GPIO_BASE(pin);

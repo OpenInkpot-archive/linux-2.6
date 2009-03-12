@@ -124,6 +124,15 @@ extern int s3c2412_gpio_set_sleepcfg(unsigned int pin, unsigned int state);
 
 #endif /* CONFIG_CPU_S3C2412 */
 
+#define S3C2416_GPIO_PUPD_DISABLE	(0)
+#define S3C2416_GPIO_PDN_ENABLE		(1)
+#define S3C2416_GPIO_PUP_ENABLE		(2)
+
+
+#ifdef CONFIG_CPU_S3C2416
+extern void s3c24xx_gpio_pullupdown(unsigned int pin, unsigned int to);
+#endif
+
 #endif /* __ASSEMBLY__ */
 
 #include <asm/sizes.h>
