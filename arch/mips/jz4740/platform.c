@@ -71,6 +71,8 @@ static struct platform_device jz_lcd_device = {
 	.resource       = jz_lcd_resources,
 };
 
+EXPORT_SYMBOL(jz_lcd_device);
+
 /* UDC (USB gadget controller) */
 static struct resource jz_usb_gdt_resources[] = {
 	[0] = {
@@ -152,10 +154,13 @@ static struct platform_device jz_i2c_device = {
 	.resource       = jz_i2c_resources,
 };
 
+
 /* All */
 static struct platform_device *jz_platform_devices[] __initdata = {
 	&jz_usb_ohci_device,
+#ifndef	CONFIG_JZ4740_N516
 	&jz_lcd_device,
+#endif
 	&jz_usb_gdt_device,
 	&jz_mmc_device,
 	&jz_i2c_device,
