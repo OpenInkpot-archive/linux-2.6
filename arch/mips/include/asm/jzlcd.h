@@ -15,6 +15,21 @@
 
 #define NR_PALETTE	256
 
+struct jzfb_info {
+	unsigned int cfg;       /* panel mode and pin usage etc. */
+	unsigned int w;
+	unsigned int h;
+	unsigned int bpp;       /* bit per pixel */
+	unsigned int fclk;      /* frame clk */
+	unsigned int hsw;       /* hsync width, in pclk */
+	unsigned int vsw;       /* vsync width, in line count */
+	unsigned int elw;       /* end of line, in pclk */
+	unsigned int blw;       /* begin of line, in pclk */
+	unsigned int efw;       /* end of frame, in line count */
+	unsigned int bfw;       /* begin of frame, in line count */
+};
+
+
 struct lcd_desc{
 	unsigned int next_desc; /* LCDDAx */
 	unsigned int databuf;   /* LCDSAx */
@@ -62,6 +77,12 @@ struct lcd_desc{
 
 #define VSYNC_P		(0 << 8)
 #define VSYNC_N		(1 << 8)
+
+#define PSM_DISABLE   (1 << 23)
+#define CLSM_DISABLE  (1 << 22)
+#define SPLM_DISABLE  (1 << 21)
+#define REVM_DISABLE  (1 << 20)
+
 
 #define DATA_NORMAL	(0 << 17)
 #define DATA_INVERSE	(1 << 17)
