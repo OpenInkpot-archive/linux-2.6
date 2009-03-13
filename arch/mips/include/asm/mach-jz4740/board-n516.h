@@ -36,6 +36,15 @@
 #define GPIO_LED_EN       	JZ4740_GPD28
 
 #define GPIO_UDC_HOTPLUG	GPIO_USB_DETE
+
+/* Display */
+#define GPIO_DISPLAY_RST_L	JZ4740_GPB18
+#define GPIO_DISPLAY_RDY	JZ4740_GPB17
+#define GPIO_DISPLAY_STBY	JZ4740_GPC22
+#define GPIO_DISPLAY_ERR	JZ4740_GPC23
+
+
+
 /*====================================================================== 
  * MMC/SD
  */
