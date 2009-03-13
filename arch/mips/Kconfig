@@ -716,6 +716,12 @@ config CAVIUM_OCTEON_REFERENCE_BOARD
 
 endchoice
 
+config JZ4740_N516_DISPLAY
+	tristate "N516 display low-level support"
+	depends on JZ4740_N516
+	help
+	  This enables support for N516 glue layer for Metronome driver
+
 source "arch/mips/alchemy/Kconfig"
 source "arch/mips/bcm63xx/Kconfig"
 source "arch/mips/jazz/Kconfig"
