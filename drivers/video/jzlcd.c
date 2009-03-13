@@ -30,13 +30,14 @@
 #include <asm/uaccess.h>
 #include <asm/processor.h>
 #include <asm/jzsoc.h>
+#include <asm/jzlcd.h>
 
 #include "console/fbcon.h"
 
-#include "jzlcd.h"
+#include <asm/jzlcd.h>
 
-#undef DEBUG
-//#define DEBUG
+//#undef DEBUG
+#define DEBUG
 #ifdef DEBUG
 #define dprintk(x...)	printk(x)
 #else
@@ -58,33 +59,28 @@ struct lcd_cfb_info {
 	signed int		currcon;
 	int			func_use_count;
 
+	/* raw memory addresses */
+	dma_addr_t		map_dma;	/* physical */
+	u_char *		map_cpu;	/* virtual */
+	u_int			map_size;
+
+	/* addresses of pieces placed in raw buffer */
+	u_char *		screen_cpu;	/* virtual address of frame buffer */
+	dma_addr_t		screen_dma;	/* physical address of frame buffer */
+	u16 *			palette_cpu;	/* virtual address of palette memory */
+	u_int			palette_size;
+	ssize_t			video_offset;
+
+
 	struct {
 		u16 red, green, blue;
 	} palette[NR_PALETTE];
-#ifdef CONFIG_PM
-	struct pm_dev		*pm;
-#endif
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-	struct task_struct *rotate_daemon_thread;
-#endif
 };
 
 static struct lcd_cfb_info *jzlcd_info;
 
-struct jzfb_info {
-	unsigned int cfg;	/* panel mode and pin usage etc. */
-	unsigned int w;
-	unsigned int h;
-	unsigned int bpp;	/* bit per pixel */
-	unsigned int fclk;	/* frame clk */
-	unsigned int hsw;	/* hsync width, in pclk */
-	unsigned int vsw;	/* vsync width, in line count */
-	unsigned int elw;	/* end of line, in pclk */
-	unsigned int blw;	/* begin of line, in pclk */
-	unsigned int efw;	/* end of frame, in line count */
-	unsigned int bfw;	/* begin of frame, in line count */
-};
-
+static struct jzfb_info *jzfb;
+#if 0
 static struct jzfb_info jzfb = {
 #if defined(CONFIG_JZLCD_SHARP_LQ035Q7)
 	MODE_TFT_SHARP | PCLK_N | VSYNC_N,
@@ -183,6 +179,8 @@ static struct jzfb_info jzfb = {
 #endif
 };
 
+#endif
+
 static struct lcd_desc *lcd_desc_base;
 static struct lcd_desc *lcd_palette_desc;
 static struct lcd_desc *lcd_frame_desc0;
@@ -192,11 +190,6 @@ static unsigned char *lcd_palette;
 static unsigned char *lcd_frame[CONFIG_JZLCD_FRAMEBUFFER_MAX];
 struct jz_lcd_buffer_addrs_t jz_lcd_buffer_addrs;
 //extern struct display fb_display[MAX_NR_CONSOLES];
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-static unsigned char *lcd_frame_user_fb;
-/* default rotate angle */
-static volatile int rotate_angle = CONFIG_JZLCD_FRAMEBUFFER_DEFAULT_ROTATE_ANGLE;
-#endif
 
 #ifdef  DEBUG
 static void print_regs(void)	/* debug */
@@ -232,113 +225,6 @@ static void print_regs(void)	/* debug */
 #define print_regs()
 #endif
 
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-static int jzfb_rotate_daemon_thread(void *info)
-{
-	int i,j;
-	struct fb_info *fb = &jzlcd_info->fb;
-
-	while (!kthread_should_stop()) {
-#if (CONFIG_JZLCD_FRAMEBUFFER_BPP == 8)
-		unsigned char *plcd_frame = (unsigned char *)lcd_frame[0];
-		unsigned char *pfb = (unsigned char *) (fb->screen_base);
-#elif (CONFIG_JZLCD_FRAMEBUFFER_BPP == 16)
-		unsigned short *plcd_frame = (unsigned short *)lcd_frame[0];
-		unsigned short *pfb = (unsigned short *) (fb->screen_base);
-#elif (CONFIG_JZLCD_FRAMEBUFFER_BPP == 32)
-		unsigned int *plcd_frame = (unsigned int *)lcd_frame[0];
-		unsigned int *pfb = (unsigned int *) (fb->screen_base);
-#else
-#error	"ERROR, rotate not support this bpp."
-#endif
-		switch ( rotate_angle ) {
-		case FB_ROTATE_UR:
-			printk("%s, Warning, this shouldn't reache\n", __FUNCTION__);
-			ssleep(1);
-			break;
-		case FB_ROTATE_UD: /* cost about 30ms, can be accelrated by dma in the future */
-			plcd_frame += jzfb.w*jzfb.h -1;
-			for (i=0;i<jzfb.h*jzfb.w;i++)
-				*plcd_frame-- = *pfb++;
-			msleep(75);
-			break;
-		case FB_ROTATE_CW:  /* cost about 80ms */
-			for (i=1;i<fb->var.height+1; i++) {
-				for (j=1; j < fb->var.width+1; j++)
-					plcd_frame[j*fb->var.height-i] = *pfb++;
-			}
-			msleep(100); /* sleep 100ms */
-			break;
-		case FB_ROTATE_CCW:  /* cost about 80ms */
-			for (i=0;i<fb->var.height;i++) {
-				for ( j=fb->var.width-1;j>=0;j--)
-					plcd_frame[j*fb->var.height+i] = *pfb++;
-			}
-			msleep(100); /* sleep 100ms */
-			break;
-		default:	/* FB_ROTATE_UR */
-			dprintk("Unknown rotate(%d) type\n", rotate_angle);
-			ssleep(1);
-		}
-
-		dma_cache_wback_inv((unsigned int)(lcd_frame_user_fb), fb->fix.smem_len);
-	}
-	return 0;
-}
-/* 
- * rotate param angle:
- * 	0: FB_ROTATE_UR, 0'C
- * 	1: FB_ROTATE_CW, 90'C
- * 	2: FB_ROTATE_UD, 180'C
- * 	3: FB_ROTATE_CCW, 270'C
- */
-static int jzfb_rotate_change( int angle )
-{
-	struct fb_info *fb = &jzlcd_info->fb;
-
-	/* clear frame buffer */
-	memset((void*)lcd_frame_user_fb, 0x00, fb->fix.smem_len);
-	switch ( angle ) {
-	case FB_ROTATE_UR:
-		fb->var.width	= fb->var.xres = fb->var.xres_virtual = jzfb.w;
-		fb->var.height	= fb->var.yres = fb->var.yres_virtual = jzfb.h;
-		/* change lcd controller's data buffer to lcd_frame_user_fb*/
-		lcd_frame_desc0->databuf = virt_to_phys((void *)lcd_frame_user_fb);
-		if ( rotate_angle != FB_ROTATE_UR )
-			kthread_stop(jzlcd_info->rotate_daemon_thread);
-		rotate_angle = angle;
-		break;
-	case FB_ROTATE_UD:
-	case FB_ROTATE_CW:
-	case FB_ROTATE_CCW:
-		if ( angle == FB_ROTATE_UD ) {
-			fb->var.width	= fb->var.xres = fb->var.xres_virtual = jzfb.w;
-			fb->var.height	= fb->var.yres = fb->var.yres_virtual = jzfb.h;
-		}
-		else {	/* CW, CCW */
-			fb->var.width	= fb->var.xres = fb->var.xres_virtual = jzfb.h;
-			fb->var.height	= fb->var.yres = fb->var.yres_virtual = jzfb.w;
-		}
-		/* change lcd controller's data buffer to lcd_frame[0]*/
-		lcd_frame_desc0->databuf = virt_to_phys((void *)lcd_frame[0]);
-		if ( rotate_angle == FB_ROTATE_UR ||		\
-		     jzlcd_info->rotate_daemon_thread == NULL) 
-				jzlcd_info->rotate_daemon_thread = kthread_run( jzfb_rotate_daemon_thread, jzlcd_info, "%s", "jzlcd-rotate-daemon"); /* start rotate daemon */
-		rotate_angle = angle;
-		break;
-	default:
-		printk("Invalid angle(%d)\n", (unsigned int)angle);
-	}
-	fb->fix.line_length = fb->var.xres * CONFIG_JZLCD_FRAMEBUFFER_BPP/8;
-	dma_cache_wback_inv((unsigned int)(lcd_frame_desc0), sizeof(struct lcd_desc));	
-	return 0;
-}
-
-void jzfb_fb_rotate(struct fb_info *fbi, int angle)
-{
-	jzfb_rotate_change( angle/90 );
-}
-#endif	/* #if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT) */
 
 static inline u_int chan_to_field(u_int chan, struct fb_bitfield *bf)
 {
@@ -374,8 +260,8 @@ static int jzfb_setcolreg(u_int regno, u_int red, u_int green, u_int blue,
 	case 2:
 	case 4:
 	case 8:
-		if (((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_SINGLE) ||
-		    ((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_DUAL)) {
+		if (((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_SINGLE) ||
+		    ((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_DUAL)) {
 			ctmp = (77L * red + 150L * green + 29L * blue) >> 8;
 			ctmp = ((ctmp >> 3) << 11) | ((ctmp >> 2) << 5) |
 				(ctmp >> 3);
@@ -457,11 +343,6 @@ static int jzfb_ioctl (struct fb_info *fb, unsigned int cmd, unsigned long arg )
 				  sizeof(struct jz_lcd_buffer_addrs_t)) )
 			return -EFAULT;
 		break;
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-	case FBIOROTATE:
-		ret = jzfb_rotate_change(arg);
-		break;
-#endif	/* defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT) */
 	default:
 		printk("Warn: Command(%x) not support\n", cmd);
 		ret = -1;
@@ -607,9 +488,6 @@ static struct fb_ops jzfb_ops = {
 	.fb_imageblit		= cfb_imageblit,
 	.fb_mmap		= jzfb_mmap,
 	.fb_ioctl		= jzfb_ioctl,
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-	.fb_rotate		= jzfb_fb_rotate,
-#endif
 };
 
 static int jzfb_set_var(struct fb_var_screeninfo *var, int con,
@@ -618,9 +496,9 @@ static int jzfb_set_var(struct fb_var_screeninfo *var, int con,
 	struct lcd_cfb_info *cfb = (struct lcd_cfb_info *)info;
 	int chgvar = 0;
 
-	var->height	            = jzfb.h ;
-	var->width	            = jzfb.w ;
-	var->bits_per_pixel	    = jzfb.bpp;
+	var->height	            = jzfb->h ;
+	var->width	            = jzfb->w ;
+	var->bits_per_pixel	    = jzfb->bpp;
 
 	var->vmode                  = FB_VMODE_NONINTERLACED;
 	var->activate               = cfb->fb.var.activate;
@@ -779,7 +657,7 @@ static int jzfb_set_var(struct fb_var_screeninfo *var, int con,
 
 static struct lcd_cfb_info * jzfb_alloc_fb_info(void)
 {
- 	struct lcd_cfb_info *cfb;
+	struct lcd_cfb_info *cfb;
 
 	cfb = kmalloc(sizeof(struct lcd_cfb_info) + sizeof(u32) * 16, GFP_KERNEL);
 
@@ -812,7 +690,7 @@ static struct lcd_cfb_info * jzfb_alloc_fb_info(void)
 
 	cfb->fb.pseudo_palette	= (void *)(cfb + 1);
 
-	switch (jzfb.bpp) {
+	switch (jzfb->bpp) {
 	case 1:
 		fb_alloc_cmap(&cfb->fb.cmap, 4, 0);
 		break;
@@ -841,19 +719,20 @@ static int jzfb_map_smem(struct lcd_cfb_info *cfb)
 	struct page * map = NULL;
 	unsigned char *tmp;
 	unsigned int page_shift, needroom, t;
+
 #if defined(CONFIG_SOC_JZ4740)
-	if (jzfb.bpp == 18 || jzfb.bpp == 24)
+	if (jzfb->bpp == 18 || jzfb->bpp == 24)
 		t = 32;
 	else
-		t = jzfb.bpp;
+		t = jzfb->bpp;
 #else
-	if (jzfb.bpp == 15)
+	if (jzfb->bpp == 15)
 		t = 16;
 	else
-		t = jzfb.bpp;
+		t = jzfb->bpp;
 #endif
 
-	needroom = ((jzfb.w * t + 7) >> 3) * jzfb.h;
+	needroom = ((jzfb->w * t + 7) >> 3) * jzfb->h;
 	for (page_shift = 0; page_shift < 12; page_shift++)
 		if ((PAGE_SIZE << page_shift) >= needroom)
 			break;
@@ -892,32 +771,10 @@ static int jzfb_map_smem(struct lcd_cfb_info *cfb)
 		printk("jzlcd fb[%d] phys addr =0x%08x\n", 
 		       t, jz_lcd_buffer_addrs.fb_phys_addr[t]);
 	}
-#if !defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
 	cfb->fb.fix.smem_start = virt_to_phys((void *)lcd_frame[0]);
 	cfb->fb.fix.smem_len = (PAGE_SIZE << page_shift);
 	cfb->fb.screen_base =
 		(unsigned char *)(((unsigned int)lcd_frame[0] & 0x1fffffff) | 0xa0000000);
-#else  /* Framebuffer rotate */
-	lcd_frame_user_fb = (unsigned char *)__get_free_pages(GFP_KERNEL, page_shift);
-	if ((!lcd_frame_user_fb)) {
-		printk("no mem for fb[%d]\n", t);
-		return -ENOMEM;
-	}
-	memset((void *)lcd_frame_user_fb, 0, PAGE_SIZE << page_shift);
-	for (tmp=(unsigned char *)lcd_frame_user_fb;
-	     tmp < lcd_frame_user_fb + (PAGE_SIZE << page_shift);
-	     tmp += PAGE_SIZE) {
-		map = virt_to_page(tmp);
-		set_bit(PG_reserved, &map->flags);
-	}
-
-	printk("Rotate userfb phys addr =0x%08x\n", 
-	       (unsigned int)virt_to_phys((void *)lcd_frame_user_fb));
-	cfb->fb.fix.smem_start = virt_to_phys((void *)lcd_frame_user_fb);
-	cfb->fb.fix.smem_len = (PAGE_SIZE << page_shift);
-	cfb->fb.screen_base = (unsigned char *)(((unsigned int)lcd_frame_user_fb & 0x1fffffff) | 0xa0000000);
-
-#endif	/* #if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT) */
 	if (!cfb->fb.screen_base) {
 		printk("%s: unable to map screen memory\n", cfb->fb.fix.id);
 		return -ENOMEM;
@@ -940,17 +797,17 @@ static void jzfb_unmap_smem(struct lcd_cfb_info *cfb)
 	unsigned char *tmp;
 	unsigned int page_shift, needroom, t;
 #if defined(CONFIG_SOC_JZ4740)
-	if (jzfb.bpp == 18 || jzfb.bpp == 24)
+	if (jzfb->bpp == 18 || jzfb->bpp == 24)
 		t = 32;
 	else
-		t = jzfb.bpp;
+		t = jzfb->bpp;
 #else
-	if (jzfb.bpp == 15)
+	if (jzfb->bpp == 15)
 		t = 16;
 	else
-		t = jzfb.bpp;
+		t = jzfb->bpp;
 #endif
-	needroom = ((jzfb.w * t + 7) >> 3) * jzfb.h;
+	needroom = ((jzfb->w * t + 7) >> 3) * jzfb->h;
 	for (page_shift = 0; page_shift < 12; page_shift++)
 		if ((PAGE_SIZE << page_shift) >= needroom)
 			break;
@@ -979,18 +836,6 @@ static void jzfb_unmap_smem(struct lcd_cfb_info *cfb)
 			free_pages((int)lcd_frame[t], page_shift);
 		}
 	}
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-	if (lcd_frame_user_fb) {
-		for (tmp=(unsigned char *)lcd_frame_user_fb; 
-		     tmp < lcd_frame_user_fb + (PAGE_SIZE << page_shift); 
-		     tmp += PAGE_SIZE) {
-			map = virt_to_page(tmp);
-			clear_bit(PG_reserved, &map->flags);
-		}
-		free_pages((int)lcd_frame_user_fb, page_shift);
-	}
-	
-#endif
 }
 
 static void lcd_descriptor_init(void)
@@ -1000,7 +845,7 @@ static void lcd_descriptor_init(void)
 	unsigned int frm_size, ln_size;
 	unsigned char dual_panel = 0;
 
-	i = jzfb.bpp;
+	i = jzfb->bpp;
 #if defined(CONFIG_SOC_JZ4740)
 	if (i == 18 || i == 24)
 		i = 32;
@@ -1008,11 +853,11 @@ static void lcd_descriptor_init(void)
 	if (i == 15)
 		i = 16;
 #endif
-	frm_size = (jzfb.w*jzfb.h*i)>>3;
-	ln_size = (jzfb.w*i)>>3;
+	frm_size = (jzfb->w*jzfb->h*i)>>3;
+	ln_size = (jzfb->w*i)>>3;
 
-	if (((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_DUAL)) {
+	if (((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_DUAL)) {
 		dual_panel = 1;
 		frm_size >>= 1;
 	}
@@ -1020,7 +865,7 @@ static void lcd_descriptor_init(void)
 	frm_size = frm_size / 4;
 	ln_size = ln_size / 4;
 
-	switch (jzfb.bpp) {
+	switch (jzfb->bpp) {
 	case 1:
 		pal_size = 4;
 		break;
@@ -1050,7 +895,7 @@ static void lcd_descriptor_init(void)
 	lcd_palette_desc->cmd = pal_size|LCD_CMD_PAL; /* Palette Descriptor */
 
 	/* Frame Descriptor 0 */
-	if (jzfb.bpp <= 8)
+	if (jzfb->bpp <= 8)
 		lcd_frame_desc0->next_desc = (int)virt_to_phys(lcd_palette_desc);
 	else
 		lcd_frame_desc0->next_desc = (int)virt_to_phys(lcd_frame_desc0);
@@ -1079,7 +924,7 @@ static int lcd_hw_init(void)
 	int ret = 0;
 
 	/* Setting Control register */
-	switch (jzfb.bpp) {
+	switch (jzfb->bpp) {
 	case 1:
 		val |= LCD_CTRL_BPP_1;
 		break;
@@ -1103,17 +948,17 @@ static int lcd_hw_init(void)
 		break;
 #endif
 	default:
-		printk("The BPP %d is not supported\n", jzfb.bpp);
+		printk("The BPP %d is not supported\n", jzfb->bpp);
 		val |= LCD_CTRL_BPP_16;
 		break;
 	}
 
-	switch (jzfb.cfg & MODE_MASK) {
+	switch (jzfb->cfg & MODE_MASK) {
 	case MODE_STN_MONO_DUAL:
 	case MODE_STN_COLOR_DUAL:
 	case MODE_STN_MONO_SINGLE:
 	case MODE_STN_COLOR_SINGLE:
-		switch (jzfb.bpp) {
+		switch (jzfb->bpp) {
 		case 1:
 		case 2:
 			val |= LCD_CTRL_FRC_2;
@@ -1131,12 +976,12 @@ static int lcd_hw_init(void)
 
 	val |= LCD_CTRL_BST_16;		/* Burst Length is 16WORD=64Byte */
 
-	switch (jzfb.cfg & MODE_MASK) {
+	switch (jzfb->cfg & MODE_MASK) {
 	case MODE_STN_MONO_DUAL:
 	case MODE_STN_COLOR_DUAL:
 	case MODE_STN_MONO_SINGLE:
 	case MODE_STN_COLOR_SINGLE:
-		switch (jzfb.cfg & STN_DAT_PINMASK) {
+		switch (jzfb->cfg & STN_DAT_PINMASK) {
 #define align2(n) (n)=((((n)+1)>>1)<<1)
 #define align4(n) (n)=((((n)+3)>>2)<<2)
 #define align8(n) (n)=((((n)+7)>>3)<<3)
@@ -1144,19 +989,19 @@ static int lcd_hw_init(void)
 			/* Do not adjust the hori-param value. */
 			break;
 		case STN_DAT_PIN2:
-			align2(jzfb.hsw);
-			align2(jzfb.elw);
-			align2(jzfb.blw);
+			align2(jzfb->hsw);
+			align2(jzfb->elw);
+			align2(jzfb->blw);
 			break;
 		case STN_DAT_PIN4:
-			align4(jzfb.hsw);
-			align4(jzfb.elw);
-			align4(jzfb.blw);
+			align4(jzfb->hsw);
+			align4(jzfb->elw);
+			align4(jzfb->blw);
 			break;
 		case STN_DAT_PIN8:
-			align8(jzfb.hsw);
-			align8(jzfb.elw);
-			align8(jzfb.blw);
+			align8(jzfb->hsw);
+			align8(jzfb->elw);
+			align8(jzfb->blw);
 			break;
 		}
 		break;
@@ -1165,27 +1010,27 @@ static int lcd_hw_init(void)
 	val |=  1 << 26;               /* Output FIFO underrun protection */
 	REG_LCD_CTRL = val;
 
-	switch (jzfb.cfg & MODE_MASK) {
+	switch (jzfb->cfg & MODE_MASK) {
 	case MODE_STN_MONO_DUAL:
 	case MODE_STN_COLOR_DUAL:
 	case MODE_STN_MONO_SINGLE:
 	case MODE_STN_COLOR_SINGLE:
-		if (((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_DUAL) ||
-		    ((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_DUAL))
-			stnH = jzfb.h >> 1;
+		if (((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_DUAL) ||
+		    ((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_DUAL))
+			stnH = jzfb->h >> 1;
 		else
-			stnH = jzfb.h;
+			stnH = jzfb->h;
 
-		REG_LCD_VSYNC = (0 << 16) | jzfb.vsw;
-		REG_LCD_HSYNC = ((jzfb.blw+jzfb.w) << 16) | (jzfb.blw+jzfb.w+jzfb.hsw);
+		REG_LCD_VSYNC = (0 << 16) | jzfb->vsw;
+		REG_LCD_HSYNC = ((jzfb->blw+jzfb->w) << 16) | (jzfb->blw+jzfb->w+jzfb->hsw);
 
 		/* Screen setting */
-		REG_LCD_VAT = ((jzfb.blw + jzfb.w + jzfb.hsw + jzfb.elw) << 16) | (stnH + jzfb.vsw + jzfb.bfw + jzfb.efw);
-		REG_LCD_DAH = (jzfb.blw << 16) | (jzfb.blw + jzfb.w);
+		REG_LCD_VAT = ((jzfb->blw + jzfb->w + jzfb->hsw + jzfb->elw) << 16) | (stnH + jzfb->vsw + jzfb->bfw + jzfb->efw);
+		REG_LCD_DAH = (jzfb->blw << 16) | (jzfb->blw + jzfb->w);
 		REG_LCD_DAV = (0 << 16) | (stnH);
 
 		/* AC BIAs signal */
-		REG_LCD_PS = (0 << 16) | (stnH+jzfb.vsw+jzfb.efw+jzfb.bfw);
+		REG_LCD_PS = (0 << 16) | (stnH+jzfb->vsw+jzfb->efw+jzfb->bfw);
 
 		break;
 
@@ -1195,25 +1040,26 @@ static int lcd_hw_init(void)
 	case MODE_TFT_SAMSUNG:
 	case MODE_8BIT_SERIAL_TFT:
 	case MODE_TFT_18BIT:
-		REG_LCD_VSYNC = (0 << 16) | jzfb.vsw;
+		REG_LCD_VSYNC = (0 << 16) | jzfb->vsw;
 #if defined(CONFIG_JZLCD_INNOLUX_AT080TN42)
-		REG_LCD_DAV = (0 << 16) | ( jzfb.h );
+		REG_LCD_DAV = (0 << 16) | ( jzfb->h );
 #else
-		REG_LCD_DAV = ((jzfb.vsw + jzfb.bfw) << 16) | (jzfb.vsw + jzfb.bfw + jzfb.h);
+		REG_LCD_DAV = ((jzfb->vsw + jzfb->bfw) << 16) | (jzfb->vsw + jzfb->bfw + jzfb->h);
 #endif /*#if defined(CONFIG_JZLCD_INNOLUX_AT080TN42)*/
-		REG_LCD_VAT = (((jzfb.blw + jzfb.w + jzfb.elw + jzfb.hsw)) << 16) | (jzfb.vsw + jzfb.bfw + jzfb.h + jzfb.efw);
-		REG_LCD_HSYNC = (0 << 16) | jzfb.hsw;
-		REG_LCD_DAH = ((jzfb.hsw + jzfb.blw) << 16) | (jzfb.hsw + jzfb.blw + jzfb.w);
+		printk("h = %u, vsw = %u, bfw = %u, efw = %u\n", jzfb->h, jzfb->vsw + jzfb->bfw + jzfb->efw);
+		REG_LCD_VAT = (((jzfb->blw + jzfb->w + jzfb->elw + jzfb->hsw)) << 16) | (jzfb->vsw + jzfb->bfw + jzfb->h + jzfb->efw);
+		REG_LCD_HSYNC = (0 << 16) | jzfb->hsw;
+		REG_LCD_DAH = ((jzfb->hsw + jzfb->blw) << 16) | (jzfb->hsw + jzfb->blw + jzfb->w);
 		break;
 	}
 
-	switch (jzfb.cfg & MODE_MASK) {
+	switch (jzfb->cfg & MODE_MASK) {
 	case MODE_TFT_SAMSUNG:
 	{
 		unsigned int total, tp_s, tp_e, ckv_s, ckv_e;
 		unsigned int rev_s, rev_e, inv_s, inv_e;
-		total = jzfb.blw + jzfb.w + jzfb.elw + jzfb.hsw;
-		tp_s = jzfb.blw + jzfb.w + 1;
+		total = jzfb->blw + jzfb->w + jzfb->elw + jzfb->hsw;
+		tp_s = jzfb->blw + jzfb->w + 1;
 		tp_e = tp_s + 1;
 		ckv_s = tp_s - jz_clocks.pixclk/(1000000000/4100);
 		ckv_e = tp_s + total;
@@ -1225,14 +1071,14 @@ static int lcd_hw_init(void)
 		REG_LCD_PS = (ckv_s << 16) | ckv_e;
 		REG_LCD_SPL = (rev_s << 16) | rev_e;
 		REG_LCD_REV = (inv_s << 16) | inv_e;
-		jzfb.cfg |= STFT_REVHI | STFT_SPLHI;
+		jzfb->cfg |= STFT_REVHI | STFT_SPLHI;
 		break;
 	}
 	case MODE_TFT_SHARP:
 	{
 		unsigned int total, cls_s, cls_e, ps_s, ps_e;
 		unsigned int spl_s, spl_e, rev_s, rev_e;
-		total = jzfb.blw + jzfb.w + jzfb.elw + jzfb.hsw;
+		total = jzfb->blw + jzfb->w + jzfb->elw + jzfb->hsw;
 #if !defined(CONFIG_JZLCD_INNOLUX_AT080TN42)
 		spl_s = 1;
 		spl_e = spl_s + 1;
@@ -1242,7 +1088,7 @@ static int lcd_hw_init(void)
 		ps_e = cls_e;
 		rev_s = total - 40;	/* > 3us (pclk = 80ns) */
 		rev_e = rev_s + total;
-		jzfb.cfg |= STFT_PSHI;
+		jzfb->cfg |= STFT_PSHI;
 #else           /*#if defined(CONFIG_JZLCD_INNOLUX_AT080TN42)*/
 		spl_s = total - 5; /* LD */
 		spl_e = total - 3;
@@ -1264,35 +1110,35 @@ static int lcd_hw_init(void)
 	}
 
 	/* Configure the LCD panel */
-	REG_LCD_CFG = jzfb.cfg;
+	REG_LCD_CFG = jzfb->cfg;
 
 	/* Timing setting */
 	__cpm_stop_lcd();
 
-	val = jzfb.fclk; /* frame clk */
+	val = jzfb->fclk; /* frame clk */
 
-	if ( (jzfb.cfg & MODE_MASK) != MODE_8BIT_SERIAL_TFT) {
-		pclk = val * (jzfb.w + jzfb.hsw + jzfb.elw + jzfb.blw) *
-			(jzfb.h + jzfb.vsw + jzfb.efw + jzfb.bfw); /* Pixclk */
+	if ( (jzfb->cfg & MODE_MASK) != MODE_8BIT_SERIAL_TFT) {
+		pclk = val * (jzfb->w + jzfb->hsw + jzfb->elw + jzfb->blw) *
+			(jzfb->h + jzfb->vsw + jzfb->efw + jzfb->bfw); /* Pixclk */
 	}
 	else {
 		/* serial mode: Hsync period = 3*Width_Pixel */
-		pclk = val * (jzfb.w*3 + jzfb.hsw + jzfb.elw + jzfb.blw) *
-			(jzfb.h + jzfb.vsw + jzfb.efw + jzfb.bfw); /* Pixclk */
+		pclk = val * (jzfb->w*3 + jzfb->hsw + jzfb->elw + jzfb->blw) *
+			(jzfb->h + jzfb->vsw + jzfb->efw + jzfb->bfw); /* Pixclk */
 	}
 
-	if (((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_SINGLE) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_DUAL))
+	if (((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_SINGLE) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_DUAL))
 		pclk = (pclk * 3);
 
-	if (((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_SINGLE) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_SINGLE) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
-		pclk = pclk >> ((jzfb.cfg & STN_DAT_PINMASK) >> 4);
+	if (((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_SINGLE) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_SINGLE) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
+		pclk = pclk >> ((jzfb->cfg & STN_DAT_PINMASK) >> 4);
 
-	if (((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
+	if (((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
 		pclk >>= 1;
 #if defined(CONFIG_SOC_JZ4730)
 	val = __cpm_get_pllout() / pclk;
@@ -1359,7 +1205,7 @@ static irqreturn_t lcd_interrupt_handler(int irq, void *dev_id)
 /*
  * Suspend the LCDC.
  */
-static int jzfb_suspend(void)
+static int jzfb_suspend(struct platform_device *dev, pm_message_t state)
 {
 	__lcd_clr_ena(); /* Quick Disable */
 	__lcd_display_off();
@@ -1372,7 +1218,7 @@ static int jzfb_suspend(void)
  * Resume the LCDC.
  */
 #ifdef CONFIG_SOC_JZ4730
-static int jzfb_resume(void)
+static int jzfb_resume(struct platform_device *dev)
 {
 	__cpm_start_lcd();
 
@@ -1382,13 +1228,13 @@ static int jzfb_resume(void)
 
 	lcd_hw_init();
 
-	if (jzfb.bpp <= 8)
+	if (jzfb->bpp <= 8)
 		REG_LCD_DA0 = virt_to_phys(lcd_palette_desc);
 	else
 		REG_LCD_DA0 = virt_to_phys(lcd_frame_desc0);
 
-	if (((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
+	if (((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
 		REG_LCD_DA1 = virt_to_phys(lcd_frame_desc1);
 
 	__lcd_set_ena();
@@ -1399,7 +1245,7 @@ static int jzfb_resume(void)
 /*
  * Resume the LCDC.
  */
-static int jzfb_resume(void)
+static int jzfb_resume(struct platform_device *dev)
 {
 	__cpm_start_lcd();
 	__gpio_set_pin(GPIO_DISP_OFF_N); 
@@ -1418,15 +1264,26 @@ static int jzfb_resume(void)
 #define jzfb_resume       NULL
 #endif /* CONFIG_PM */
 
-static int __init jzfb_init(void)
+static int __devinit jzfb_probe(struct platform_device *dev)
 {
 	struct lcd_cfb_info *cfb;
 	int err = 0;
 
+	dev_dbg(&dev->dev, "jzfb_probe\n");
+	__lcd_set_dis();
+	__lcd_clr_ena();
+
+	jzfb = dev->dev.platform_data;
+
+	if (!jzfb) {
+		dev_err(&dev->dev, "no platform data specified\n");
+		return -EINVAL;
+	}
+
 	/* In special mode, we only need init special pin, 
 	 * as general lcd pin has init in uboot */
 #if defined(CONFIG_SOC_JZ4740) || defined(CONFIG_SOC_JZ4750)
-	switch (jzfb.cfg & MODE_MASK) {
+	switch (jzfb->cfg & MODE_MASK) {
 	case LCD_CFG_MODE_SPECIAL_TFT_1:
 	case LCD_CFG_MODE_SPECIAL_TFT_2:
 	case LCD_CFG_MODE_SPECIAL_TFT_3:
@@ -1442,6 +1299,8 @@ static int __init jzfb_init(void)
 	if (!cfb)
 		goto failed;
 
+	platform_set_drvdata(dev, cfb);
+
 	err = jzfb_map_smem(cfb);
 	if (err)
 		goto failed;
@@ -1454,15 +1313,16 @@ static int __init jzfb_init(void)
 	if (err)
 		goto failed;
 
-	if (jzfb.bpp <= 8)
+	if (jzfb->bpp <= 8)
 		REG_LCD_DA0 = virt_to_phys(lcd_palette_desc);
 	else
 		REG_LCD_DA0 = virt_to_phys(lcd_frame_desc0);
 
-	if (((jzfb.cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
-	    ((jzfb.cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
+	if (((jzfb->cfg & MODE_MASK) == MODE_STN_COLOR_DUAL) ||
+	    ((jzfb->cfg & MODE_MASK) == MODE_STN_MONO_DUAL))
 		REG_LCD_DA1 = virt_to_phys(lcd_frame_desc1);
 
+	__lcd_clr_dis();
 	__lcd_set_ena();
 
 	if (request_irq(IRQ_LCD, lcd_interrupt_handler, IRQF_DISABLED,
@@ -1474,10 +1334,6 @@ static int __init jzfb_init(void)
 	__lcd_enable_ofu_intr(); /* enable OutFifo underrun */
 //	__lcd_enable_ifu0_intr(); /* needn't enable InFifo underrun */
 
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-	jzfb_rotate_change(rotate_angle);
-	/* sleep n??? */
-#endif
 	err = register_framebuffer(&cfb->fb);
 	if (err < 0) {
 		dprintk("jzfb_init(): register framebuffer err.\n");
@@ -1490,6 +1346,8 @@ static int __init jzfb_init(void)
 
 	__lcd_display_on();
 
+	mdelay(2);
+	print_regs();
 	return 0;
 
 failed:
@@ -1499,26 +1357,36 @@ failed:
 	return err;
 }
 
-#if 0
-static int jzfb_remove(struct device *dev)
+static int jzfb_remove(struct platform_device *dev)
 {
-	struct lcd_cfb_info *cfb = dev_get_drvdata(dev);
+	struct lcd_cfb_info *cfb = platform_get_drvdata(dev);
 	jzfb_unmap_smem(cfb);
 	jzfb_free_fb_info(cfb);
+
 	return 0;
 }
-#endif
 
-#if 0
-static struct device_driver jzfb_driver = {
-	.name		= "jz-lcd",
-	.bus 		= &platform_bus_type,
+static struct platform_driver jzfb_driver = {
+	.driver = {
+		.name	= "jz-lcd",
+		.owner	= THIS_MODULE,
+	},
 	.probe		= jzfb_probe,
-        .remove		= jzfb_remove,
+	.remove		= jzfb_remove,
 	.suspend	= jzfb_suspend,
-        .resume		= jzfb_resume,
+	.resume		= jzfb_resume,
 };
-#endif
+
+
+static int __init jzfb_init(void)
+{
+	return platform_driver_register(&jzfb_driver);
+}
+
+static void __exit jzfb_exit(void)
+{
+	platform_driver_unregister(&jzfb_driver);
+}
 
 static void __exit jzfb_cleanup(void)
 {
