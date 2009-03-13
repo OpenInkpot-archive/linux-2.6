@@ -40,6 +40,7 @@ struct metronome_board {
 	struct module *owner; /* the platform device */
 	void (*set_rst)(struct metronomefb_par *, int);
 	void (*set_stdby)(struct metronomefb_par *, int);
+	int (*get_err)(struct metronomefb_par *);
 	void (*cleanup)(struct metronomefb_par *);
 	int (*met_wait_event)(struct metronomefb_par *);
 	int (*met_wait_event_intr)(struct metronomefb_par *);

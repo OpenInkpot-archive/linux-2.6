@@ -18,6 +18,9 @@
  * is provided as am200epd.c
  *
  */
+
+#define DEBUG
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -97,6 +100,27 @@ static struct epd_frame epd_frame_table[] = {
 			0x0280,
 		},
 		.wfm_size = 46770,
+	},
+	{
+		.fw = 832,
+		.fh = 622,
+		.config = {
+			15 /* sdlew */
+			| 2 << 8 /* sdosz */
+			| 0 << 11 /* sdor */
+			| 0 << 12 /* sdces */
+			| 0 << 15, /* sdcer */
+			42 /* gdspl */
+			| 1 << 8 /* gdr1 */
+			| 1 << 9 /* sdshr */
+			| 0 << 15, /* gdspp */
+			18 /* gdspw */
+			| 0 << 15, /* dispc */
+			599 /* vdlc */
+			| 0 << 11 /* dsi */
+			| 0 << 12, /* dsic */
+		},
+		.wfm_size = 46901,
 	},
 };
 
@@ -313,6 +337,7 @@ static int metronome_display_cmd(struct metronomefb_par *par)
 	u16 opcode;
 	static u8 borderval;
 
+	printk(KERN_DEBUG "%s: ENTER", __func__);
 	/* setup display command
 	we can't immediately set the opcode since the controller
 	will try parse the command before we've set it all up
@@ -344,6 +369,7 @@ static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 	int i;
 	u16 cs;
 
+	printk(KERN_DEBUG "%s: ENTER", __func__);
 	/* setup power up command */
 	par->metromem_cmd->opcode = 0x1234; /* pwr up pseudo cmd */
 	cs = par->metromem_cmd->opcode;
@@ -374,6 +400,7 @@ static int __devinit metronome_config_cmd(struct metronomefb_par *par)
 	we can't immediately set the opcode since the controller
 	will try parse the command before we've set it all up */
 
+	printk(KERN_DEBUG "%s: ENTER", __func__);
 	memcpy(par->metromem_cmd->args, epd_frame_table[par->dt].config,
 		sizeof(epd_frame_table[par->dt].config));
 	/* the rest are 0 */
@@ -396,11 +423,12 @@ static int __devinit metronome_init_cmd(struct metronomefb_par *par)
 	will try parse the command before we've set it all up
 	so we just set cs here and set the opcode at the end */
 
+	printk(KERN_DEBUG "%s: ENTER", __func__);
 	cs = 0xCC20;
 
 	/* set the args ( 2 bytes ) for init */
 	i = 0;
-	par->metromem_cmd->args[i] = 0;
+	par->metromem_cmd->args[i] = 0x0007;
 	cs += par->metromem_cmd->args[i++];
 
 	/* the rest are 0 */
@@ -412,23 +440,37 @@ static int __devinit metronome_init_cmd(struct metronomefb_par *par)
 	return par->board->met_wait_event(par);
 }
 
+static void check_error(struct metronomefb_par *par)
+{
+	printk("%s: ERR = %d\n", __func__, par->board->get_err(par));
+}
+
 static int __devinit metronome_init_regs(struct metronomefb_par *par)
 {
 	int res;
 
 	res = par->board->setup_io(par);
-	if (res)
+	if (res) {
+		printk(KERN_ERR "metronomefb: setup_io() failed\n");
 		return res;
+	}
 
 	res = metronome_powerup_cmd(par);
-	if (res)
+	if (res) {
+		printk(KERN_ERR "metronomefb: POWERUP cmd failed\n");
 		return res;
+	}
+	check_error(par);
 
 	res = metronome_config_cmd(par);
-	if (res)
+	if (res) {
+		printk(KERN_ERR "metronomefb: CONFIG cmd failed\n");
 		return res;
+	}
+	check_error(par);
 
 	res = metronome_init_cmd(par);
+	check_error(par);
 
 	return res;
 }
@@ -608,6 +650,9 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 
 	panel_type = board->get_panel_type();
 	switch (panel_type) {
+	case 5:
+		epd_dt_index = 3;
+		break;
 	case 6:
 		epd_dt_index = 0;
 		break;
