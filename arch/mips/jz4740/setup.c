@@ -45,6 +45,8 @@
 
 jz_clocks_t jz_clocks;
 
+EXPORT_SYMBOL(jz_clocks);
+
 extern char * __init prom_getcmdline(void);
 extern void __init jz_board_setup(void);
 extern void jz_restart(char *);
