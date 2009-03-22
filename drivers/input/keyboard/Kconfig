@@ -328,6 +328,12 @@ config KEYBOARD_MAPLE
 	  To compile this driver as a module, choose M here: the
 	  module will be called maple_keyb.
 
+config KEYBOARD_N516
+	tristate "N516 keys controller"
+	depends on I2C
+	help
+	  N516 keyboard controller driver
+
 config KEYBOARD_BFIN
 	tristate "Blackfin BF54x keypad support"
 	depends on (BF54x && !BF544)
