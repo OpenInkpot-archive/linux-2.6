@@ -13,6 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/resource.h>
+#include <linux/i2c.h>
 
 #include <asm/jzsoc.h>
 
@@ -166,8 +167,20 @@ static struct platform_device *jz_platform_devices[] __initdata = {
 	&jz_i2c_device,
 };
 
+static const struct i2c_board_info n516_keys_board_info = {
+	.type		= "LPC524",
+	.addr		= 0x54,
+};
+
+static const struct i2c_board_info n516_lm75a_board_info = {
+	.type		= "lm75a",
+	.addr		= 0x48,
+};
+
 static int __init jz_platform_init(void)
 {
+	i2c_register_board_info(0, &n516_keys_board_info, 1);
+	i2c_register_board_info(0, &n516_lm75a_board_info, 1);
 	return platform_add_devices(jz_platform_devices, ARRAY_SIZE(jz_platform_devices));
 }
 
