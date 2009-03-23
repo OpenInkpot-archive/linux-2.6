@@ -17,6 +17,7 @@
 #include <linux/mm.h>
 #include <linux/console.h>
 #include <linux/delay.h>
+#include <linux/i2c.h>
 
 #include <asm/cpu.h>
 #include <asm/bootinfo.h>
@@ -113,3 +114,24 @@ void __init jz_board_setup(void)
 
 	jz_timer_callback = pavo_timer_callback;
 }
+
+static const struct i2c_board_info n516_keys_board_info = {
+	.type		= "LPC524",
+	.addr		= 0x54,
+};
+
+static const struct i2c_board_info n516_lm75a_board_info = {
+	.type		= "lm75a",
+	.addr		= 0x48,
+};
+
+
+static int n516_setup_platform(void)
+{
+	i2c_register_board_info(0, &n516_keys_board_info, 1);
+	i2c_register_board_info(0, &n516_lm75a_board_info, 1);
+
+	return 0;
+}
+
+arch_initcall(n516_setup_platform);
