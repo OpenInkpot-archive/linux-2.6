@@ -18,6 +18,7 @@
 #include <linux/console.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
+#include <linux/platform_device.h>
 
 #include <asm/cpu.h>
 #include <asm/bootinfo.h>
@@ -26,7 +27,9 @@
 
 #include <asm/jzsoc.h>
 #include <asm/mach-jz4740/gpio-pins.h>
+#include <asm/jz47xx-leds.h>
 
+/*
 extern void (*jz_timer_callback)(void);
 
 static void dancing(void)
@@ -50,6 +53,7 @@ static void pavo_timer_callback(void)
 		count = 0;
 	}
 }
+*/
 
 static void __init board_cpm_setup(void)
 {
@@ -112,7 +116,7 @@ void __init jz_board_setup(void)
 	board_cpm_setup();
 	board_gpio_setup();
 
-	jz_timer_callback = pavo_timer_callback;
+//	jz_timer_callback = pavo_timer_callback;
 }
 
 static const struct i2c_board_info n516_keys_board_info = {
@@ -125,12 +129,26 @@ static const struct i2c_board_info n516_lm75a_board_info = {
 	.addr		= 0x48,
 };
 
+static struct jz47xx_led_platdata n516_led_data = {
+	.gpio		= GPIO_LED_EN,
+	.name		= "led:blue",
+	.def_trigger	= "nand-disk",
+};
+
+static struct platform_device n516_led = {
+	.name		= "jz47xx_led",
+	.id		= 0,
+	.dev		= {
+		.platform_data	= &n516_led_data,
+	},
+};
 
 static int n516_setup_platform(void)
 {
 	i2c_register_board_info(0, &n516_keys_board_info, 1);
 	i2c_register_board_info(0, &n516_lm75a_board_info, 1);
 
+	platform_device_register(&n516_led);
 	return 0;
 }
 
