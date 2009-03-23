@@ -27,8 +27,10 @@ struct metronomefb_par {
 	u16 *metromem_img_csum;
 	u16 *csum_table;
 	dma_addr_t metromem_dma;
+	const struct firmware *firmware;
 	struct fb_info *info;
 	struct metronome_board *board;
+	struct platform_device *pdev;
 	wait_queue_head_t waitq;
 	u8 frame_count;
 	int extra_size;

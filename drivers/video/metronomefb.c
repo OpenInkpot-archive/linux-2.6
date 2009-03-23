@@ -47,6 +47,11 @@
 #define DPY_W 832
 #define DPY_H 622
 
+#define WF_MODE_INIT	0
+#define WF_MODE_GU	1
+#define WF_MODE_MU	2
+#define WF_MODE_GC	3
+
 static int user_wfm_size;
 
 /* frame differs from image. frame includes non-visible pixels */
@@ -102,8 +107,8 @@ static struct epd_frame epd_frame_table[] = {
 		.wfm_size = 46770,
 	},
 	{
-		.fw = 832,
-		.fh = 622,
+		.fw = 800,
+		.fh = 600,
 		.config = {
 			15 /* sdlew */
 			| 2 << 8 /* sdosz */
@@ -206,16 +211,18 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	int mem_idx = 0;
 	struct waveform_hdr *wfm_hdr;
 	u8 *metromem = par->metromem_wfm;
-	struct device *dev = par->info->dev;
+	struct device *dev = &par->pdev->dev;
+	u8 mc, trc;
 
 	if (user_wfm_size)
 		epd_frame_table[par->dt].wfm_size = user_wfm_size;
-
+/*
 	if (size != epd_frame_table[par->dt].wfm_size) {
 		dev_err(dev, "Error: unexpected size %Zd != %d\n", size,
 					epd_frame_table[par->dt].wfm_size);
 		return -EINVAL;
 	}
+*/
 
 	wfm_hdr = (struct waveform_hdr *) mem;
 
@@ -233,8 +240,9 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 					wfm_hdr->wfm_cs);
 		return -EINVAL;
 	}
-	wfm_hdr->mc += 1;
-	wfm_hdr->trc += 1;
+	mc = wfm_hdr->mc + 1;
+	trc = wfm_hdr->trc + 1;
+
 	for (i = 0; i < 5; i++) {
 		if (*(wfm_hdr->stuff2a + i) != 0) {
 			dev_err(dev, "Error: unexpected value in padding\n");
@@ -246,10 +254,10 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	the waveform. presumably selecting the right one for the
 	desired temperature. it works out the offset of the first
 	v that exceeds the specified temperature */
-	if ((sizeof(*wfm_hdr) + wfm_hdr->trc) > size)
+	if ((sizeof(*wfm_hdr) + trc) > size)
 		return -EINVAL;
 
-	for (i = sizeof(*wfm_hdr); i <= sizeof(*wfm_hdr) + wfm_hdr->trc; i++) {
+	for (i = sizeof(*wfm_hdr); i <= sizeof(*wfm_hdr) + trc; i++) {
 		if (mem[i] > t) {
 			trn = i - sizeof(*wfm_hdr) - 1;
 			break;
@@ -257,7 +265,7 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	}
 
 	/* check temperature range table checksum */
-	cksum_idx = sizeof(*wfm_hdr) + wfm_hdr->trc + 1;
+	cksum_idx = sizeof(*wfm_hdr) + trc + 1;
 	if (cksum_idx > size)
 		return -EINVAL;
 	cksum = calc_cksum(sizeof(*wfm_hdr), cksum_idx, mem);
@@ -678,7 +686,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	if (!videomemory)
 		goto err_fb_rel;
 
-	memset(videomemory, 0, videomemorysize);
+	memset(videomemory, 0xff, videomemorysize);
 
 	info->screen_base = (char __force __iomem *)videomemory;
 	info->fbops = &metronomefb_ops;
@@ -695,6 +703,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	par->info = info;
 	par->board = board;
 	par->dt = epd_dt_index;
+	par->pdev = dev;
 	init_waitqueue_head(&par->waitq);
 
 	/* this table caches per page csum values. */
@@ -730,13 +739,15 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		goto err_csum_table;
 	}
 
-	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, 3, 31,
+	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_GC, 31,
 				par);
-	release_firmware(fw_entry);
+//	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_INIT, 31,
+//				par);
 	if (retval < 0) {
 		dev_err(&dev->dev, "Failed processing waveform\n");
 		goto err_csum_table;
 	}
+	par->firmware = fw_entry;
 
 	if (board->setup_irq(info))
 		goto err_csum_table;
@@ -744,6 +755,9 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	retval = metronome_init_regs(par);
 	if (retval < 0)
 		goto err_free_irq;
+
+	/* Initialize display */
+	metronomefb_dpy_update(par);
 
 	info->flags = FBINFO_FLAG_DEFAULT;
 
@@ -758,9 +772,13 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 
 	/* set cmap */
 	for (i = 0; i < 8; i++)
-		info->cmap.red[i] = (((2*i)+1)*(0xFFFF))/16;
-	memcpy(info->cmap.green, info->cmap.red, sizeof(u16)*8);
-	memcpy(info->cmap.blue, info->cmap.red, sizeof(u16)*8);
+		info->cmap.red[i] = ((2 * i + 1)*(0xFFFF))/16;
+	memcpy(info->cmap.green, info->cmap.red, sizeof(u16)*16);
+	memcpy(info->cmap.blue, info->cmap.red, sizeof(u16)*16);
+
+
+	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, 3, 31,
+				par);
 
 	retval = register_framebuffer(info);
 	if (retval < 0)
@@ -803,6 +821,7 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 		vfree(par->csum_table);
 		vfree((void __force *)info->screen_base);
 		module_put(par->board->owner);
+		release_firmware(par->firmware);
 		dev_dbg(&dev->dev, "calling release\n");
 		framebuffer_release(info);
 	}
