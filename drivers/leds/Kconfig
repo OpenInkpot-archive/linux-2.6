@@ -113,6 +113,13 @@ config LEDS_GPIO
 	  outputs. To be useful the particular board must have LEDs
 	  and they must be connected to the GPIO lines.
 
+config LEDS_JZ47XX
+	tristate "LED Support for JZ47XX GPIO connected LEDs"
+	depends on JZSOC && LEDS_CLASS
+	help
+	  This option enables support for the LEDs conected to JZ47XX
+	  SoCs via GPIO.
+
 config LEDS_HP_DISK
 	tristate "LED Support for disk protection LED on HP notebooks"
 	depends on LEDS_CLASS && ACPI
