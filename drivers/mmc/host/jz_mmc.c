@@ -894,7 +894,7 @@ out:
 static int jz_mmc_remove(struct platform_device *pdev)
 {
 	struct mmc_host *mmc = platform_get_drvdata(pdev);
-	long flags;
+	unsigned long flags;
 
 	platform_set_drvdata(pdev, NULL);
 
