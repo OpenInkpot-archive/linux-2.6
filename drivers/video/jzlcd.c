@@ -36,8 +36,8 @@
 
 #include <asm/jzlcd.h>
 
-//#undef DEBUG
-#define DEBUG
+#undef DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #define dprintk(x...)	printk(x)
 #else
@@ -1046,7 +1046,6 @@ static int lcd_hw_init(void)
 #else
 		REG_LCD_DAV = ((jzfb->vsw + jzfb->bfw) << 16) | (jzfb->vsw + jzfb->bfw + jzfb->h);
 #endif /*#if defined(CONFIG_JZLCD_INNOLUX_AT080TN42)*/
-		printk("h = %u, vsw = %u, bfw = %u, efw = %u\n", jzfb->h, jzfb->vsw + jzfb->bfw + jzfb->efw);
 		REG_LCD_VAT = (((jzfb->blw + jzfb->w + jzfb->elw + jzfb->hsw)) << 16) | (jzfb->vsw + jzfb->bfw + jzfb->h + jzfb->efw);
 		REG_LCD_HSYNC = (0 << 16) | jzfb->hsw;
 		REG_LCD_DAH = ((jzfb->hsw + jzfb->blw) << 16) | (jzfb->hsw + jzfb->blw + jzfb->w);
