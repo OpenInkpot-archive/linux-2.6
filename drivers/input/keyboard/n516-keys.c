@@ -75,7 +75,6 @@ static void n516_keys_read_keys(struct work_struct *work)
 {
 	struct n516_keys_chip *chip = container_of(work, struct n516_keys_chip, work);
 	unsigned char raw_msg;
-	unsigned int key = KEY_RESERVED;
 	struct i2c_client *client = chip->i2c_client;
 	struct i2c_msg msg = {client->addr, client->flags | I2C_M_RD, 1, &raw_msg}; 
 	int ret, i;
@@ -195,6 +194,7 @@ static int n516_keys_remove(struct i2c_client *client)
 	struct n516_keys_chip *chip = i2c_get_clientdata(client);
 
 	__gpio_as_input(GPIO_LPC_INT);
+	flush_scheduled_work();
 	free_irq(IRQ_LPC_INT, chip);
 	input_unregister_device(chip->input);
 	kfree(chip);
