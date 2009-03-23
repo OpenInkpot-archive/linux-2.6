@@ -723,6 +723,7 @@ config JZSOC
 	select JZRISC
 	select SYS_HAS_CPU_MIPS32_R1
 	select SYS_SUPPORTS_32BIT_KERNEL
+	select GENERIC_ISA_DMA
 
 config JZRISC
 	bool
