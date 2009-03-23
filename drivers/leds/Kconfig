@@ -210,6 +210,13 @@ config LEDS_LP5523
 	  Driver provides direct control via LED class and interface for
 	  programming the engines.
 
+config LEDS_JZ47XX
+	tristate "LED Support for JZ47XX GPIO connected LEDs"
+	depends on JZSOC && LEDS_CLASS
+	help
+	  This option enables support for the LEDs conected to JZ47XX
+	  SoCs via GPIO.
+
 config LEDS_CLEVO_MAIL
 	tristate "Mail LED on Clevo notebook"
 	depends on LEDS_CLASS
