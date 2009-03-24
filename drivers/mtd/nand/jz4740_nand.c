@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/platform_device.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -23,13 +24,14 @@
 
 #include <asm/io.h>
 #include <asm/jzsoc.h>
+#include <asm/mach-jz4740/jz4740-nand.h>
 
 #define NAND_DATA_PORT	       0xB8000000  /* read-write area */
 
 #define PAR_SIZE 9
 
 #define __nand_enable()	       (REG_EMC_NFCSR |= EMC_NFCSR_NFE1 | EMC_NFCSR_NFCE1)
-#define __nand_disable()       (REG_EMC_NFCSR &= ~EMC_NFCSR_NFCE1) 
+#define __nand_disable()       (REG_EMC_NFCSR &= ~EMC_NFCSR_NFCE1)
 
 #define __nand_ecc_enable()    (REG_EMC_NFECR = EMC_NFECR_ECCE | EMC_NFECR_ERST )
 #define __nand_ecc_disable()   (REG_EMC_NFECR &= ~EMC_NFECR_ECCE)
@@ -44,259 +46,9 @@
 #define __nand_ecc_encode_sync() while (!(REG_EMC_NFINTS & EMC_NFINTS_ENCF))
 #define __nand_ecc_decode_sync() while (!(REG_EMC_NFINTS & EMC_NFINTS_DECF))
 
-/*
- * MTD structure for JzSOC board
- */
-static struct mtd_info *jz_mtd = NULL;
-
-/* 
- * Define partitions for flash devices
- */
-#ifdef CONFIG_JZ4740_N516
-static struct mtd_partition partition_info[] = {
-	{ name: "NAND BOOT partition",
-	  offset:  0 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND KERNEL partition",
-	  offset:  4 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND ROOTFS partition",
-	  offset:  8 * 0x100000,
-	  size:    120 * 0x100000 },
-	{ name: "NAND DATA1 partition",
-	  offset:  128 * 0x100000,
-	  size:    128 * 0x100000 },
-	{ name: "NAND DATA2 partition",
-	  offset:  256 * 0x100000,
-	  size:    256 * 0x100000 },
-	{ name: "NAND VFAT partition",
-	  offset:  512 * 0x100000,
-	  size:    512 * 0x100000 },
-};
 
 
-/* Define max reserved bad blocks for each partition.
- * This is used by the mtdblock-jz.c NAND FTL driver only.
- *
- * The NAND FTL driver reserves some good blocks which can't be
- * seen by the upper layer. When the bad block number of a partition
- * exceeds the max reserved blocks, then there is no more reserved
- * good blocks to be used by the NAND FTL driver when another bad
- * block generated.
- */
-static int partition_reserved_badblocks[] = {
-					     2,		/* reserved blocks of mtd0 */
-					     2,		/* reserved blocks of mtd1 */
-					     10,	/* reserved blocks of mtd2 */
-					     10,	/* reserved blocks of mtd3 */
-					     20,	/* reserved blocks of mtd4 */
-					     20};	/* reserved blocks of mtd5 */
-#endif /* CONFIG_JZ4740_N516 */
-
-#ifdef CONFIG_JZ4740_PAVO
-static struct mtd_partition partition_info[] = {
-	{ name: "NAND BOOT partition",
-	  offset:  0 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND KERNEL partition",
-	  offset:  4 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND ROOTFS partition",
-	  offset:  8 * 0x100000,
-	  size:    120 * 0x100000 },
-	{ name: "NAND DATA1 partition",
-	  offset:  128 * 0x100000,
-	  size:    128 * 0x100000 },
-	{ name: "NAND DATA2 partition",
-	  offset:  256 * 0x100000,
-	  size:    256 * 0x100000 },
-	{ name: "NAND VFAT partition",
-	  offset:  512 * 0x100000,
-	  size:    512 * 0x100000 },
-};
-
-
-/* Define max reserved bad blocks for each partition.
- * This is used by the mtdblock-jz.c NAND FTL driver only.
- *
- * The NAND FTL driver reserves some good blocks which can't be
- * seen by the upper layer. When the bad block number of a partition
- * exceeds the max reserved blocks, then there is no more reserved
- * good blocks to be used by the NAND FTL driver when another bad
- * block generated.
- */
-static int partition_reserved_badblocks[] = {
-					     2,		/* reserved blocks of mtd0 */
-					     2,		/* reserved blocks of mtd1 */
-					     10,	/* reserved blocks of mtd2 */
-					     10,	/* reserved blocks of mtd3 */
-					     20,	/* reserved blocks of mtd4 */
-					     20};	/* reserved blocks of mtd5 */
-#endif /* CONFIG_JZ4740_PAVO */
-
-#ifdef CONFIG_JZ4740_LEO
-static struct mtd_partition partition_info[] = {
-	{ name: "NAND BOOT partition",
-	  offset:  0 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND KERNEL partition",
-	  offset:  4 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND ROOTFS partition",
-	  offset:  8 * 0x100000,
-	  size:    56 * 0x100000 },
-	{ name: "NAND VFAT partition",
-	  offset:  64 * 0x100000,
-	  size:    64 * 0x100000 },
-};
-static int partition_reserved_badblocks[] = {
-					     2,		/* reserved blocks of mtd0 */
-					     2,		/* reserved blocks of mtd1 */
-					     10,	/* reserved blocks of mtd2 */
-					     10};	/* reserved blocks of mtd3 */
-#endif /* CONFIG_JZ4740_LEO */
-
-#ifdef CONFIG_JZ4740_LYRA
-static struct mtd_partition partition_info[] = {
-	{ name: "NAND BOOT partition",
-	  offset:  0 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND KERNEL partition",
-	  offset:  4 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND ROOTFS partition",
-	  offset:  8 * 0x100000,
-	  size:    120 * 0x100000 },
-	{ name: "NAND DATA1 partition",
-	  offset:  128 * 0x100000,
-	  size:    128 * 0x100000 },
-	{ name: "NAND DATA2 partition",
-	  offset:  256 * 0x100000,
-	  size:    256 * 0x100000 },
-	{ name: "NAND VFAT partition",
-	  offset:  512 * 0x100000,
-	  size:    512 * 0x100000 },
-};
-
-/* Define max reserved bad blocks for each partition.
- * This is used by the mtdblock-jz.c NAND FTL driver only.
- *
- * The NAND FTL driver reserves some good blocks which can't be
- * seen by the upper layer. When the bad block number of a partition
- * exceeds the max reserved blocks, then there is no more reserved
- * good blocks to be used by the NAND FTL driver when another bad
- * block generated.
- */
-static int partition_reserved_badblocks[] = {
-					     2,		/* reserved blocks of mtd0 */
-					     2,		/* reserved blocks of mtd1 */
-					     10,	/* reserved blocks of mtd2 */
-					     10,	/* reserved blocks of mtd3 */
-					     20,	/* reserved blocks of mtd4 */
-					     20};	/* reserved blocks of mtd5 */
-#endif /* CONFIG_JZ4740_LYRA */
-
-#ifdef CONFIG_JZ4725_DIPPER
-static struct mtd_partition partition_info[] = {
-	{ name: "NAND BOOT partition",
-	  offset:  0 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND KERNEL partition",
-	  offset:  4 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND ROOTFS partition",
-	  offset:  8 * 0x100000,
-	  size:    56 * 0x100000 },
-	{ name: "NAND VFAT partition",
-	  offset:  64 * 0x100000,
-	  size:    64 * 0x100000 },
-};
-
-/* Define max reserved bad blocks for each partition.
- * This is used by the mtdblock-jz.c NAND FTL driver only.
- *
- * The NAND FTL driver reserves some good blocks which can't be
- * seen by the upper layer. When the bad block number of a partition
- * exceeds the max reserved blocks, then there is no more reserved
- * good blocks to be used by the NAND FTL driver when another bad
- * block generated.
- */
-static int partition_reserved_badblocks[] = {
-					     2,		/* reserved blocks of mtd0 */
-					     2,		/* reserved blocks of mtd1 */
-					     10,	/* reserved blocks of mtd2 */
-					     10};	/* reserved blocks of mtd3 */
-#endif /* CONFIG_JZ4740_DIPPER */
-
-#ifdef CONFIG_JZ4720_VIRGO
-static struct mtd_partition partition_info[] = {
-	{ name: "NAND BOOT partition",
-	  offset:  0 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND KERNEL partition",
-	  offset:  4 * 0x100000,
-	  size:    4 * 0x100000 },
-	{ name: "NAND ROOTFS partition",
-	  offset:  8 * 0x100000,
-	  size:    120 * 0x100000 },
-	{ name: "NAND DATA1 partition",
-	  offset:  128 * 0x100000,
-	  size:    128 * 0x100000 },
-	{ name: "NAND DATA2 partition",
-	  offset:  256 * 0x100000,
-	  size:    256 * 0x100000 },
-	{ name: "NAND VFAT partition",
-	  offset:  512 * 0x100000,
-	  size:    512 * 0x100000 },
-};
-
-
-/* Define max reserved bad blocks for each partition.
- * This is used by the mtdblock-jz.c NAND FTL driver only.
- *
- * The NAND FTL driver reserves some good blocks which can't be
- * seen by the upper layer. When the bad block number of a partition
- * exceeds the max reserved blocks, then there is no more reserved
- * good blocks to be used by the NAND FTL driver when another bad
- * block generated.
- */
-static int partition_reserved_badblocks[] = {
-					     2,		/* reserved blocks of mtd0 */
-					     2,		/* reserved blocks of mtd1 */
-					     10,	/* reserved blocks of mtd2 */
-					     10,	/* reserved blocks of mtd3 */
-					     20,	/* reserved blocks of mtd4 */
-					     20};	/* reserved blocks of mtd5 */
-#endif /* CONFIG_JZ4720_VIRGO */
-/*-------------------------------------------------------------------------
- * Following three functions are exported and used by the mtdblock-jz.c
- * NAND FTL driver only.
- */
-
-unsigned short get_mtdblock_write_verify_enable(void)
-{
-#ifdef CONFIG_MTD_MTDBLOCK_WRITE_VERIFY_ENABLE
-	return 1;
-#endif
-	return 0;
-}
-EXPORT_SYMBOL(get_mtdblock_write_verify_enable);
-
-unsigned short get_mtdblock_oob_copies(void)
-{
-	return CONFIG_MTD_OOB_COPIES;
-}
-EXPORT_SYMBOL(get_mtdblock_oob_copies);
-
-int *get_jz_badblock_table(void)
-{
-	return partition_reserved_badblocks;
-}
-EXPORT_SYMBOL(get_jz_badblock_table);
-
-/*-------------------------------------------------------------------------*/
-
-static void jz_hwcontrol(struct mtd_info *mtd, int dat, 
+static void jz_hwcontrol(struct mtd_info *mtd, int dat,
 			 unsigned int ctrl)
 {
 	struct nand_chip *this = (struct nand_chip *)(mtd->priv);
@@ -345,28 +97,28 @@ static void jz_device_setup(void)
 
 #ifdef CONFIG_MTD_HW_HM_ECC
 
-static int jzsoc_nand_calculate_hm_ecc(struct mtd_info* mtd, 
+static int jzsoc_nand_calculate_hm_ecc(struct mtd_info* mtd,
 				       const u_char* dat, u_char* ecc_code)
 {
 	unsigned int calc_ecc;
 	unsigned char *tmp;
-	
+
 	__nand_ecc_disable();
 
 	calc_ecc = ~(__nand_read_hm_ecc()) | 0x00030000;
-	
+
 	tmp = (unsigned char *)&calc_ecc;
-	//adjust eccbytes order for compatible with software ecc	
+	//adjust eccbytes order for compatible with software ecc
 	ecc_code[0] = tmp[1];
 	ecc_code[1] = tmp[0];
 	ecc_code[2] = tmp[2];
-	
+
 	return 0;
 }
 
 static void jzsoc_nand_enable_hm_hwecc(struct mtd_info* mtd, int mode)
 {
- 	__nand_ecc_enable();
+	__nand_ecc_enable();
 	__nand_select_hm_ecc();
 }
 
@@ -374,8 +126,8 @@ static int jzsoc_nand_hm_correct_data(struct mtd_info *mtd, u_char *dat,
 				     u_char *read_ecc, u_char *calc_ecc)
 {
 	u_char a, b, c, d1, d2, d3, add, bit, i;
-		
-	/* Do error detection */ 
+
+	/* Do error detection */
 	d1 = calc_ecc[0] ^ read_ecc[0];
 	d2 = calc_ecc[1] ^ read_ecc[1];
 	d3 = calc_ecc[2] ^ read_ecc[2];
@@ -388,7 +140,7 @@ static int jzsoc_nand_hm_correct_data(struct mtd_info *mtd, u_char *dat,
 		a = (d1 ^ (d1 >> 1)) & 0x55;
 		b = (d2 ^ (d2 >> 1)) & 0x55;
 		c = (d3 ^ (d3 >> 1)) & 0x54;
-		
+
 		/* Found and will correct single bit error in the data */
 		if ((a == 0x55) && (b == 0x55) && (c == 0x54)) {
 			c = 0x80;
@@ -453,7 +205,7 @@ static int jzsoc_nand_hm_correct_data(struct mtd_info *mtd, u_char *dat,
 			}
 		}
 	}
-	
+
 	/* Should never happen */
 	return -1;
 }
@@ -465,7 +217,7 @@ static int jzsoc_nand_hm_correct_data(struct mtd_info *mtd, u_char *dat,
 static void jzsoc_nand_enable_rs_hwecc(struct mtd_info* mtd, int mode)
 {
 	REG_EMC_NFINTS = 0x0;
- 	__nand_ecc_enable();
+	__nand_ecc_enable();
 	__nand_select_rs_ecc();
 
 	if (mode == NAND_ECC_READ)
@@ -473,7 +225,7 @@ static void jzsoc_nand_enable_rs_hwecc(struct mtd_info* mtd, int mode)
 
 	if (mode == NAND_ECC_WRITE)
 		__nand_rs_ecc_encoding();
-}		
+}
 
 static void jzsoc_rs_correct(unsigned char *dat, int idx, int mask)
 {
@@ -540,7 +292,7 @@ static int jzsoc_nand_rs_correct_data(struct mtd_info *mtd, u_char *dat,
 				return 0;
 			default:
 				break;
-	   		}
+			}
 		}
 	}
 
@@ -553,11 +305,11 @@ static int jzsoc_nand_calculate_rs_ecc(struct mtd_info* mtd, const u_char* dat,
 	volatile u8 *paraddr = (volatile u8 *)EMC_NFPAR0;
 	short i;
 
-	__nand_ecc_encode_sync(); 
+	__nand_ecc_encode_sync();
 	__nand_ecc_disable();
 
 	for(i = 0; i < PAR_SIZE; i++) {
-		ecc_code[i] = *paraddr++;			
+		ecc_code[i] = *paraddr++;
 	}
 
 	return 0;
@@ -568,28 +320,29 @@ static int jzsoc_nand_calculate_rs_ecc(struct mtd_info* mtd, const u_char* dat,
 /*
  * Main initialization routine
  */
-int __init jznand_init(void)
+static int __devinit jz4740_nand_probe(struct platform_device *pdev)
 {
 	struct nand_chip *this;
-	int nr_partitions;
+	struct mtd_info *jz_mtd;
+	struct jz4740_pdata *pdata = pdev->dev.platform_data;
+
 
 	/* Allocate memory for MTD device structure and private data */
-	jz_mtd = kmalloc (sizeof(struct mtd_info) + sizeof (struct nand_chip),
+	jz_mtd = kzalloc (sizeof(struct mtd_info) + sizeof (struct nand_chip),
 				GFP_KERNEL);
 	if (!jz_mtd) {
 		printk ("Unable to allocate JzSOC NAND MTD device structure.\n");
 		return -ENOMEM;
 	}
 
+	platform_set_drvdata(pdev, jz_mtd);
+
 	/* Get pointer to private data */
 	this = (struct nand_chip *) (&jz_mtd[1]);
 
-	/* Initialize structures */
-	memset((char *) jz_mtd, 0, sizeof(struct mtd_info));
-	memset((char *) this, 0, sizeof(struct nand_chip));
-
 	/* Link the private data with the MTD structure */
 	jz_mtd->priv = this;
+	jz_mtd->owner = THIS_MODULE;
 
 	/* Set & initialize NAND Flash controller */
 	jz_device_setup();
@@ -619,7 +372,7 @@ int __init jznand_init(void)
 	this->ecc.bytes     = 9;
 #endif
 
-#ifdef  CONFIG_MTD_SW_HM_ECC	
+#ifdef  CONFIG_MTD_SW_HM_ECC
 	this->ecc.mode      = NAND_ECC_SOFT;
 #endif
         /* 20 us command delay time */
@@ -631,33 +384,66 @@ int __init jznand_init(void)
 		return -ENXIO;
 	}
 
-	/* Register the partitions */
-	nr_partitions = sizeof(partition_info) / sizeof(struct mtd_partition);
-	add_mtd_partitions(jz_mtd, partition_info, nr_partitions);
+	add_mtd_partitions(jz_mtd, pdata->partitions, pdata->nr_partitions);
 
 	return 0;
 }
-module_init(jznand_init);
 
 /*
  * Clean up routine
  */
-#ifdef MODULE
-static void __exit jznand_cleanup(void)
+static int __devexit jz4740_nand_remove(struct platform_device *pdev)
 {
-	struct nand_chip *this = (struct nand_chip *) &jz_mtd[1];
+	struct mtd_info *jz_mtd = platform_get_drvdata(pdev);
 
-	/* Unregister partitions */
-	del_mtd_partitions(jz_mtd);
-	
-	/* Unregister the device */
-	del_mtd_device (jz_mtd);
+	nand_release(jz_mtd);
 
-	/* Free internal data buffers */
-	kfree (this->data_buf);
+	platform_set_drvdata(pdev, NULL);
 
 	/* Free the MTD device structure */
 	kfree (jz_mtd);
+
+	return 0;
 }
-module_exit(jznand_cleanup);
+
+#ifdef CONFIG_PM
+static int jz4740_nand_suspend(struct platform_device *dev, pm_message_t pm)
+{
+	return 0;
+}
+
+static int jz4740_nand_resume(struct platform_device *dev)
+{
+	return 0;
+}
+#else
+#define jz4740_nand_suspend NULL
+#define jz4740_nand_resume NULL
 #endif
+
+static struct platform_driver jz4740_nand_driver = {
+	.probe		= jz4740_nand_probe,
+	.remove		= __devexit_p(jz4740_nand_remove),
+	.suspend	= jz4740_nand_suspend,
+	.resume		= jz4740_nand_resume,
+	.driver		= {
+		.name	= "jz4740-nand",
+		.owner	= THIS_MODULE,
+	},
+};
+
+
+static int __init jz4740_nand_init(void)
+{
+	return platform_driver_register(&jz4740_nand_driver);
+}
+
+static void __exit jz4740_nand_exit(void)
+{
+	platform_driver_unregister(&jz4740_nand_driver);
+}
+
+module_init(jz4740_nand_init);
+module_exit(jz4740_nand_exit);
+MODULE_AUTHOR("Yauhen Kharuzhy <jekhor@gmail.com>");
+MODULE_LICENSE("GPL");
