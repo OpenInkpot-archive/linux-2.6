@@ -24,18 +24,20 @@
 
 #define IRQ_LPC_INT	(IRQ_GPIO_0 + GPIO_LPC_INT)
 
-struct n516_keys_chip {
+struct n516_lpc_chip {
 	struct i2c_client	*i2c_client;
 	struct work_struct	work;
 	struct input_dev	*input; 
 };
 
-struct i2c_device_id n516_keys_i2c_ids[] = {
+static struct n516_lpc_chip *the_lpc;
+
+struct i2c_device_id n516_lpc_i2c_ids[] = {
 	{"LPC524", 0},
 	{},
 };
 
-MODULE_DEVICE_TABLE(i2c, n516_keys_i2c_ids);
+MODULE_DEVICE_TABLE(i2c, n516_lpc_i2c_ids);
 
 static const unsigned short normal_i2c[] = {0x54, I2C_CLIENT_END};
 
@@ -56,57 +58,54 @@ static const unsigned int keymap[][2] = {
 	{0x16, KEY_RIGHT},
 	{0x14, KEY_UP},
 	{0x15, KEY_DOWN},
-	{0x11, KEY_ENTER},
-	{0x0e, KEY_FIND},
-	{0x10, KEY_MENU},
-//	{0x0f, KEY_},
+	{0x13, KEY_ENTER},
+	{0x11, KEY_FIND},
+	{0x0e, KEY_MENU},
+	{0x10, KEY_DIRECTION},
+	{0x0f, KEY_ZOOM},
 	{0x0d, KEY_PLAYPAUSE},
 	{0x1d, KEY_ESC},
 	{0x1c, KEY_POWER},
-//	{0x1e, KEY_PAGEDOWN},
-//	{0x1f, KEY_PAGEDOWN},
+	{0x1e, KEY_SLEEP},
+	{0x1f, KEY_WAKEUP},
 };
 
 /* Insmod parameters */
-I2C_CLIENT_INSMOD_1(n516_keys);
+I2C_CLIENT_INSMOD_1(n516_lpc);
 
 
-static void n516_keys_read_keys(struct work_struct *work)
+static void n516_lpc_read_keys(struct work_struct *work)
 {
-	struct n516_keys_chip *chip = container_of(work, struct n516_keys_chip, work);
+	struct n516_lpc_chip *chip = container_of(work, struct n516_lpc_chip, work);
 	unsigned char raw_msg;
 	struct i2c_client *client = chip->i2c_client;
 	struct i2c_msg msg = {client->addr, client->flags | I2C_M_RD, 1, &raw_msg}; 
 	int ret, i;
 
-
-//	while (__gpio_get_pin(GPIO_LPC_INT)
-
 	__gpio_as_input(GPIO_LPC_INT);
-	do {
-		ret = i2c_transfer(client->adapter, &msg, 1);
-		if (ret != 1) {
-			dev_dbg(&client->dev, "I2C error\n");
-		} else {
-			dev_dbg(&client->dev, "msg: 0x%02x\n", raw_msg);
-			for (i = 0; i < ARRAY_SIZE(keymap); i++)
-				if (raw_msg == keymap[i][0]) {
-					input_report_key(chip->input, keymap[i][1], 1);
-					input_sync(chip->input);
-					input_report_key(chip->input, keymap[i][1], 0);
-					input_sync(chip->input);
-				}
-		}
-
-	} while (raw_msg);
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret != 1) {
+		dev_dbg(&client->dev, "I2C error\n");
+	} else {
+		dev_dbg(&client->dev, "msg: 0x%02x\n", raw_msg);
+		for (i = 0; i < ARRAY_SIZE(keymap); i++)
+			if (raw_msg == keymap[i][0]) {
+				input_report_key(chip->input, keymap[i][1], 1);
+				input_sync(chip->input);
+				input_report_key(chip->input, keymap[i][1], 0);
+				input_sync(chip->input);
+			}
+	}
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
 }
 
-static irqreturn_t n516_keys_irq(int irq, void *dev_id)
+static irqreturn_t n516_lpc_irq(int irq, void *dev_id)
 {
-	struct n516_keys_chip *chip = dev_id;
+	struct n516_lpc_chip *chip = dev_id;
+	struct device *dev = &chip->i2c_client->dev;
 
-	printk("keys IRQ!\n");
+	if (dev->power.status != DPM_ON)
+		return IRQ_HANDLED;
 
 	if (!work_pending(&chip->work))
 		schedule_work(&chip->work);
@@ -114,14 +113,36 @@ static irqreturn_t n516_keys_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int n516_keys_detect(struct i2c_client *client, int kind, struct i2c_board_info *info)
+static int n516_lpc_set_normal_mode(struct n516_lpc_chip *chip)
+{
+	struct i2c_client *client = chip->i2c_client;
+	unsigned char val = 0x02;
+	struct i2c_msg msg = {client->addr, client->flags, 1, &val};
+	int ret = 0;
+
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	return ret > 0 ? 0 : ret;
+}
+
+static void n516_lpc_power_off(void)
+{
+	struct i2c_client *client = the_lpc->i2c_client;
+	unsigned char val = 0x01;
+	struct i2c_msg msg = {client->addr, client->flags, 1, &val};
+
+	printk("Issue LPC POWEROFF command...\n");
+	while (1)
+		i2c_transfer(client->adapter, &msg, 1);
+}
+
+static int n516_lpc_detect(struct i2c_client *client, int kind, struct i2c_board_info *info)
 {
 	return 0;
 }
 
-static int n516_keys_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct n516_keys_chip *chip;
+	struct n516_lpc_chip *chip;
 	struct input_dev *input;
 	int ret = 0;
 	int i;
@@ -132,8 +153,12 @@ static int n516_keys_probe(struct i2c_client *client, const struct i2c_device_id
 	if (!chip)
 		return -ENOMEM;
 
+	the_lpc = chip;
 	chip->i2c_client = client;
-	INIT_WORK(&chip->work, n516_keys_read_keys);
+	INIT_WORK(&chip->work, n516_lpc_read_keys);
+	i2c_set_clientdata(client, chip);
+
+	n516_lpc_set_normal_mode(chip);
 
 	input = input_allocate_device();
 	if (!input) {
@@ -163,17 +188,14 @@ static int n516_keys_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_input_register;
 	}
 
-	i2c_set_clientdata(client, chip);
-
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
-	ret = request_irq(IRQ_LPC_INT, n516_keys_irq, 0, "lpc", chip);
+	ret = request_irq(IRQ_LPC_INT, n516_lpc_irq, 0, "lpc", chip);
 	if (ret) {
 		dev_err(&client->dev, "request_irq failed: %d\n", ret);
 		goto err_request_irq;
 	}
 
-
-	printk("LPC INT = %d\n", __gpio_get_pin(GPIO_LPC_INT));
+	pm_power_off = n516_lpc_power_off;
 
 	return 0;
 
@@ -189,10 +211,11 @@ err_input_alloc:
 	return ret;
 }
 
-static int n516_keys_remove(struct i2c_client *client)
+static int n516_lpc_remove(struct i2c_client *client)
 {
-	struct n516_keys_chip *chip = i2c_get_clientdata(client);
+	struct n516_lpc_chip *chip = i2c_get_clientdata(client);
 
+	pm_power_off = NULL;
 	__gpio_as_input(GPIO_LPC_INT);
 	flush_scheduled_work();
 	free_irq(IRQ_LPC_INT, chip);
@@ -202,36 +225,55 @@ static int n516_keys_remove(struct i2c_client *client)
 	return 0;
 }
 
+#if CONFIG_PM
+static int n516_lpc_suspend(struct i2c_client *client, pm_message_t msg)
+{
+	disable_irq(IRQ_LPC_INT);
+	return 0;
+}
 
-static struct i2c_driver n516_keys_driver = {
+static int n516_lpc_resume(struct i2c_client *client)
+{
+	enable_irq(IRQ_LPC_INT);
+	return 0;
+}
+#else
+#define n516_lpc_suspend NULL
+#define n516_lpc_resume NULL
+#endif
+
+
+static struct i2c_driver n516_lpc_driver = {
 	.class		= I2C_CLASS_HWMON,
 	.driver		= {
 		.name	= "n516-keys",
 		.owner	= THIS_MODULE,
 	},
-	.probe		= n516_keys_probe,
-	.remove		= __devexit_p(n516_keys_remove),
-	.detect		= n516_keys_detect,
-	.id_table	= n516_keys_i2c_ids,
+	.probe		= n516_lpc_probe,
+	.remove		= __devexit_p(n516_lpc_remove),
+	.detect		= n516_lpc_detect,
+	.id_table	= n516_lpc_i2c_ids,
 	.address_data	= &addr_data,
+	.suspend	= n516_lpc_suspend,
+	.resume		= n516_lpc_resume,
 };
 
-static int n516_keys_init(void)
+static int n516_lpc_init(void)
 {
-	return i2c_add_driver(&n516_keys_driver);
+	return i2c_add_driver(&n516_lpc_driver);
 }
 
-static void n516_keys_exit(void)
+static void n516_lpc_exit(void)
 {
-	i2c_del_driver(&n516_keys_driver);
+	i2c_del_driver(&n516_lpc_driver);
 }
 
 
-module_init(n516_keys_init);
-module_exit(n516_keys_exit);
+module_init(n516_lpc_init);
+module_exit(n516_lpc_exit);
 
 MODULE_AUTHOR("Yauhen Kharuzhy");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Keys controller driver for N516");
+MODULE_DESCRIPTION("Keys and power controller driver for N516");
 MODULE_ALIAS("platform:n516-keys");
 
