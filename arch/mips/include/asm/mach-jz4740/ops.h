@@ -1458,6 +1458,9 @@ do { 									\
 #define __i2c_enable()		( REG_I2C_CR |= I2C_CR_I2CE )
 #define __i2c_disable()		( REG_I2C_CR &= ~I2C_CR_I2CE )
 
+#define __i2c_enable_irq()	( REG_I2C_CR |= I2C_CR_IEN )
+#define __i2c_disable_irq()	( REG_I2C_CR &= ~I2C_CR_IEN )
+
 #define __i2c_send_start()	( REG_I2C_CR |= I2C_CR_STA )
 #define __i2c_send_stop()	( REG_I2C_CR |= I2C_CR_STO )
 #define __i2c_send_ack()	( REG_I2C_CR &= ~I2C_CR_AC )
