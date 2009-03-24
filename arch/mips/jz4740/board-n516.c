@@ -28,6 +28,7 @@
 #include <asm/jzsoc.h>
 #include <asm/mach-jz4740/gpio-pins.h>
 #include <asm/jz47xx-leds.h>
+#include <asm/mach-jz4740/jz4740-nand.h>
 
 /*
 extern void (*jz_timer_callback)(void);
@@ -143,13 +144,36 @@ static struct platform_device n516_led = {
 	},
 };
 
+struct mtd_partition n516_nand_parts[] = {
+	{
+		.name	= "ALL",
+		.size	= MTDPART_SIZ_FULL,
+		.offset	= 0,
+	},
+};
+
+
+static struct jz4740_pdata n516_nand_pdata = {
+	.partitions	= n516_nand_parts,
+	.nr_partitions	= ARRAY_SIZE(n516_nand_parts),
+};
+
+static struct platform_device n516_nand_dev = {
+	.name		= "jz4740-nand",
+	.id		= -1,
+	.dev		= {
+		.platform_data = &n516_nand_pdata,
+	},
+};
+
 static int n516_setup_platform(void)
 {
 	i2c_register_board_info(0, &n516_keys_board_info, 1);
 	i2c_register_board_info(0, &n516_lm75a_board_info, 1);
 
 	platform_device_register(&n516_led);
+	platform_device_register(&n516_nand_dev);
+
 	return 0;
 }
-
 arch_initcall(n516_setup_platform);
