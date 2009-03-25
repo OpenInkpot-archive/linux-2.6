@@ -172,7 +172,7 @@ static int jzsoc_nand_hm_correct_data(struct mtd_info *mtd, u_char *dat,
 			a = dat[add];
 			a ^= (b << bit);
 			dat[add] = a;
-			return 0;
+			return 1;
 		}
 		else {
 			i = 0;
@@ -196,7 +196,7 @@ static int jzsoc_nand_hm_correct_data(struct mtd_info *mtd, u_char *dat,
 				read_ecc[0] = calc_ecc[0];
 				read_ecc[1] = calc_ecc[1];
 				read_ecc[2] = calc_ecc[2];
-				return 0;
+				return 1;
 			}
 			else {
 				/* Uncorrectable Error */
