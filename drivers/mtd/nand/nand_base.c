@@ -72,20 +72,6 @@ static struct nand_ecclayout nand_oob_16 = {
 };
 
 static struct nand_ecclayout nand_oob_64 = {
-#if defined(CONFIG_MTD_HW_RS_ECC) || defined(CONFIG_MTD_HW_BCH_ECC)
-/* Reed-Solomon ECC or BCH ECC */
-	.eccbytes = 36,
-	.eccpos = {
-		28, 29, 30, 31,
-		32, 33, 34, 35, 36, 37, 38, 39, 
-		40, 41, 42, 43, 44, 45, 46, 47, 
-		48, 49, 50, 51, 52, 53, 54, 55, 
-		56, 57, 58, 59, 60, 61, 62, 63},
-	.oobfree = {
-		{.offset = 2,
-		 . length = 26}}
-#else
-/* HW&SW Hamming ECC */
 	.eccbytes = 24,
 	.eccpos = {
 		   40, 41, 42, 43, 44, 45, 46, 47,
@@ -94,79 +80,6 @@ static struct nand_ecclayout nand_oob_64 = {
 	.oobfree = {
 		{.offset = 2,
 		 .length = 38}}
-#endif
-};
-
-static struct nand_ecclayout nand_oob_128 = {
-#if defined(CONFIG_MTD_HW_RS_ECC)
-/* Reed-Solomon ECC */
-	.eccbytes = 72,
-	.eccpos = {
-		56, 57, 58, 59, 60, 61, 62, 63,
-		64, 65, 66, 67, 68, 69, 70, 71,
-		72, 73, 74, 75, 76, 77, 78, 79,
-		80, 81, 82, 83, 84, 85, 86, 87,
-		88, 89, 90, 91, 92, 93, 94, 95,
-		96, 97, 98, 99, 100, 101, 102, 103,
-		104, 105, 106, 107, 108, 109, 110, 111,
-		112, 113, 114, 115, 116, 117, 118, 119,
-		120, 121, 122, 123, 124, 125, 126, 127},
-	.oobfree = {
-		{.offset = 2,
-		 . length = 54}}
-
-#elif defined(CONFIG_MTD_HW_BCH_ECC)
-#if !defined(CONFIG_MTD_HW_BCH_8BIT)
-/* 4-bit BCH ECC */
-	.eccbytes = 56,
-	.eccpos = {
-		72, 73, 74, 75, 76, 77, 78, 79,
-		80, 81, 82, 83, 84, 85, 86, 87,
-		88, 89, 90, 91, 92, 93, 94, 95,
-		96, 97, 98, 99, 100, 101, 102, 103,
-		104, 105, 106, 107, 108, 109, 110, 111,
-		112, 113, 114, 115, 116, 117, 118, 119,
-		120, 121, 122, 123, 124, 125, 126, 127},
-	.oobfree = {
-		{.offset = 2,
-		 . length = 70}}
-
-#else
-/* 8-bit BCH ECC */
-	.eccbytes = 104,
-	.eccpos = {
-		 24, 25, 26, 27, 28, 29, 30, 31,
-		 32, 33, 34, 35, 36, 37, 38, 39, 
-		 40, 41, 42, 43, 44, 45, 46, 47, 
-		 48, 49, 50, 51, 52, 53, 54, 55, 
-		 56, 57, 58, 59, 60, 61, 62, 63,
-		 64, 65, 66, 67, 68, 69, 70, 71,
-		 72, 73, 74, 75, 76, 77, 78, 79,
-		 80, 81, 82, 83, 84, 85, 86, 87,
-		 88, 89, 90, 91, 92, 93, 94, 95,
-		 96, 97, 98, 99, 100, 101, 102, 103
-		 104, 105, 106, 107, 108, 109, 110, 111,
-		 112, 113, 114, 115, 116, 117, 118, 119,
-		 120, 121, 122, 123, 124, 125, 126, 127},
-	.oobfree = {
-		 {.offset = 2,
-		  . length = 22}}
-
-#endif
-#else
-/* HW&SW Hamming ECC */
-	.eccbytes = 48,
-	.eccpos = {
-		 80, 81, 82, 83, 84, 85, 86, 87,
-		 88, 89, 90, 91, 92, 93, 94, 95,
-		 96, 97, 98, 99, 100, 101, 102, 103,
-		 104, 105, 106, 107, 108, 109, 110, 111,
-		 112, 113, 114, 115, 116, 117, 118, 119,
-		 120, 121, 122, 123, 124, 125, 126, 127},
-	.oobfree = {
-		{.offset = 2,
-		 .length = 78}}
-#endif
 };
 
 static int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
@@ -256,7 +169,6 @@ static void nand_select_chip(struct mtd_info *mtd, int chipnr)
 		chip->cmd_ctrl(mtd, NAND_CMD_NONE, 0 | NAND_CTRL_CHANGE);
 		break;
 	case 0:
-		chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE | NAND_CTRL_CHANGE);
 		break;
 
 	default:
@@ -392,7 +304,7 @@ static int nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 	struct nand_chip *chip = mtd->priv;
 	u16 bad;
 
-	page = ((int)(ofs >> chip->page_shift) + CONFIG_MTD_BADBLOCK_FLAG_PAGE) & chip->pagemask;
+	page = (int)(ofs >> chip->page_shift) & chip->pagemask;
 
 	if (getchip) {
 		chipnr = (int)(ofs >> chip->chip_shift);
@@ -451,7 +363,6 @@ static int nand_default_block_markbad(struct mtd_info *mtd, loff_t ofs)
 		 */
 		nand_get_device(chip, mtd, FL_WRITING);
 		ofs += mtd->oobsize;
-		ofs += (CONFIG_MTD_BADBLOCK_FLAG_PAGE << chip->page_shift);
 		chip->ops.len = chip->ops.ooblen = 2;
 		chip->ops.datbuf = NULL;
 		chip->ops.oobbuf = buf;
@@ -886,7 +797,6 @@ static int nand_read_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
 	return 0;
 }
 
-#ifndef CONFIG_MTD_HW_RS_ECC /* HW&SW Hamming ECC */
 /**
  * nand_read_subpage - [REPLACABLE] software ecc based sub-page read function
  * @mtd:	mtd info structure
@@ -1011,63 +921,6 @@ static int nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 	}
 	return 0;
 }
-
-#else /* CONFIG_MTD_HW_RS_ECC */
-
-/**
- * nand_read_page_hwecc_rs - [REPLACABLE] hardware rs ecc based page read function
- * @mtd:	mtd info structure
- * @chip:	nand chip info structure
- * @buf:	buffer to store read data
- *
- * Not for syndrome calculating ecc controllers which need a special oob layout
- */
-static int nand_read_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
-				   uint8_t *buf)
-{
-	int i, eccsize = chip->ecc.size;
-	int eccbytes = chip->ecc.bytes;
-	int eccsteps = chip->ecc.steps;
-	uint8_t *p = buf;
-	uint8_t *ecc_calc = chip->buffers->ecccalc;
-	uint8_t *ecc_code = chip->buffers->ecccode;
-	uint32_t *eccpos = chip->ecc.layout->eccpos;
-	uint32_t page;
-	uint8_t flag = 0;
-	
-	page = (buf[3]<<24) + (buf[2]<<16) + (buf[1]<<8) + buf[0];
-
-	chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
-	chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
-	for (i = 0; i < chip->ecc.total; i++) {
-		ecc_code[i] = chip->oob_poi[eccpos[i]];
-		if (ecc_code[i] != 0xff) flag = 1;
-	}
-
-	eccsteps = chip->ecc.steps;
-	p = buf;
-
-	chip->cmdfunc(mtd, NAND_CMD_RNDOUT, 0x00, -1);
-	for (i = 0 ; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
-		int stat;
-		if (flag) {
-			chip->ecc.hwctl(mtd, NAND_ECC_READ);
-			chip->read_buf(mtd, p, eccsize);
-			stat = chip->ecc.correct(mtd, p, &ecc_code[i], &ecc_calc[i]);
-			if (stat < 0)
-				mtd->ecc_stats.failed++;
-			else
-				mtd->ecc_stats.corrected += stat;
-		}
-		else {
-			chip->ecc.hwctl(mtd, NAND_ECC_READ);
-			chip->read_buf(mtd, p, eccsize);
-		}
-	}
-	return 0;
-}
-
-#endif /* CONFIG_MTD_HW_RS_ECC */
 
 /**
  * nand_read_page_syndrome - [REPLACABLE] hardware ecc syndrom based page read
@@ -1214,17 +1067,10 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 		if (realpage != chip->pagebuf || oob) {
 			bufpoi = aligned ? buf : chip->buffers->databuf;
 
-#if defined(CONFIG_MTD_HW_RS_ECC) || defined(CONFIG_MTD_NAND_DMA)
-			bufpoi[0] = (uint8_t)page;
-			bufpoi[1] = (uint8_t)(page >> 8);
-			bufpoi[2] = (uint8_t)(page >> 16);
-			bufpoi[3] = (uint8_t)(page >> 24);
-#else
 			if (likely(sndcmd)) {
 				chip->cmdfunc(mtd, NAND_CMD_READ0, 0x00, page);
 				sndcmd = 0;
 			}
-#endif
 
 			/* Now read the page into the buffer */
 			if (unlikely(ops->mode == MTD_OOB_RAW))
@@ -2704,9 +2550,6 @@ int nand_scan_tail(struct mtd_info *mtd)
 		case 64:
 			chip->ecc.layout = &nand_oob_64;
 			break;
-		case 128:
-			chip->ecc.layout = &nand_oob_128;
-			break;
 		default:
 			printk(KERN_WARNING "No oob scheme defined for "
 			       "oobsize %d\n", mtd->oobsize);
@@ -2730,11 +2573,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 	case NAND_ECC_HW:
 		/* Use standard hwecc read page function ? */
 		if (!chip->ecc.read_page)
-#ifndef CONFIG_MTD_HW_RS_ECC
 			chip->ecc.read_page = nand_read_page_hwecc;
-#else
-			chip->ecc.read_page = nand_read_page_hwecc_rs;
-#endif
 		if (!chip->ecc.write_page)
 			chip->ecc.write_page = nand_write_page_hwecc;
 		if (!chip->ecc.read_oob)
