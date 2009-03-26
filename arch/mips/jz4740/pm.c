@@ -23,7 +23,7 @@
 
 #include <linux/init.h>
 #include <linux/pm.h>
-#include <linux/pm_legacy.h>
+#include <linux/suspend.h>
 #include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/proc_fs.h>   
@@ -40,7 +40,8 @@
 #define dprintk(x...)
 #endif
 
-#define GPIO_WAKEUP 125 /* set SW7(GPIO 125) as WAKEUP key */
+//#define GPIO_WAKEUP 125 /* set SW7(GPIO 125) as WAKEUP key */
+#define GPIO_WAKEUP GPIO_LPC_INT
 
 /* 
  * __gpio_as_sleep set all pins to pull-disable, and set all pins as input
@@ -275,7 +276,7 @@ static int jz_pm_do_sleep(void)
 	 */
 
 	/* enable RTC alarm */
-	__intc_unmask_irq(IRQ_RTC);
+//	__intc_unmask_irq(IRQ_RTC);
 #if 0
         /* make system wake up after n seconds by RTC alarm */
 	unsigned int v, n;
@@ -291,11 +292,11 @@ static int jz_pm_do_sleep(void)
 #endif
 
 	/* WAKEUP key */
-	__gpio_as_irq_rise_edge(GPIO_WAKEUP);
+	__gpio_as_irq_fall_edge(GPIO_WAKEUP);
 	__gpio_unmask_irq(GPIO_WAKEUP);
 	__intc_unmask_irq(IRQ_GPIO3);  /* IRQ_GPIOn depends on GPIO_WAKEUP */
 
- 	/* Enter SLEEP mode */
+	/* Enter SLEEP mode */
 	REG_CPM_LCR &= ~CPM_LCR_LPM_MASK;
 	REG_CPM_LCR |= CPM_LCR_LPM_SLEEP;
 	__asm__(".set\tmips3\n\t"
@@ -312,10 +313,10 @@ static int jz_pm_do_sleep(void)
 	/* Restore interrupts */
 	REG_INTC_IMSR = imr;
 	REG_INTC_IMCR = ~imr;
-	
+
 	/* Restore sadc */
 	REG_SADC_ENA = sadc;
-	
+
 	/* Resume on-board modules */
 	jz_board_do_resume(sleep_gpio_save);
 
@@ -328,19 +329,7 @@ static int jz_pm_do_sleep(void)
 	return 0;
 }
 
-/* Put CPU to HIBERNATE mode */
-int jz_pm_hibernate(void)
-{
-	return jz_pm_do_hibernate();
-}
-
-#ifndef CONFIG_JZ_POWEROFF
-static irqreturn_t pm_irq_handler (int irq, void *dev_id)
-{
-	return IRQ_HANDLED;
-}
-#endif
-
+#if 0
 /* Put CPU to SLEEP mode */
 int jz_pm_sleep(void)
 {
@@ -364,7 +353,7 @@ int jz_pm_sleep(void)
 
 	return retval;
 }
-
+#endif
 #if 0
 /* Deprecated ,was used by dpm */
 void jz_pm_idle(void)
@@ -377,72 +366,16 @@ void jz_pm_idle(void)
 }
 #endif
 
-#ifdef CONFIG_SYSCTL
 
-/*
- * Use a temporary sysctl number. Horrid, but will be cleaned up in 2.6
- * when all the PM interfaces exist nicely.
- */
-#define CTL_PM_SUSPEND   1
-#define CTL_PM_HIBERNATE 2
-
-/*----------------------------------------------------------------------------
- * Power Management sleep sysctl proc interface
- *
- * A write to /proc/sys/pm/suspend invokes this function 
- * which initiates a sleep.
- *--------------------------------------------------------------------------*/
-static int sysctl_jz_pm_sleep(struct ctl_table *ctl, int write, struct file * filp,
-			      void __user *buffer, size_t *lenp, loff_t *ppos)
+static int jz_pm_enter(suspend_state_t state)
 {
-	return jz_pm_sleep();
+	return jz_pm_do_sleep();
 }
 
-/*----------------------------------------------------------------------------
- * Power Management sleep sysctl proc interface
- *
- * A write to /proc/sys/pm/hibernate invokes this function 
- * which initiates a poweroff.
- *--------------------------------------------------------------------------*/
-static int sysctl_jz_pm_hibernate(struct ctl_table *ctl, int write, struct file * filp,
-				  void __user *buffer, size_t *lenp, loff_t *ppos)
-{
-	return jz_pm_hibernate();
-}
-
-static struct ctl_table pm_table[] =
-{
-	{
-		.ctl_name	= CTL_UNNUMBERED,
-		.procname	= "suspend",
-		.data		= NULL,
-		.maxlen		= 0,
-		.mode		= 0600,
-		.proc_handler	= &sysctl_jz_pm_sleep,
-	},
-	{
-		.ctl_name	= CTL_UNNUMBERED,
-		.procname	= "hibernate",
-		.data		= NULL,
-		.maxlen		= 0,
-		.mode		= 0600,
-		.proc_handler	= &sysctl_jz_pm_hibernate,
-	},
-	{ .ctl_name = 0}
+static struct platform_suspend_ops jz_pm_ops = {
+	.enter		= jz_pm_enter,
+	.valid		= suspend_valid_only_mem,
 };
-
-static struct ctl_table pm_dir_table[] =
-{
-	{
-		.ctl_name	= CTL_UNNUMBERED,
-		.procname	= "pm",
-		.mode		= 0555,
-		.child		= pm_table,
-	},
-	{ .ctl_name = 0}
-};
-
-#endif /* CONFIG_SYSCTL */
 
 /*
  * Initialize power interface
@@ -451,9 +384,7 @@ static int __init jz_pm_init(void)
 {
 	printk("Power Management for JZ\n");
 
-#ifdef CONFIG_SYSCTL
-	register_sysctl_table(pm_dir_table);
-#endif
+	suspend_set_ops(&jz_pm_ops);
 
 	return 0;
 }

@@ -21,7 +21,7 @@ obj-$(CONFIG_JZ4720_VIRGO)	+= board-virgo.o
 
 # PM support
 
-obj-$(CONFIG_PM_LEGACY)         +=pm.o
+obj-$(CONFIG_PM)         +=pm.o
 
 # CPU Frequency scaling support
 
