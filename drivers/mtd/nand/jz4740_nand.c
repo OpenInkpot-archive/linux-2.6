@@ -47,6 +47,23 @@
 #define __nand_ecc_decode_sync() while (!(REG_EMC_NFINTS & EMC_NFINTS_DECF))
 
 
+#ifdef CONFIG_MTD_HW_RS_ECC
+/* ECC layout compatible with bootloader */
+
+static struct nand_ecclayout nand_oob_rs64 = {
+	.eccbytes = 36,
+	.eccpos = {
+		6,  7,  8,  9,  10, 11, 12, 13,
+		14, 15, 16, 17, 18, 19, 20, 21,
+		22, 23, 24, 25, 26, 27, 28, 29,
+		30, 31, 32, 33, 34, 35, 36, 37,
+		38, 39, 40, 41},
+	.oobfree = { {2, 4}, {42, 22} }
+};
+
+
+#endif
+
 
 static void jz_hwcontrol(struct mtd_info *mtd, int dat,
 			 unsigned int ctrl)
@@ -91,6 +108,7 @@ static void jz_device_setup(void)
 	/* Set NFE bit */
 	REG_EMC_NFCSR |= EMC_NFCSR_NFE1;
 
+	/* FIXME: Use real timings */
 	/* Read/Write timings */
 	REG_EMC_SMCR1 = 0x09221200;
 }
@@ -289,7 +307,7 @@ static int jzsoc_nand_rs_correct_data(struct mtd_info *mtd, u_char *dat,
 				/* FALL-THROUGH */
 			case 1:
 				jzsoc_rs_correct(dat, (REG_EMC_NFERR0 & EMC_NFERR_INDEX_MASK) >> EMC_NFERR_INDEX_BIT, (REG_EMC_NFERR0 & EMC_NFERR_MASK_MASK) >> EMC_NFERR_MASK_BIT);
-				return 0;
+				return errcnt;
 			default:
 				break;
 			}
@@ -312,6 +330,59 @@ static int jzsoc_nand_calculate_rs_ecc(struct mtd_info* mtd, const u_char* dat,
 		ecc_code[i] = *paraddr++;
 	}
 
+	return 0;
+}
+
+/**
+ * nand_read_page_hwecc_rs - hardware rs ecc based page read function
+ * @mtd:	mtd info structure
+ * @chip:	nand chip info structure
+ * @buf:	buffer to store read data
+ *
+ * Not for syndrome calculating ecc controllers which need a special oob layout
+ */
+static int nand_read_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
+				   uint8_t *buf)
+{
+	int i, eccsize = chip->ecc.size;
+	int eccbytes = chip->ecc.bytes;
+	int eccsteps = chip->ecc.steps;
+	uint8_t *p = buf;
+	uint8_t *ecc_calc = chip->buffers->ecccalc;
+	uint8_t *ecc_code = chip->buffers->ecccode;
+	uint32_t *eccpos = chip->ecc.layout->eccpos;
+	uint32_t page;
+	uint8_t flag = 0;
+
+	page = (buf[3]<<24) + (buf[2]<<16) + (buf[1]<<8) + buf[0];
+
+	chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
+	chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
+	for (i = 0; i < chip->ecc.total; i++) {
+		ecc_code[i] = chip->oob_poi[eccpos[i]];
+		if (ecc_code[i] != 0xff) flag = 1;
+	}
+
+	eccsteps = chip->ecc.steps;
+	p = buf;
+
+	chip->cmdfunc(mtd, NAND_CMD_RNDOUT, 0x00, -1);
+	for (i = 0 ; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
+		int stat;
+		if (flag) {
+			chip->ecc.hwctl(mtd, NAND_ECC_READ);
+			chip->read_buf(mtd, p, eccsize);
+			stat = chip->ecc.correct(mtd, p, &ecc_code[i], &ecc_calc[i]);
+			if (stat < 0)
+				mtd->ecc_stats.failed++;
+			else
+				mtd->ecc_stats.corrected += stat;
+		}
+		else {
+			chip->ecc.hwctl(mtd, NAND_ECC_READ);
+			chip->read_buf(mtd, p, eccsize);
+		}
+	}
 	return 0;
 }
 
@@ -364,12 +435,15 @@ static int __devinit jz4740_nand_probe(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_MTD_HW_RS_ECC
-	this->ecc.calculate = jzsoc_nand_calculate_rs_ecc;
-	this->ecc.correct   = jzsoc_nand_rs_correct_data;
-	this->ecc.hwctl     = jzsoc_nand_enable_rs_hwecc;
-	this->ecc.mode      = NAND_ECC_HW;
-	this->ecc.size      = 512;
-	this->ecc.bytes     = 9;
+	this->ecc.calculate	= jzsoc_nand_calculate_rs_ecc;
+	this->ecc.correct	= jzsoc_nand_rs_correct_data;
+	this->ecc.hwctl		= jzsoc_nand_enable_rs_hwecc;
+	this->ecc.read_page	= nand_read_page_hwecc_rs;
+	/* FIXME: Add suport of various oob sizes */
+	this->ecc.layout	= &nand_oob_rs64;
+	this->ecc.mode		= NAND_ECC_HW;
+	this->ecc.size		= 512;
+	this->ecc.bytes		= 9;
 #endif
 
 #ifdef  CONFIG_MTD_SW_HM_ECC

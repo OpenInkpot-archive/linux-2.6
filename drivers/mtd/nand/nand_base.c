@@ -1067,6 +1067,15 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 		if (realpage != chip->pagebuf || oob) {
 			bufpoi = aligned ? buf : chip->buffers->databuf;
 
+#if defined(CONFIG_MTD_HW_RS_ECC) || defined(CONFIG_MTD_NAND_DMA)
+			bufpoi[0] = (uint8_t)page;
+			bufpoi[1] = (uint8_t)(page >> 8);
+			bufpoi[2] = (uint8_t)(page >> 16);
+			bufpoi[3] = (uint8_t)(page >> 24);
+
+			if (likely(ops->mode != MTD_OOB_RAW))
+				sndcmd = 0;
+#endif
 			if (likely(sndcmd)) {
 				chip->cmdfunc(mtd, NAND_CMD_READ0, 0x00, page);
 				sndcmd = 0;
