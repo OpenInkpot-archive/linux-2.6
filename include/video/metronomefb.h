@@ -34,6 +34,9 @@ struct metronomefb_par {
 	wait_queue_head_t waitq;
 	u8 frame_count;
 	int extra_size;
+	int current_wf_mode;
+	int current_wf_temp;
+	unsigned int manual_refresh_threshold;
 	int dt;
 };
 
