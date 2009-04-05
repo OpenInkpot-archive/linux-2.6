@@ -41,7 +41,7 @@ static struct jzfb_info n516_fbinfo = {
 	.h		= 624,
 	.bpp		= 16,
 	.hsw		= 31,
-	.vsw		= 19,
+	.vsw		= 23,
 	.elw		= 31,
 	.blw		= 5,
 	.efw		= 2,
@@ -201,13 +201,9 @@ static irqreturn_t n516_handle_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int get_rdy()
+static inline int get_rdy(void)
 {
-	int ret;
-	dev_dbg(&n516_device->dev, "ENTER %s\n", __func__);
-	ret = __gpio_get_pin(RDY_GPIO_PIN);
-	dev_dbg(&n516_device->dev, "%s: RDY = %d\n", __func__, ret);
-	return ret;
+	return __gpio_get_pin(RDY_GPIO_PIN);
 }
 
 static int n516_get_err(struct metronomefb_par *par)
@@ -251,12 +247,22 @@ static void n516_set_stdby(struct metronomefb_par *par, int state)
 
 static int n516_wait_event(struct metronomefb_par *par)
 {
+	unsigned long timeout = jiffies + HZ/50;
+
+	while (get_rdy() && time_before(jiffies, timeout))
+		schedule();
+
 	dev_dbg(&n516_device->dev, "ENTER %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
 	return wait_event_timeout(par->waitq, get_rdy(), HZ * 3) ? 0 : -EIO;
 }
 
 static int n516_wait_event_intr(struct metronomefb_par *par)
 {
+	unsigned long timeout = jiffies + HZ/50;
+
+	while (get_rdy() && time_before(jiffies, timeout))
+		schedule();
+
 	dev_dbg(&n516_device->dev, "ENTER %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
 	return wait_event_interruptible_timeout(par->waitq,
 					get_rdy(), HZ * 3) ? 0 : -EIO;
