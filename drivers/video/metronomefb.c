@@ -19,7 +19,7 @@
  *
  */
 
-#define DEBUG
+/* #define DEBUG */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -38,6 +38,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
 #include <linux/irq.h>
+#include <linux/ctype.h>
 
 #include <video/metronomefb.h>
 
@@ -47,10 +48,10 @@
 #define DPY_W 832
 #define DPY_H 622
 
-#define WF_MODE_INIT	0
-#define WF_MODE_GU	1
-#define WF_MODE_MU	2
-#define WF_MODE_GC	3
+#define WF_MODE_INIT	0 /* Initialization */
+#define WF_MODE_MU	1 /* Monochrome update */
+#define WF_MODE_GU	2 /* Grayscale update */
+#define WF_MODE_GC	3 /* Grayscale clearing */
 
 static int user_wfm_size;
 
@@ -214,6 +215,7 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	struct device *dev = &par->pdev->dev;
 	u8 mc, trc;
 
+	dev_dbg(dev, "Loading waveforms, mode %d, temperature %d\n", m, t);
 	if (user_wfm_size)
 		epd_frame_table[par->dt].wfm_size = user_wfm_size;
 /*
@@ -335,6 +337,9 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	}
 	par->frame_count = (mem_idx/64);
 
+	par->current_wf_mode = m;
+	par->current_wf_temp = t;
+
 	return 0;
 }
 
@@ -345,7 +350,7 @@ static int metronome_display_cmd(struct metronomefb_par *par)
 	u16 opcode;
 	static u8 borderval;
 
-	printk(KERN_DEBUG "%s: ENTER", __func__);
+	dev_dbg(&par->pdev->dev, "%s: ENTER\n", __func__);
 	/* setup display command
 	we can't immediately set the opcode since the controller
 	will try parse the command before we've set it all up
@@ -377,7 +382,7 @@ static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 	int i;
 	u16 cs;
 
-	printk(KERN_DEBUG "%s: ENTER", __func__);
+	dev_dbg(&par->pdev->dev, "%s: ENTER\n", __func__);
 	/* setup power up command */
 	par->metromem_cmd->opcode = 0x1234; /* pwr up pseudo cmd */
 	cs = par->metromem_cmd->opcode;
@@ -408,7 +413,7 @@ static int __devinit metronome_config_cmd(struct metronomefb_par *par)
 	we can't immediately set the opcode since the controller
 	will try parse the command before we've set it all up */
 
-	printk(KERN_DEBUG "%s: ENTER", __func__);
+	dev_dbg(&par->pdev->dev, "%s: ENTER\n", __func__);
 	memcpy(par->metromem_cmd->args, epd_frame_table[par->dt].config,
 		sizeof(epd_frame_table[par->dt].config));
 	/* the rest are 0 */
@@ -431,7 +436,7 @@ static int __devinit metronome_init_cmd(struct metronomefb_par *par)
 	will try parse the command before we've set it all up
 	so we just set cs here and set the opcode at the end */
 
-	printk(KERN_DEBUG "%s: ENTER", __func__);
+	dev_dbg(&par->pdev->dev, "%s: ENTER\n", __func__);
 	cs = 0xCC20;
 
 	/* set the args ( 2 bytes ) for init */
@@ -448,10 +453,6 @@ static int __devinit metronome_init_cmd(struct metronomefb_par *par)
 	return par->board->met_wait_event(par);
 }
 
-static void check_error(struct metronomefb_par *par)
-{
-	printk("%s: ERR = %d\n", __func__, par->board->get_err(par));
-}
 
 static int __devinit metronome_init_regs(struct metronomefb_par *par)
 {
@@ -468,70 +469,76 @@ static int __devinit metronome_init_regs(struct metronomefb_par *par)
 		printk(KERN_ERR "metronomefb: POWERUP cmd failed\n");
 		return res;
 	}
-	check_error(par);
 
 	res = metronome_config_cmd(par);
 	if (res) {
 		printk(KERN_ERR "metronomefb: CONFIG cmd failed\n");
 		return res;
 	}
-	check_error(par);
 
 	res = metronome_init_cmd(par);
-	check_error(par);
 
 	return res;
 }
 
-static void metronomefb_dpy_update(struct metronomefb_par *par)
+static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 {
-	int fbsize;
-	u16 cksum;
-	unsigned char *buf = (unsigned char __force *)par->info->screen_base;
+	int fbsize, i;
+	u16 cksum = 0;
+	u32 *buf = (u32 __force *)par->info->screen_base;
+	u32 *img = (u32 *)(par->metromem_img);
+	u32 diff;
+	u32 tmp;
+	unsigned int change_count = 0;
+	int m;
 
 	fbsize = par->info->fix.smem_len;
-	/* copy from vm to metromem */
-	memcpy(par->metromem_img, buf, fbsize);
 
-	cksum = calc_img_cksum((u16 *) par->metromem_img, fbsize/2);
-	*((u16 *)(par->metromem_img) + fbsize/2) = cksum;
-	metronome_display_cmd(par);
-}
-
-static u16 metronomefb_dpy_update_page(struct metronomefb_par *par, int index)
-{
-	int i;
-	u16 csum = 0;
-	u16 *buf = (u16 __force *)(par->info->screen_base + index);
-	u16 *img = (u16 *)(par->metromem_img + index);
-
-	/* swizzle from vm to metromem and recalc cksum at the same time*/
-	for (i = 0; i < PAGE_SIZE/2; i++) {
-		*(img + i) = (buf[i] << 5) & 0xE0E0;
-		csum += *(img + i);
+	for (i = 0; i < fbsize / sizeof(*buf); i++) {
+		tmp = (buf[i] << 5) & 0xE0E0E0E0;
+		img[i] &= 0xF0F0F0F0;
+		diff = img[i] ^ tmp;
+		change_count += !!(diff & 0x000000ff);
+		change_count += !!(diff & 0x0000ff00);
+		change_count += !!(diff & 0x00ff0000);
+		change_count += !!(diff & 0xff000000);
+		img[i] = (img[i] >> 4) | tmp;
+		cksum += img[i] & 0x0000ffff;
+		cksum += (img[i] >> 16);
 	}
-	return csum;
+
+	*((u16 *)(par->metromem_img) + fbsize/2) = cksum;
+
+	if (clear_all)
+		m = WF_MODE_GC;
+	else
+		if (change_count < fbsize / 100 * par->manual_refresh_threshold)
+			m = WF_MODE_GU;
+		else
+			m = WF_MODE_GC;
+
+	dev_dbg(&par->pdev->dev, "change_count = %u, treshold = %u%% (%u pixels)\n",
+			change_count, par->manual_refresh_threshold,
+			fbsize / 100 * par->manual_refresh_threshold);
+
+	if (m != par->current_wf_mode)
+		load_waveform((u8 *) par->firmware->data, par->firmware->size,
+				m, par->current_wf_temp, par);
+
+	metronome_display_cmd(par);
 }
 
 /* this is called back from the deferred io workqueue */
 static void metronomefb_dpy_deferred_io(struct fb_info *info,
 				struct list_head *pagelist)
 {
-	u16 cksum;
-	struct page *cur;
-	struct fb_deferred_io *fbdefio = info->fbdefio;
 	struct metronomefb_par *par = info->par;
 
-	/* walk the written page list and swizzle the data */
-	list_for_each_entry(cur, &fbdefio->pagelist, lru) {
-		cksum = metronomefb_dpy_update_page(par,
-					(cur->index << PAGE_SHIFT));
-		par->metromem_img_csum -= par->csum_table[cur->index];
-		par->csum_table[cur->index] = cksum;
-		par->metromem_img_csum += cksum;
-	}
-
-	metronome_display_cmd(par);
+	/* We will update entire display because we need to change
+	 * 'previous image' field in pixels which was changed at
+	 * previous refresh
+	 */
+	metronomefb_dpy_update(par, 0);
 }
 
 static void metronomefb_fillrect(struct fb_info *info,
@@ -540,7 +547,7 @@ static void metronomefb_fillrect(struct fb_info *info,
 	struct metronomefb_par *par = info->par;
 
 	sys_fillrect(info, rect);
-	metronomefb_dpy_update(par);
+	metronomefb_dpy_update(par, 0);
 }
 
 static void metronomefb_copyarea(struct fb_info *info,
@@ -549,7 +556,7 @@ static void metronomefb_copyarea(struct fb_info *info,
 	struct metronomefb_par *par = info->par;
 
 	sys_copyarea(info, area);
-	metronomefb_dpy_update(par);
+	metronomefb_dpy_update(par, 0);
 }
 
 static void metronomefb_imageblit(struct fb_info *info,
@@ -558,7 +565,7 @@ static void metronomefb_imageblit(struct fb_info *info,
 	struct metronomefb_par *par = info->par;
 
 	sys_imageblit(info, image);
-	metronomefb_dpy_update(par);
+	metronomefb_dpy_update(par, 0);
 }
 
 /*
@@ -602,7 +609,7 @@ static ssize_t metronomefb_write(struct fb_info *info, const char __user *buf,
 	if  (!err)
 		*ppos += count;
 
-	metronomefb_dpy_update(par);
+	metronomefb_dpy_update(par, 0);
 
 	return (err) ? err : count;
 }
@@ -616,9 +623,120 @@ static struct fb_ops metronomefb_ops = {
 };
 
 static struct fb_deferred_io metronomefb_defio = {
-	.delay		= HZ,
+	.delay		= HZ / 4,
 	.deferred_io	= metronomefb_dpy_deferred_io,
 };
+
+static ssize_t metronomefb_defio_delay_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+
+	sprintf(buf, "%lu\n", info->fbdefio->delay * 1000 / HZ);
+	return strlen(buf) + 1;
+}
+
+static ssize_t metronomefb_defio_delay_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+	char *after;
+	unsigned long state = simple_strtoul(buf, &after, 10);
+	size_t count = after - buf;
+	ssize_t ret = -EINVAL;
+
+	if (*after && isspace(*after))
+		count++;
+
+	state = state * HZ / 1000;
+
+	if (!state)
+		state = 1;
+
+	if (count == size) {
+		ret = count;
+		info->fbdefio->delay = state;
+	}
+
+	return ret;
+}
+
+static ssize_t metronomefb_manual_refresh_thr_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+	struct metronomefb_par *par = info->par;
+
+	return sprintf(buf, "%u\n", par->manual_refresh_threshold);
+}
+
+static ssize_t metronomefb_manual_refresh_thr_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+	struct metronomefb_par *par = info->par;
+	char *after;
+	unsigned long val = simple_strtoul(buf, &after, 10);
+	size_t count = after - buf;
+	ssize_t ret = -EINVAL;
+
+	if (*after && isspace(*after))
+		count++;
+
+	if (val > 100)
+		return -EINVAL;
+
+
+	if (count == size) {
+		ret = count;
+		par->manual_refresh_threshold = val;
+	}
+
+	return ret;
+}
+
+static ssize_t metronomefb_temp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+	struct metronomefb_par *par = info->par;
+
+	return sprintf(buf, "%u\n", par->current_wf_temp);
+}
+
+static ssize_t metronomefb_temp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+	struct metronomefb_par *par = info->par;
+	char *after;
+	unsigned long val = simple_strtoul(buf, &after, 10);
+	size_t count = after - buf;
+	ssize_t ret = -EINVAL;
+
+	if (*after && isspace(*after))
+		count++;
+
+	if (val > 100)
+		return -EINVAL;
+
+
+	if (count == size) {
+		ret = count;
+		if (val != par->current_wf_temp)
+			load_waveform((u8 *) par->firmware->data, par->firmware->size,
+					par->current_wf_mode, val, par);
+	}
+
+	return ret;
+}
+
+DEVICE_ATTR(defio_delay, 0644,
+		metronomefb_defio_delay_show, metronomefb_defio_delay_store);
+DEVICE_ATTR(manual_refresh_threshold, 0644,
+		metronomefb_manual_refresh_thr_show, metronomefb_manual_refresh_thr_store);
+DEVICE_ATTR(temp, 0644,
+		metronomefb_temp_show, metronomefb_temp_store);
 
 static int __devinit metronomefb_probe(struct platform_device *dev)
 {
@@ -698,13 +816,14 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	metronomefb_var.yres_virtual = fh;
 	info->var = metronomefb_var;
 	info->fix = metronomefb_fix;
-	info->fix.smem_len = videomemorysize;
+	info->fix.smem_len = fw * fh; /* Real size of image area */
 	par = info->par;
 	par->info = info;
 	par->board = board;
 	par->dt = epd_dt_index;
 	par->pdev = dev;
 	init_waitqueue_head(&par->waitq);
+	par->manual_refresh_threshold = 12;
 
 	/* this table caches per page csum values. */
 	par->csum_table = vmalloc(videomemorysize/PAGE_SIZE);
@@ -741,8 +860,6 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 
 	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_GC, 31,
 				par);
-//	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_INIT, 31,
-//				par);
 	if (retval < 0) {
 		dev_err(&dev->dev, "Failed processing waveform\n");
 		goto err_csum_table;
@@ -757,7 +874,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		goto err_free_irq;
 
 	/* Initialize display */
-	metronomefb_dpy_update(par);
+	metronomefb_dpy_update(par, 1);
 
 	info->flags = FBINFO_FLAG_DEFAULT;
 
@@ -773,12 +890,8 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	/* set cmap */
 	for (i = 0; i < 8; i++)
 		info->cmap.red[i] = ((2 * i + 1)*(0xFFFF))/16;
-	memcpy(info->cmap.green, info->cmap.red, sizeof(u16)*16);
-	memcpy(info->cmap.blue, info->cmap.red, sizeof(u16)*16);
-
-
-	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, 3, 31,
-				par);
+	memcpy(info->cmap.green, info->cmap.red, sizeof(u16)*8);
+	memcpy(info->cmap.blue, info->cmap.red, sizeof(u16)*8);
 
 	retval = register_framebuffer(info);
 	if (retval < 0)
@@ -786,12 +899,31 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 
 	platform_set_drvdata(dev, info);
 
-	dev_dbg(&dev->dev,
+	retval = device_create_file(info->dev, &dev_attr_defio_delay);
+	if (retval)
+		goto err_devattr_defio_delay;
+
+	retval = device_create_file(info->dev, &dev_attr_manual_refresh_threshold);
+	if (retval)
+		goto err_devattr_manual_refresh_thr;
+
+	retval = device_create_file(info->dev, &dev_attr_temp);
+	if (retval)
+		goto err_devattr_temp;
+
+	dev_info(&dev->dev,
 		"fb%d: Metronome frame buffer device, using %dK of video"
 		" memory\n", info->node, videomemorysize >> 10);
 
 	return 0;
 
+	device_remove_file(info->dev, &dev_attr_temp);
+err_devattr_temp:
+	device_remove_file(info->dev, &dev_attr_manual_refresh_threshold);
+err_devattr_manual_refresh_thr:
+	device_remove_file(info->dev, &dev_attr_defio_delay);
+err_devattr_defio_delay:
+	unregister_framebuffer(info);
 err_cmap:
 	fb_dealloc_cmap(&info->cmap);
 err_free_irq:
@@ -814,6 +946,9 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 	if (info) {
 		struct metronomefb_par *par = info->par;
 
+		device_remove_file(info->dev, &dev_attr_temp);
+		device_remove_file(info->dev, &dev_attr_manual_refresh_threshold);
+		device_remove_file(info->dev, &dev_attr_defio_delay);
 		unregister_framebuffer(info);
 		fb_deferred_io_cleanup(info);
 		fb_dealloc_cmap(&info->cmap);
