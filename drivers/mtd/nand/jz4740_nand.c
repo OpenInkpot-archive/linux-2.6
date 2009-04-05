@@ -344,7 +344,8 @@ static int jzsoc_nand_calculate_rs_ecc(struct mtd_info* mtd, const u_char* dat,
 static int nand_read_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
 				   uint8_t *buf)
 {
-	int i, eccsize = chip->ecc.size;
+	int i, j;
+	int eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
 	int eccsteps = chip->ecc.steps;
 	uint8_t *p = buf;
@@ -360,7 +361,7 @@ static int nand_read_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
 	chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
 	for (i = 0; i < chip->ecc.total; i++) {
 		ecc_code[i] = chip->oob_poi[eccpos[i]];
-		if (ecc_code[i] != 0xff) flag = 1;
+//		if (ecc_code[i] != 0xff) flag = 1;
 	}
 
 	eccsteps = chip->ecc.steps;
@@ -369,6 +370,14 @@ static int nand_read_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
 	chip->cmdfunc(mtd, NAND_CMD_RNDOUT, 0x00, -1);
 	for (i = 0 ; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 		int stat;
+
+		flag = 0;
+		for (j = 0; j < eccbytes; j++)
+			if (ecc_code[i + j] != 0xff) {
+				flag = 1;
+				break;
+			}
+
 		if (flag) {
 			chip->ecc.hwctl(mtd, NAND_ECC_READ);
 			chip->read_buf(mtd, p, eccsize);
@@ -386,6 +395,45 @@ static int nand_read_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
 	return 0;
 }
 
+const uint8_t empty_ecc[] = {0xcd, 0x9d, 0x90, 0x58, 0xf4, 0x8b, 0xff, 0xb7, 0x6f};
+static void nand_write_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
+				  const uint8_t *buf)
+{
+	int i, j, eccsize = chip->ecc.size;
+	int eccbytes = chip->ecc.bytes;
+	int eccsteps = chip->ecc.steps;
+	uint8_t *ecc_calc = chip->buffers->ecccalc;
+	const uint8_t *p = buf;
+	uint32_t *eccpos = chip->ecc.layout->eccpos;
+	int page_maybe_empty;
+
+	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
+		chip->ecc.hwctl(mtd, NAND_ECC_WRITE);
+		chip->write_buf(mtd, p, eccsize);
+		chip->ecc.calculate(mtd, p, &ecc_calc[i]);
+
+		page_maybe_empty = 1;
+		for (j = 0; j < eccbytes; j++)
+			if (ecc_calc[i + j] != empty_ecc[j]) {
+				page_maybe_empty = 0;
+				break;
+			}
+
+		if (page_maybe_empty)
+			for (j = 0; j < eccsize; j++)
+				if (p[j] != 0xff) {
+					page_maybe_empty = 0;
+					break;
+				}
+		if (page_maybe_empty)
+			memset(&ecc_calc[i], 0xff, eccbytes);
+	}
+
+	for (i = 0; i < chip->ecc.total; i++)
+		chip->oob_poi[eccpos[i]] = ecc_calc[i];
+
+	chip->write_buf(mtd, chip->oob_poi, mtd->oobsize);
+}
 #endif /* CONFIG_MTD_HW_RS_ECC */
 
 /*
@@ -439,6 +487,7 @@ static int __devinit jz4740_nand_probe(struct platform_device *pdev)
 	this->ecc.correct	= jzsoc_nand_rs_correct_data;
 	this->ecc.hwctl		= jzsoc_nand_enable_rs_hwecc;
 	this->ecc.read_page	= nand_read_page_hwecc_rs;
+	this->ecc.write_page	= nand_write_page_hwecc_rs;
 	/* FIXME: Add suport of various oob sizes */
 	this->ecc.layout	= &nand_oob_rs64;
 	this->ecc.mode		= NAND_ECC_HW;
