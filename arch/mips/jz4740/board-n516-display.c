@@ -8,7 +8,7 @@
  * more details.
  */
 
-#define DEBUG
+/* #define DEBUG */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -52,10 +52,6 @@ static struct jzfb_info n516_fbinfo = {
 
 static struct platform_device *n516_device;
 static struct metronome_board n516_board;
-
-static int gpios[] = { STDBY_GPIO_PIN, RST_GPIO_PIN,
-			RDY_GPIO_PIN, ERR_GPIO_PIN };
-static char *gpio_names[] = { "STDBY" , "RST", "RDY", "ERR" };
 
 static int n516_init_gpio_regs(struct metronomefb_par *par)
 {
@@ -196,8 +192,9 @@ static irqreturn_t n516_handle_irq(int irq, void *dev_id)
 {
 	struct metronomefb_par *par = dev_id;
 
-	printk("%s: Metronome IRQ! RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
+	dev_dbg(&par->pdev->dev, "Metronome IRQ! RDY=%d\n", __gpio_get_pin(RDY_GPIO_PIN));
 	wake_up_all(&par->waitq);
+
 	return IRQ_HANDLED;
 }
 
