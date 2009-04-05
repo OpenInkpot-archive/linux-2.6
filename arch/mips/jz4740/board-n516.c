@@ -19,11 +19,13 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
+#include <linux/mtd/mtd.h>
 
 #include <asm/cpu.h>
 #include <asm/bootinfo.h>
 #include <asm/mipsregs.h>
 #include <asm/reboot.h>
+#include <asm/sizes.h>
 
 #include <asm/jzsoc.h>
 #include <asm/mach-jz4740/gpio-pins.h>
@@ -55,6 +57,16 @@ static void pavo_timer_callback(void)
 	}
 }
 */
+
+static long n516_panic_blink(long time)
+{
+	__gpio_set_pin(GPIO_LED_EN);
+	mdelay(200);
+	__gpio_clear_pin(GPIO_LED_EN);
+	mdelay(200);
+
+	return 400;
+}
 
 static void __init board_cpm_setup(void)
 {
@@ -117,6 +129,7 @@ void __init jz_board_setup(void)
 	board_cpm_setup();
 	board_gpio_setup();
 
+	panic_blink = n516_panic_blink;
 //	jz_timer_callback = pavo_timer_callback;
 }
 
@@ -145,7 +158,33 @@ static struct platform_device n516_led = {
 };
 
 struct mtd_partition n516_nand_parts[] = {
-	{
+	[0] = {
+		.name		= "Bootloader",
+		.size		= SZ_1M,
+		.offset		= 0,
+		.mask_flags	= MTD_WRITEABLE,
+	},
+	[1] = {
+		.name		= "Kernel",
+		.size		= SZ_1M * 3,
+		.offset		= SZ_1M,
+	},
+	[2] = {
+		.name		= "Waveforms",
+		.size		= SZ_512K,
+		.offset		= SZ_4M,
+	},
+	[3] = {
+		.name		= "Free",
+		.size		= SZ_512K,
+		.offset		= SZ_4M + SZ_512K,
+	},
+	[4] = {
+		.name		= "UBI",
+		.size		= MTDPART_SIZ_FULL,
+		.offset		= SZ_1M * 5,
+	},
+	[5] = {
 		.name	= "ALL",
 		.size	= MTDPART_SIZ_FULL,
 		.offset	= 0,
