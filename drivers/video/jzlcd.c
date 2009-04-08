@@ -1387,17 +1387,8 @@ static void __exit jzfb_exit(void)
 	platform_driver_unregister(&jzfb_driver);
 }
 
-static void __exit jzfb_cleanup(void)
-{
-#if defined(CONFIG_JZLCD_FRAMEBUFFER_ROTATE_SUPPORT)
-	kthread_stop(jzlcd_info->rotate_daemon_thread);
-#endif
-//	driver_unregister(&jzfb_driver);
-//	jzfb_remove();
-}
-
 module_init(jzfb_init);
-module_exit(jzfb_cleanup);
+module_exit(jzfb_exit);
 
 MODULE_DESCRIPTION("JzSOC LCD Controller driver");
 MODULE_LICENSE("GPL");
