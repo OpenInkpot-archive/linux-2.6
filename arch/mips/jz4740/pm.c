@@ -266,7 +266,7 @@ static int jz_pm_do_sleep(void)
 	REG_CPM_SCR |= 0<<6 | 1<<7;
 
 	/* Sleep on-board modules */
-	jz_board_do_sleep(sleep_gpio_save);
+//	jz_board_do_sleep(sleep_gpio_save);
 
 	/* Mask all interrupts */
 	REG_INTC_IMSR = 0xffffffff;
@@ -318,7 +318,7 @@ static int jz_pm_do_sleep(void)
 	REG_SADC_ENA = sadc;
 
 	/* Resume on-board modules */
-	jz_board_do_resume(sleep_gpio_save);
+//	jz_board_do_resume(sleep_gpio_save);
 
 	/* Restore sleep control register */
 	REG_CPM_SCR = scr;
