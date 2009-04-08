@@ -65,6 +65,9 @@ static int n516_init_gpio_regs(struct metronomefb_par *par)
 
 	__gpio_as_irq_rise_edge(RDY_GPIO_PIN);
 
+	__gpio_as_output(GPIO_DISP_OFF_N);
+	__gpio_clear_pin(GPIO_DISP_OFF_N);
+
 	return 0;
 }
 
@@ -198,6 +201,18 @@ static irqreturn_t n516_handle_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static void n516_power_ctl(struct metronomefb_par *par, int cmd)
+{
+	switch (cmd) {
+	case METRONOME_POWER_OFF:
+		__gpio_set_pin(GPIO_DISP_OFF_N);
+		break;
+	case METRONOME_POWER_ON:
+		__gpio_clear_pin(GPIO_DISP_OFF_N);
+		break;
+	}
+}
+
 static inline int get_rdy(void)
 {
 	return __gpio_get_pin(RDY_GPIO_PIN);
@@ -273,6 +288,7 @@ static void n516_cleanup(struct metronomefb_par *par)
 
 static struct metronome_board n516_board = {
 	.owner			= THIS_MODULE,
+	.power_ctl		= n516_power_ctl,
 	.setup_irq		= n516_setup_irq,
 	.setup_io		= n516_init_gpio_regs,
 	.setup_fb		= n516_setup_fb,
