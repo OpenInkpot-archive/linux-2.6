@@ -214,6 +214,8 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	u8 *metromem = par->metromem_wfm;
 	struct device *dev = &par->pdev->dev;
 	u8 mc, trc;
+	u16 *p;
+	u16 img_cksum;
 
 	dev_dbg(dev, "Loading waveforms, mode %d, temperature %d\n", m, t);
 	if (user_wfm_size)
@@ -329,6 +331,7 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	cksum_idx = wfm_idx;
 	if (cksum_idx > size)
 		return -EINVAL;
+	dev_dbg(dev, "mem_idx = %u\n", mem_idx);
 	cksum = calc_cksum(owfm_idx, cksum_idx, mem);
 	if (cksum != mem[cksum_idx]) {
 		dev_err(dev, "Error: bad waveform data cksum"
@@ -337,11 +340,29 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	}
 	par->frame_count = (mem_idx/64);
 
+	p = (u16 *)par->metromem_wfm;
+	img_cksum = calc_img_cksum(p, 16384 / 2);
+	p[16384 / 2] = __cpu_to_le16(img_cksum);
+
 	par->current_wf_mode = m;
 	par->current_wf_temp = t;
 
 	return 0;
 }
+
+#ifdef DEBUG
+static int check_err(struct metronomefb_par *par)
+{
+	int res;
+
+	res = par->board->get_err(par);
+	dev_dbg(&par->pdev->dev, "ERR = %d\n", res);
+	return res;
+}
+
+#else
+#define check_err(par) do { } while (0)
+#endif
 
 static int metronome_display_cmd(struct metronomefb_par *par)
 {
@@ -453,10 +474,38 @@ static int __devinit metronome_init_cmd(struct metronomefb_par *par)
 	return par->board->met_wait_event(par);
 }
 
+static int metronome_bootup(struct metronomefb_par *par)
+{
+	int res;
+
+	res = metronome_powerup_cmd(par);
+	if (res) {
+		dev_err(&par->pdev->dev, "metronomefb: POWERUP cmd failed\n");
+		return res;
+	}
+
+	check_err(par);
+	res = metronome_config_cmd(par);
+	if (res) {
+		dev_err(&par->pdev->dev, "metronomefb: CONFIG cmd failed\n");
+		return res;
+	}
+	check_err(par);
+
+	res = metronome_init_cmd(par);
+	if (res)
+		dev_err(&par->pdev->dev, "metronomefb: INIT cmd failed\n");
+	check_err(par);
+
+	return res;
+}
 
 static int __devinit metronome_init_regs(struct metronomefb_par *par)
 {
 	int res;
+
+	if (par->board->power_ctl)
+		par->board->power_ctl(par, METRONOME_POWER_ON);
 
 	res = par->board->setup_io(par);
 	if (res) {
@@ -464,21 +513,7 @@ static int __devinit metronome_init_regs(struct metronomefb_par *par)
 		return res;
 	}
 
-	res = metronome_powerup_cmd(par);
-	if (res) {
-		printk(KERN_ERR "metronomefb: POWERUP cmd failed\n");
-		return res;
-	}
-
-	res = metronome_config_cmd(par);
-	if (res) {
-		printk(KERN_ERR "metronomefb: CONFIG cmd failed\n");
-		return res;
-	}
-
-	res = metronome_init_cmd(par);
-
-	return res;
+	return metronome_bootup(par);
 }
 
 static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
@@ -526,6 +561,7 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 				m, par->current_wf_temp, par);
 
 	metronome_display_cmd(par);
+	check_err(par);
 }
 
 /* this is called back from the deferred io workqueue */
@@ -858,7 +894,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		goto err_csum_table;
 	}
 
-	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_GC, 31,
+	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_INIT, 25,
 				par);
 	if (retval < 0) {
 		dev_err(&dev->dev, "Failed processing waveform\n");
@@ -946,6 +982,11 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 	if (info) {
 		struct metronomefb_par *par = info->par;
 
+		par->board->set_stdby(par, 0);
+		mdelay(1);
+		if (par->board->power_ctl)
+			par->board->power_ctl(par, METRONOME_POWER_OFF);
+
 		device_remove_file(info->dev, &dev_attr_temp);
 		device_remove_file(info->dev, &dev_attr_manual_refresh_threshold);
 		device_remove_file(info->dev, &dev_attr_defio_delay);
@@ -963,13 +1004,48 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int metronomefb_suspend(struct platform_device *pdev, pm_message_t message)
+{
+	struct fb_info *info = platform_get_drvdata(pdev);
+	struct metronomefb_par *par = info->par;
+
+	par->board->set_stdby(par, 0);
+	if (par->board->power_ctl)
+		par->board->power_ctl(par, METRONOME_POWER_OFF);
+
+
+	return 0;
+}
+
+static int metronomefb_resume(struct platform_device *pdev)
+{
+	struct fb_info *info = platform_get_drvdata(pdev);
+	struct metronomefb_par *par = info->par;
+
+	if (par->board->power_ctl)
+		par->board->power_ctl(par, METRONOME_POWER_ON);
+
+	metronome_bootup(par);
+
+	return 0;
+}
+
+#else
+#define metronomefb_suspend NULL
+#define metronomefb_resume NULL
+#endif
+
+
 static struct platform_driver metronomefb_driver = {
-	.probe	= metronomefb_probe,
-	.remove = metronomefb_remove,
-	.driver	= {
-		.owner	= THIS_MODULE,
-		.name	= "metronomefb",
-	},
+	.driver		= {
+			.owner	= THIS_MODULE,
+			.name	= "metronomefb",
+			},
+	.probe		= metronomefb_probe,
+	.remove		= __devexit_p(metronomefb_remove),
+	.suspend	= metronomefb_suspend,
+	.resume		= metronomefb_resume,
 };
 
 static int __init metronomefb_init(void)

@@ -40,9 +40,13 @@ struct metronomefb_par {
 	int dt;
 };
 
+#define METRONOME_POWER_OFF	0
+#define METRONOME_POWER_ON	1
+
 /* board specific routines and data */
 struct metronome_board {
 	struct module *owner; /* the platform device */
+	void (*power_ctl)(struct metronomefb_par *, int);
 	void (*set_rst)(struct metronomefb_par *, int);
 	void (*set_stdby)(struct metronomefb_par *, int);
 	int (*get_err)(struct metronomefb_par *);
