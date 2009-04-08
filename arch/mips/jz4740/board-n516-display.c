@@ -259,7 +259,7 @@ static void n516_set_stdby(struct metronomefb_par *par, int state)
 
 static int n516_wait_event(struct metronomefb_par *par)
 {
-	unsigned long timeout = jiffies + HZ/50;
+	unsigned long timeout = jiffies + HZ/20;
 
 	while (get_rdy() && time_before(jiffies, timeout))
 		schedule();
@@ -270,7 +270,7 @@ static int n516_wait_event(struct metronomefb_par *par)
 
 static int n516_wait_event_intr(struct metronomefb_par *par)
 {
-	unsigned long timeout = jiffies + HZ/50;
+	unsigned long timeout = jiffies + HZ/20;
 
 	while (get_rdy() && time_before(jiffies, timeout))
 		schedule();
