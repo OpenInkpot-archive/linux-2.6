@@ -52,8 +52,6 @@
 #define WF_MODE_GU	2 /* Grayscale update */
 #define WF_MODE_GC	3 /* Grayscale clearing */
 
-static int user_wfm_size;
-
 /* frame differs from image. frame includes non-visible pixels */
 struct epd_frame {
 	int fw; /* frame width */
@@ -217,15 +215,6 @@ static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
 	u16 img_cksum;
 
 	dev_dbg(dev, "Loading waveforms, mode %d, temperature %d\n", m, t);
-	if (user_wfm_size)
-		epd_frame_table[par->dt].wfm_size = user_wfm_size;
-/*
-	if (size != epd_frame_table[par->dt].wfm_size) {
-		dev_err(dev, "Error: unexpected size %Zd != %d\n", size,
-					epd_frame_table[par->dt].wfm_size);
-		return -EINVAL;
-	}
-*/
 
 	wfm_hdr = (struct waveform_hdr *) mem;
 
@@ -1056,9 +1045,6 @@ static void __exit metronomefb_exit(void)
 {
 	platform_driver_unregister(&metronomefb_driver);
 }
-
-module_param(user_wfm_size, uint, 0);
-MODULE_PARM_DESC(user_wfm_size, "Set custom waveform size");
 
 module_init(metronomefb_init);
 module_exit(metronomefb_exit);
