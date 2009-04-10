@@ -164,6 +164,7 @@ void n516_setup_wakeup_ints(void)
 	__gpio_unmask_irq(IRQ_GPIO3);
 	__gpio_unmask_irq(MSC_HOTPLUG_PIN);
 	__gpio_unmask_irq(GPIO_USB_DETECT);
+	__gpio_unmask_irq(GPIO_CHARG_STAT_N);
 }
 
 static void __init board_cpm_setup(void)
@@ -314,6 +315,11 @@ static struct platform_device n516_nand_dev = {
 	},
 };
 
+static struct platform_device n516_usb_power = {
+	.name		= "n516-usb-power",
+	.id		= -1,
+};
+
 static int n516_setup_platform(void)
 {
 	i2c_register_board_info(0, &n516_keys_board_info, 1);
@@ -321,6 +327,7 @@ static int n516_setup_platform(void)
 
 	platform_device_register(&n516_led);
 	platform_device_register(&n516_nand_dev);
+	platform_device_register(&n516_usb_power);
 
 	return 0;
 }
