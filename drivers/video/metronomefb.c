@@ -53,6 +53,8 @@
 #define WF_MODE_GU	2 /* Grayscale update */
 #define WF_MODE_GC	3 /* Grayscale clearing */
 
+static int temp = 25;
+
 /* frame differs from image. frame includes non-visible pixels */
 struct epd_frame {
 	int fw; /* frame width */
@@ -883,7 +885,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		goto err_csum_table;
 	}
 
-	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_INIT, 25,
+	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_GC, temp,
 				par);
 	if (retval < 0) {
 		dev_err(&dev->dev, "Failed processing waveform\n");
@@ -1046,6 +1048,9 @@ static void __exit metronomefb_exit(void)
 {
 	platform_driver_unregister(&metronomefb_driver);
 }
+
+module_param(temp, int, 0);
+MODULE_PARM_DESC(temp, "Set current temperature");
 
 module_init(metronomefb_init);
 module_exit(metronomefb_exit);
