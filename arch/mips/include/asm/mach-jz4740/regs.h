@@ -95,6 +95,7 @@
 // 2nd-level interrupts
 #define IRQ_DMA_0	32  /* 32 to 37 for DMAC channel 0 to 5 */
 #define IRQ_GPIO_0	48  /* 48 to 175 for GPIO pin 0 to 127 */
+#define gpio_to_irq(gpio)	(IRQ_GPIO_0 + gpio)
 
 #define NUM_DMA         6
 #define NUM_GPIO        128
