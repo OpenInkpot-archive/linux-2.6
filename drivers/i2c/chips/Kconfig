@@ -185,4 +185,12 @@ config MCU_MPC8349EMITX
 	  also register MCU GPIOs with the generic GPIO API, so you'll able
 	  to use MCU pins as GPIOs.
 
+config N516_LPC
+	tristate "N516 keys & power controller"
+	depends on I2C
+	select INPUT
+	select POWER_SUPPLY
+	help
+	  N516 keyboard & power controller driver
+
 endmenu
