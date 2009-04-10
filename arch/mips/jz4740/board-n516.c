@@ -31,6 +31,7 @@
 #include <asm/mach-jz4740/gpio-pins.h>
 #include <asm/jz47xx-leds.h>
 #include <asm/mach-jz4740/jz4740-nand.h>
+#include <asm/mach-jz4740/pm.h>
 
 /*
 extern void (*jz_timer_callback)(void);
@@ -58,6 +59,27 @@ static void pavo_timer_callback(void)
 }
 */
 
+/* 
+ * __gpio_as_sleep set all pins to pull-disable, and set all pins as input
+ * except sdram, nand flash pins and the pins which can be used as CS1_N  
+ * to CS4_N for chip select. 
+ */
+#define __gpio_as_sleep()	              \
+do {	                                      \
+	REG_GPIO_PXFUNC(1) = ~0x9fffffff;     \
+	REG_GPIO_PXSELC(1) = ~0x9fffffff;     \
+	REG_GPIO_PXDIRC(1) = ~0x9fffffff;     \
+	REG_GPIO_PXPES(1)  =  0xffffffff;     \
+	REG_GPIO_PXFUNC(2) =  0xc8ffffff;     \
+	REG_GPIO_PXSELC(2) =  0xc8ffffff;     \
+	REG_GPIO_PXDIRC(2) =  0xc8ffffff;     \
+	REG_GPIO_PXPES(2)  =  0xffffffff;     \
+	REG_GPIO_PXFUNC(3) =  0xefc57f7f;     \
+	REG_GPIO_PXSELC(3) =  0xefc57f7f;     \
+	REG_GPIO_PXDIRC(3) =  0xefc57f7f;     \
+	REG_GPIO_PXPES(3)  =  0xffffffff;     \
+} while (0)
+
 static long n516_panic_blink(long time)
 {
 	__gpio_set_pin(GPIO_LED_EN);
@@ -68,11 +90,98 @@ static long n516_panic_blink(long time)
 	return 400;
 }
 
+void n516_do_sleep(unsigned long *ptr)
+{
+	unsigned char i;
+
+        /* Print messages of GPIO registers for debug */
+	for(i=0;i<4;i++) {
+		pr_debug("run dat:%x pin:%x fun:%x sel:%x dir:%x pull:%x msk:%x trg:%x\n",        \
+			REG_GPIO_PXDAT(i),REG_GPIO_PXPIN(i),REG_GPIO_PXFUN(i),REG_GPIO_PXSEL(i), \
+			REG_GPIO_PXDIR(i),REG_GPIO_PXPE(i),REG_GPIO_PXIM(i),REG_GPIO_PXTRG(i));
+	}
+
+        /* Save GPIO registers */
+	for(i = 1; i < 4; i++) {
+		*ptr++ = REG_GPIO_PXFUN(i);
+		*ptr++ = REG_GPIO_PXSEL(i);
+		*ptr++ = REG_GPIO_PXDIR(i);
+		*ptr++ = REG_GPIO_PXPE(i);
+		*ptr++ = REG_GPIO_PXIM(i);
+		*ptr++ = REG_GPIO_PXDAT(i);
+		*ptr++ = REG_GPIO_PXTRG(i);
+	}
+	__gpio_set_pin(GPIO_LED_EN);
+	mdelay(50);
+	__gpio_clear_pin(GPIO_LED_EN);
+
+	__gpio_as_sleep();
+	__gpio_as_input(JZ4740_GPB27);
+	__gpio_enable_pull(JZ4740_GPB28);
+	__gpio_enable_pull(JZ4740_GPB29);
+	__gpio_enable_pull(JZ4740_GPB30);
+	__gpio_enable_pull(JZ4740_GPB31);
+	__gpio_enable_pull(JZ4740_GPC27);
+}
+
+static void n516_do_resume(unsigned long *ptr)
+{
+	unsigned char i;
+
+	__gpio_set_pin(GPIO_LED_EN);
+	mdelay(50);
+
+	/* Restore GPIO registers */
+	for(i = 1; i < 4; i++) {
+		 REG_GPIO_PXFUNS(i) = *ptr;
+		 REG_GPIO_PXFUNC(i) = ~(*ptr++);
+
+		 REG_GPIO_PXSELS(i) = *ptr;
+		 REG_GPIO_PXSELC(i) = ~(*ptr++);
+
+		 REG_GPIO_PXDIRS(i) = *ptr;
+		 REG_GPIO_PXDIRC(i) = ~(*ptr++);
+
+		 REG_GPIO_PXPES(i) = *ptr;
+		 REG_GPIO_PXPEC(i) = ~(*ptr++);
+
+		 REG_GPIO_PXIMS(i)=*ptr;
+		 REG_GPIO_PXIMC(i)=~(*ptr++);
+	
+		 REG_GPIO_PXDATS(i)=*ptr;
+		 REG_GPIO_PXDATC(i)=~(*ptr++);
+	
+		 REG_GPIO_PXTRGS(i)=*ptr;
+		 REG_GPIO_PXTRGC(i)=~(*ptr++);
+	}
+
+}
+
+void n516_setup_wakeup_ints(void)
+{
+	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
+	__gpio_unmask_irq(GPIO_LPC_INT);
+	__gpio_unmask_irq(IRQ_GPIO3);
+	__gpio_unmask_irq(MSC_HOTPLUG_PIN);
+	__gpio_unmask_irq(GPIO_USB_DETECT);
+}
+
 static void __init board_cpm_setup(void)
 {
 	/* Stop unused module clocks here.
 	 * We have started all module clocks at arch/mips/jz4740/setup.c.
 	 */
+
+//	__cpm_stop_uart1();
+	__cpm_stop_uhc();
+	__cpm_stop_ipu();
+	__cpm_stop_udc();
+	__cpm_stop_cim();
+	__cpm_stop_sadc();
+//	__cpm_stop_aic1();
+//	__cpm_stop_aic2();
+	__cpm_stop_ssi();
+//	__cpm_stop_tcu();
 }
 
 static void __init board_gpio_setup(void)
@@ -89,12 +198,7 @@ static void __init board_gpio_setup(void)
 	/*
 	 * Initialize LCD pins
 	 */
-	__gpio_as_lcd_18bit();
-
-	/*
-	 * Initialize SSI pins
-	 */
-	__gpio_as_ssi();
+	__gpio_as_lcd_16bit();
 
 	/*
 	 * Initialize I2C pins
@@ -115,9 +219,11 @@ static void __init board_gpio_setup(void)
 
 //	__gpio_as_input(GPIO_DC_DETE_N);
 	__gpio_as_input(GPIO_CHARG_STAT_N);
-	__gpio_as_input(GPIO_USB_DETE);
+	__gpio_as_input(GPIO_USB_DETECT);
+	__gpio_as_input(GPIO_HPHONE_PLUG);
 
 	__gpio_as_output(GPIO_DISP_OFF_N);
+	__gpio_as_output(GPIO_SPK_SHUD);
 
 	__gpio_as_output(GPIO_LED_EN);
 }
@@ -130,6 +236,9 @@ void __init jz_board_setup(void)
 	board_gpio_setup();
 
 	panic_blink = n516_panic_blink;
+	jz_board_do_sleep = n516_do_sleep;
+	jz_board_setup_wakeup_ints = n516_setup_wakeup_ints;
+	jz_board_do_resume = n516_do_resume;
 //	jz_timer_callback = pavo_timer_callback;
 }
 
