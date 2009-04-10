@@ -1,6 +1,3 @@
-
-#define DEBUG
-
 #include <linux/module.h>
 #include <linux/version.h>
 
@@ -16,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 #include <linux/workqueue.h>
+#include <linux/power_supply.h>
 
 #include <linux/i2c.h>
 
@@ -27,7 +25,8 @@
 struct n516_lpc_chip {
 	struct i2c_client	*i2c_client;
 	struct work_struct	work;
-	struct input_dev	*input; 
+	struct input_dev	*input;
+	unsigned int		battery_level;
 };
 
 static struct n516_lpc_chip *the_lpc;
@@ -70,9 +69,96 @@ static const unsigned int keymap[][2] = {
 	{0x1f, KEY_WAKEUP},
 };
 
+static const unsigned int batt_charge[] = {0, 17, 33, 50, 67, 83, 100};
+
 /* Insmod parameters */
 I2C_CLIENT_INSMOD_1(n516_lpc);
 
+static inline int n516_bat_usb_connected(void)
+{
+	return !__gpio_get_pin(GPIO_USB_DETECT);
+}
+
+static inline int n516_bat_charging(void)
+{
+	return !__gpio_get_pin(GPIO_CHARG_STAT_N);
+}
+
+static int n516_bat_get_status(struct power_supply *b)
+{
+	if (n516_bat_usb_connected()) {
+		if (n516_bat_charging())
+			return POWER_SUPPLY_STATUS_CHARGING;
+		else
+			return POWER_SUPPLY_STATUS_FULL;
+	} else {
+		return POWER_SUPPLY_STATUS_DISCHARGING;
+	}
+}
+
+static int n516_bat_get_charge(struct power_supply *b)
+{
+	return batt_charge[the_lpc->battery_level];
+}
+
+static int n516_bat_get_property(struct power_supply *b,
+		enum power_supply_property psp,
+		union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_STATUS:
+		val->intval = n516_bat_get_status(b);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = 100;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_EMPTY_DESIGN:
+		val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+		val->intval = n516_bat_get_charge(b);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static void n516_bat_power_changed(struct power_supply *p)
+{
+	power_supply_changed(p);
+}
+
+static enum power_supply_property n516_bat_properties[] = {
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_EMPTY_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
+};
+
+static struct power_supply n516_battery = {
+	.name		= "n516-battery",
+	.get_property	= n516_bat_get_property,
+	.properties	= n516_bat_properties,
+	.num_properties	= ARRAY_SIZE(n516_bat_properties),
+	.external_power_changed = n516_bat_power_changed,
+};
+
+static irqreturn_t n516_bat_charge_irq(int irq, void *dev)
+{
+	struct power_supply *psy = dev;
+
+	dev_dbg(psy->dev, "Battery charging IRQ\n");
+
+	power_supply_changed(psy);
+
+	if (n516_bat_charging())
+		__gpio_as_irq_rise_edge(GPIO_CHARG_STAT_N);
+	else
+		__gpio_as_irq_fall_edge(GPIO_CHARG_STAT_N);
+
+	return IRQ_HANDLED;
+}
 
 static void n516_lpc_read_keys(struct work_struct *work)
 {
@@ -95,6 +181,8 @@ static void n516_lpc_read_keys(struct work_struct *work)
 				input_report_key(chip->input, keymap[i][1], 0);
 				input_sync(chip->input);
 			}
+		if ((raw_msg >= 0x81) && (raw_msg <= 0x87))
+			chip->battery_level = raw_msg - 0x81;
 	}
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
 }
@@ -130,6 +218,7 @@ static void n516_lpc_power_off(void)
 	unsigned char val = 0x01;
 	struct i2c_msg msg = {client->addr, client->flags, 1, &val};
 
+	__gpio_set_pin(GPIO_LED_EN);
 	printk("Issue LPC POWEROFF command...\n");
 	while (1)
 		i2c_transfer(client->adapter, &msg, 1);
@@ -155,6 +244,7 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	the_lpc = chip;
 	chip->i2c_client = client;
+	chip->battery_level = 0;
 	INIT_WORK(&chip->work, n516_lpc_read_keys);
 	i2c_set_clientdata(client, chip);
 
@@ -192,15 +282,38 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 	ret = request_irq(IRQ_LPC_INT, n516_lpc_irq, 0, "lpc", chip);
 	if (ret) {
 		dev_err(&client->dev, "request_irq failed: %d\n", ret);
-		goto err_request_irq;
+		goto err_request_lpc_irq;
+	}
+
+	ret = power_supply_register(NULL, &n516_battery);
+	if (ret) {
+		dev_err(&client->dev, "Unable to register N516 battery\n");
+		goto err_bat_reg;
+	}
+
+	if (n516_bat_charging())
+		__gpio_as_irq_rise_edge(GPIO_CHARG_STAT_N);
+	else
+		__gpio_as_irq_fall_edge(GPIO_CHARG_STAT_N);
+
+	ret = request_irq(gpio_to_irq(GPIO_CHARG_STAT_N), n516_bat_charge_irq,
+				IRQF_DISABLED | IRQF_SHARED,
+				"battery charging", &n516_battery);
+	if (ret) {
+		dev_err(&client->dev, "Unable to claim battery charging IRQ\n");
+		goto err_request_chrg_irq;
 	}
 
 	pm_power_off = n516_lpc_power_off;
 
 	return 0;
 
+	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
+err_request_chrg_irq:
+	power_supply_unregister(&n516_battery);
+err_bat_reg:
 	free_irq(IRQ_LPC_INT, chip);
-err_request_irq:
+err_request_lpc_irq:
 	input_unregister_device(input);
 err_input_register:
 	input_free_device(input);
@@ -216,6 +329,8 @@ static int n516_lpc_remove(struct i2c_client *client)
 	struct n516_lpc_chip *chip = i2c_get_clientdata(client);
 
 	pm_power_off = NULL;
+	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
+	power_supply_unregister(&n516_battery);
 	__gpio_as_input(GPIO_LPC_INT);
 	flush_scheduled_work();
 	free_irq(IRQ_LPC_INT, chip);
