@@ -479,12 +479,6 @@ config KEYBOARD_TWL4030
 	  To compile this driver as a module, choose M here: the
 	  module will be called twl4030_keypad.
 
-config KEYBOARD_N516
-	tristate "N516 keys controller"
-	depends on I2C
-	help
-	  N516 keyboard controller driver
-
 config KEYBOARD_XTKBD
 	tristate "XT keyboard"
 	select SERIO
