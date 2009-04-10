@@ -31,6 +31,7 @@
 
 #include <asm/cacheops.h>
 #include <asm/jzsoc.h>
+#include <asm/mach-jz4740/pm.h>
 
 #undef DEBUG
 //#define DEBUG 
@@ -63,6 +64,14 @@ do {	                                      \
 	REG_GPIO_PXDIRC(3) =  0xffffffff;     \
 	REG_GPIO_PXPES(3)  =  0xffffffff;     \
 } while (0)
+
+void (*jz_board_do_sleep)(unsigned long *);
+void (*jz_board_do_resume)(unsigned long *);
+void (*jz_board_setup_wakeup_ints)(void);
+
+EXPORT_SYMBOL(jz_board_do_sleep);
+EXPORT_SYMBOL(jz_board_do_resume);
+EXPORT_SYMBOL(jz_board_setup_wakeup_ints);
 
 static int jz_pm_do_hibernate(void)
 {
@@ -110,7 +119,7 @@ static int jz_pm_do_hibernate(void)
  * 3: Pins that are connected to a chip except sdram and nand flash 
  *    should be set as input and pull-disable, too.
  */
-static void jz_board_do_sleep(unsigned long *ptr)
+void jz_board_do_sleep_default(unsigned long *ptr)
 {
 	unsigned char i;
         
@@ -201,7 +210,7 @@ static void jz_board_do_sleep(unsigned long *ptr)
 #endif
 }
 
-static void jz_board_do_resume(unsigned long *ptr)
+static void jz_board_do_resume_default(unsigned long *ptr)
 {
 	unsigned char i;
 
@@ -237,7 +246,12 @@ static void jz_board_do_resume(unsigned long *ptr)
 	}
 }
 
-
+void jz_board_setup_wakeup_ints_default(void)
+{
+	__gpio_as_irq_fall_edge(GPIO_WAKEUP);
+	__gpio_unmask_irq(GPIO_WAKEUP);
+	__intc_unmask_irq(IRQ_GPIO3);  /* IRQ_GPIOn depends on GPIO_WAKEUP */
+}
 
 static int jz_pm_do_sleep(void)
 { 
@@ -250,8 +264,8 @@ static int jz_pm_do_sleep(void)
 
 	printk("Put CPU into sleep mode.\n");
 
-	/* Preserve current time */
-	delta = xtime.tv_sec - REG_RTC_RSR;
+//	/* Preserve current time */
+//	delta = xtime.tv_sec - REG_RTC_RSR;
 
         /* Disable nand flash */
 	REG_EMC_NFCSR = ~0xff;
@@ -266,10 +280,18 @@ static int jz_pm_do_sleep(void)
 	REG_CPM_SCR |= 0<<6 | 1<<7;
 
 	/* Sleep on-board modules */
-	jz_board_do_sleep(sleep_gpio_save);
+	if (jz_board_do_sleep)
+		jz_board_do_sleep(sleep_gpio_save);
+	else
+		jz_board_do_sleep_default(sleep_gpio_save);
 
 	/* Mask all interrupts */
 	REG_INTC_IMSR = 0xffffffff;
+
+	if (jz_board_setup_wakeup_ints)
+		jz_board_setup_wakeup_ints();
+	else
+		jz_board_setup_wakeup_ints_default();
 
 	/* Just allow following interrupts to wakeup the system.
 	 * Note: modify this according to your system.
@@ -318,13 +340,16 @@ static int jz_pm_do_sleep(void)
 	REG_SADC_ENA = sadc;
 
 	/* Resume on-board modules */
-	jz_board_do_resume(sleep_gpio_save);
+	if (jz_board_do_resume)
+		jz_board_do_resume(sleep_gpio_save);
+	else
+		jz_board_do_resume_default(sleep_gpio_save);
 
 	/* Restore sleep control register */
 	REG_CPM_SCR = scr;
 
-	/* Restore current time */
-	xtime.tv_sec = REG_RTC_RSR + delta;
+//	/* Restore current time */
+//	xtime.tv_sec = REG_RTC_RSR + delta;
 
 	return 0;
 }
