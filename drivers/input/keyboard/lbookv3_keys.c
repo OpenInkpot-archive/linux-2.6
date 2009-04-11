@@ -340,8 +340,6 @@ static void __exit lbookv3_keys_exit(void)
 
 	del_timer_sync(&kb_timer);
 	input_unregister_device(input);
-
-	input_free_device(input);
 }
 
 module_init(lbookv3_keys_init);
