@@ -209,7 +209,7 @@ static void dump_packet (struct net_device *dev,struct sk_buff *skb,const char *
 
 static void cirrus_receive (struct net_device *dev)
 {
-	cirrus_t *priv = (cirrus_t *) dev->priv;
+	cirrus_t *priv = (cirrus_t *) netdev_priv(dev);
 	struct sk_buff *skb;
 	u16 status,length;
 
@@ -243,7 +243,7 @@ static void cirrus_receive (struct net_device *dev)
 
 static int cirrus_send_start (struct sk_buff *skb,struct net_device *dev)
 {
-	cirrus_t *priv = (cirrus_t *) dev->priv;
+	cirrus_t *priv = (cirrus_t *) netdev_priv(dev);
 	u16 status;
 
 	mdelay(10);
@@ -286,11 +286,11 @@ static irqreturn_t cirrus_interrupt(int irq, void *id)
 	cirrus_t *priv;
 	u16 status;
 
-	if (dev->priv == NULL) {
+	if (netdev_priv(dev) == NULL) {
 		return IRQ_NONE;
 	}
 
-	priv = (cirrus_t *) dev->priv;
+	priv = (cirrus_t *) netdev_priv(dev);
 
 	while ((status = cirrus_read (dev,PP_ISQ))) {
 		switch (RegNum (status)) {
@@ -347,7 +347,7 @@ static irqreturn_t cirrus_interrupt(int irq, void *id)
 
 static void cirrus_transmit_timeout (struct net_device *dev)
 {
-	cirrus_t *priv = (cirrus_t *) dev->priv;
+	cirrus_t *priv = (cirrus_t *) netdev_priv(dev);
 	priv->stats.tx_errors++;
 	priv->stats.tx_heartbeat_errors++;
 	priv->txlen = 0;
@@ -432,7 +432,7 @@ static int cirrus_set_mac_address (struct net_device *dev, void *p)
 
 static struct net_device_stats *cirrus_get_stats (struct net_device *dev)
 {
-	cirrus_t *priv = (cirrus_t *) dev->priv;
+	cirrus_t *priv = (cirrus_t *) netdev_priv(dev);
 	return (&priv->stats);
 }
 
@@ -503,7 +503,7 @@ int __init cirrus_probe(void)
 		dev->dev_addr[5] = 0x16;
 	}
 	dev->if_port   = IF_PORT_10BASET;
-	dev->priv      = (void *) &priv;
+	dev->ml_priv      = (void *) &priv;
 
 	dev->base_addr = CIRRUS_DEFAULT_IO;
 	dev->irq = CIRRUS_DEFAULT_IRQ;
