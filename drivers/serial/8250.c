@@ -409,6 +409,10 @@ static unsigned int mem_serial_in(struct uart_port *p, int offset)
 static void mem_serial_out(struct uart_port *p, int offset, int value)
 {
 	offset = map_8250_out_reg(p, offset) << p->regshift;
+#if defined(CONFIG_JZSOC)
+	if (offset == (UART_FCR << p->regshift))
+		value |= 0x10; /* set FCR.UUE */
+#endif
 	writeb(value, p->membase + offset);
 }
 
@@ -2374,10 +2378,6 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 		else
 			fcr = uart_config[up->port.type].fcr;
 	}
-
-#ifdef CONFIG_JZSOC
-	fcr |= 0x10; /* Enable UART */
-#endif
 
 	/*
 	 * MCR-based auto flow control.  When AFE is enabled, RTS will be
