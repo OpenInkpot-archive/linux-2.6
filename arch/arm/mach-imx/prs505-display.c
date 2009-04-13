@@ -34,7 +34,7 @@
 static struct platform_device *prs505_display_device;
 static struct metronome_board prs505_board;
 
-struct imxfb_mach_info prs505_fb_info = {
+struct imx_fb_platform_data prs505_fb_info = {
 	.pixclock	= 40189,
 	.xres		= 832,
 	.yres		= 622 / 2,
