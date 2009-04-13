@@ -51,6 +51,7 @@
 #include <mach/irqs.h>
 
 #include <mach/hardware.h>
+#include <mach/regs-gpio.h>
 
 #include <plat/regs-udc.h>
 #include <plat/udc.h>

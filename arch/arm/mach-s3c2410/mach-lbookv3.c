@@ -58,19 +58,19 @@
 #include <asm/mach-types.h>
 #include <asm/delay.h>
 
+#include <mach/regs-clock.h>
 #include <mach/leds-gpio.h>
 #include <mach/regs-gpio.h>
-#include <mach/regs-clock.h>
 #include <mach/spi.h>
 
+#include <plat/pll.h>
 #include <plat/regs-serial.h>
-#include <asm/plat-s3c/nand.h>
-
+#include <plat/nand.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
-#include <asm/plat-s3c24xx/udc.h>
+#include <plat/udc.h>
 #include <plat/pm.h>
-#include <asm/plat-s3c24xx/mci.h>
+#include <plat/mci.h>
 
 #include <plat/common-smdk.h>
 
@@ -444,7 +444,6 @@ static struct s3c2410_spi_info lbookv3_spi_info = {
 
 static struct platform_device *lbookv3_devices[] __initdata = {
 	&s3c_device_wdt,
-	&s3c_device_i2c,
 	&s3c_device_iis,
 	&s3c_device_usbgadget,
 	&s3c_device_usb,
@@ -568,9 +567,9 @@ static void __init lbookv3_init(void)
 	lbookv3_init_gpio();
 
 
-	tmp =	(0x78 << S3C2410_PLLCON_MDIVSHIFT)
-		| (0x02 << S3C2410_PLLCON_PDIVSHIFT)
-		| (0x03 << S3C2410_PLLCON_SDIVSHIFT);
+	tmp =	(0x78 << S3C24XX_PLLCON_MDIVSHIFT)
+		| (0x02 << S3C24XX_PLLCON_PDIVSHIFT)
+		| (0x03 << S3C24XX_PLLCON_SDIVSHIFT);
 	writel(tmp, S3C2410_UPLLCON);
 
 	s3c_device_nand.dev.platform_data = &lbookv3_nand_info;
