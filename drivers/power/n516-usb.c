@@ -96,7 +96,7 @@ static int __devinit n516_usb_pwr_probe(struct platform_device *pdev)
 		__gpio_as_irq_rise_edge(GPIO_USB_DETECT);
 
 	ret = request_irq(gpio_to_irq(GPIO_USB_DETECT),
-			n516_usb_pwr_change_irq, IRQF_DISABLED | IRQF_SHARED,
+			n516_usb_pwr_change_irq, IRQF_SHARED,
 			"usb-power", &n516_usb_psy);
 	if (ret) {
 		dev_err(&pdev->dev, "Unable to claim IRQ\n");

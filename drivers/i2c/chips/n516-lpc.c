@@ -297,7 +297,7 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 		__gpio_as_irq_fall_edge(GPIO_CHARG_STAT_N);
 
 	ret = request_irq(gpio_to_irq(GPIO_CHARG_STAT_N), n516_bat_charge_irq,
-				IRQF_DISABLED | IRQF_SHARED,
+				IRQF_SHARED,
 				"battery charging", &n516_battery);
 	if (ret) {
 		dev_err(&client->dev, "Unable to claim battery charging IRQ\n");
