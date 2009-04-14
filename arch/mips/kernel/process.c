@@ -25,6 +25,9 @@
 #include <linux/completion.h>
 #include <linux/kallsyms.h>
 #include <linux/random.h>
+#include <linux/pm.h>
+#include <linux/suspend.h>
+#include <linux/kernel_stat.h>
 
 #include <asm/asm.h>
 #include <asm/bootinfo.h>
@@ -41,6 +44,51 @@
 #include <asm/isadep.h>
 #include <asm/inst.h>
 #include <asm/stacktrace.h>
+
+#ifdef CONFIG_PM_AUTOSUSPEND
+
+static unsigned long sleep_idle_time = HZ;
+static struct work_struct suspend_worktask;
+static int autosuspend_in_progress = 0;
+
+static void do_idle_suspend(struct work_struct *work)
+{
+	pm_suspend(PM_SUSPEND_MEM);
+#ifdef CONFIG_RTC_HCTOSYS
+	rtc_hctosys();
+#endif
+	sleep_idle_time = jiffies + pm_autosuspend_timeout;
+	autosuspend_in_progress = 0;
+}
+
+static void check_for_autosuspend(void)
+{
+	static u64 last_cpustat_procs = 0;
+	u64 curr_cpustat_procs = kstat_this_cpu.cpustat.user + kstat_this_cpu.cpustat.iowait +
+		kstat_this_cpu.cpustat.system + kstat_this_cpu.cpustat.nice;
+
+	if (pm_autosuspend_enabled && !autosuspend_in_progress) {
+		if (curr_cpustat_procs != last_cpustat_procs)
+			sleep_idle_time = jiffies + pm_autosuspend_timeout;
+
+#ifdef CONFIG_PM_AUTOSUSPEND_WITH_TIMERS
+		if (time_before(get_next_timer_interrupt(jiffies), sleep_idle_time))
+			sleep_idle_time = get_next_timer_interrupt(jiffies) + pm_autosuspend_timeout;
+#endif
+
+		last_cpustat_procs = curr_cpustat_procs;
+
+		if (time_after(jiffies, sleep_idle_time)) {
+			if (pm_autosuspend_workqueue) {
+				autosuspend_in_progress = 1;
+				INIT_WORK(&suspend_worktask, do_idle_suspend);
+				queue_work(pm_autosuspend_workqueue, &suspend_worktask);
+				sleep_idle_time = jiffies + pm_autosuspend_timeout;
+			}
+		}
+	}
+}
+#endif
 
 /*
  * The idle thread. There's no useful work to be done, so just try to conserve
@@ -63,6 +111,7 @@ void __noreturn cpu_idle(void)
 
 			smtc_idle_loop_hook();
 #endif
+			check_for_autosuspend();
 
 			if (cpu_wait) {
 				/* Don't trace irqs off for idle */
