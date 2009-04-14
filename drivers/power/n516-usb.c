@@ -69,7 +69,7 @@ static enum power_supply_property n516_usb_pwr_props[] = {
 };
 
 static struct power_supply n516_usb_psy = {
-	.name		= "n516-usb",
+	.name		= "usb",
 	.type           = POWER_SUPPLY_TYPE_USB,
 	.supplied_to    = n516_usb_power_supplied_to,
 	.num_supplicants = ARRAY_SIZE(n516_usb_power_supplied_to),
