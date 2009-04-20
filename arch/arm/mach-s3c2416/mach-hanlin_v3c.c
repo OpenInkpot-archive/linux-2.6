@@ -122,6 +122,34 @@ struct platform_device s3c_device_usb2gadget = {
 
 static struct mtd_partition v3c_nand_part[] = {
 	[0] = {
+		.name		= "KERNEL",
+		.offset		= 0,
+		.size		= SZ_1M * 3,
+	},
+	[1] = {
+		.name		= "WF",
+		.offset		= SZ_1M * 3,
+		.size		= SZ_512K,
+	},
+	[2] = {
+		.name		= "FREE",
+		.offset		= SZ_1M * 3 + SZ_512K,
+		.size		= SZ_512K,
+	},
+	[3] = {
+		.name		= "UBI",
+		.offset		= SZ_1M * 4,
+		.size		= SZ_1M * 1024 - SZ_1M * 4 - SZ_1M * 1,
+	},
+	[4] = {
+		.name		= "BBT",
+		/* last two blocks are BBT
+		 * we reserve 8 blocks for it
+		 */
+		.offset		= SZ_128K * (8192 - 8),
+		.size		= SZ_128K * 8,
+	},
+	[5] = {
 		.name		= "all",
 		.offset		= 0,
 		.size		= MTDPART_SIZ_FULL,
