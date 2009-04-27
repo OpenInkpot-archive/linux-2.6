@@ -181,8 +181,10 @@ static void n516_lpc_read_keys(struct work_struct *work)
 				input_report_key(chip->input, keymap[i][1], 0);
 				input_sync(chip->input);
 			}
-		if ((raw_msg >= 0x81) && (raw_msg <= 0x87))
+		if ((raw_msg >= 0x81) && (raw_msg <= 0x87)) {
 			chip->battery_level = raw_msg - 0x81;
+			power_supply_changed(&n516_battery);
+		}
 	}
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
 }
@@ -278,17 +280,17 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 		goto err_input_register;
 	}
 
+	ret = power_supply_register(NULL, &n516_battery);
+	if (ret) {
+		dev_err(&client->dev, "Unable to register N516 battery\n");
+		goto err_bat_reg;
+	}
+
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
 	ret = request_irq(IRQ_LPC_INT, n516_lpc_irq, 0, "lpc", chip);
 	if (ret) {
 		dev_err(&client->dev, "request_irq failed: %d\n", ret);
 		goto err_request_lpc_irq;
-	}
-
-	ret = power_supply_register(NULL, &n516_battery);
-	if (ret) {
-		dev_err(&client->dev, "Unable to register N516 battery\n");
-		goto err_bat_reg;
 	}
 
 	if (n516_bat_charging())
@@ -310,10 +312,10 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
 err_request_chrg_irq:
-	power_supply_unregister(&n516_battery);
-err_bat_reg:
 	free_irq(IRQ_LPC_INT, chip);
 err_request_lpc_irq:
+	power_supply_unregister(&n516_battery);
+err_bat_reg:
 	input_unregister_device(input);
 err_input_register:
 	input_free_device(input);
@@ -330,10 +332,10 @@ static int n516_lpc_remove(struct i2c_client *client)
 
 	pm_power_off = NULL;
 	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
-	power_supply_unregister(&n516_battery);
 	__gpio_as_input(GPIO_LPC_INT);
-	flush_scheduled_work();
 	free_irq(IRQ_LPC_INT, chip);
+	flush_scheduled_work();
+	power_supply_unregister(&n516_battery);
 	input_unregister_device(chip->input);
 	kfree(chip);
 
