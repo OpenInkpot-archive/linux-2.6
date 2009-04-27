@@ -1001,6 +1001,7 @@ static int metronomefb_suspend(struct platform_device *pdev, pm_message_t messag
 	struct metronomefb_par *par = info->par;
 
 	par->board->set_stdby(par, 0);
+	par->board->set_rst(par, 0);
 	if (par->board->power_ctl)
 		par->board->power_ctl(par, METRONOME_POWER_OFF);
 
