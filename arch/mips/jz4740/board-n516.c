@@ -227,6 +227,12 @@ static void __init board_gpio_setup(void)
 	__gpio_as_output(GPIO_SPK_SHUD);
 
 	__gpio_as_output(GPIO_LED_EN);
+
+	/* Disable display controller on booting */
+	__gpio_as_output(GPIO_DISPLAY_STBY);
+	__gpio_as_output(GPIO_DISPLAY_RST_L);
+	__gpio_clear_pin(GPIO_DISPLAY_STBY);
+	__gpio_clear_pin(GPIO_DISPLAY_RST_L);
 }
 
 void __init jz_board_setup(void)
