@@ -197,7 +197,7 @@ static u16 calc_img_cksum(u16 *start, int length)
 }
 
 /* here we decode the incoming waveform file and populate metromem */
-static int __devinit load_waveform(u8 *mem, size_t size, int m, int t,
+static int load_waveform(u8 *mem, size_t size, int m, int t,
 				struct metronomefb_par *par)
 {
 	int tta;
