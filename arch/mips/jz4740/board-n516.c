@@ -267,44 +267,8 @@ static struct platform_device n516_led = {
 	},
 };
 
-struct mtd_partition n516_nand_parts[] = {
-	[0] = {
-		.name		= "Bootloader",
-		.size		= SZ_1M,
-		.offset		= 0,
-		.mask_flags	= MTD_WRITEABLE,
-	},
-	[1] = {
-		.name		= "Kernel",
-		.size		= SZ_1M * 3,
-		.offset		= SZ_1M,
-	},
-	[2] = {
-		.name		= "Waveforms",
-		.size		= SZ_512K,
-		.offset		= SZ_4M,
-	},
-	[3] = {
-		.name		= "Free",
-		.size		= SZ_512K,
-		.offset		= SZ_4M + SZ_512K,
-	},
-	[4] = {
-		.name		= "UBI",
-		.size		= MTDPART_SIZ_FULL,
-		.offset		= SZ_1M * 5,
-	},
-	[5] = {
-		.name	= "ALL",
-		.size	= MTDPART_SIZ_FULL,
-		.offset	= 0,
-	},
-};
-
-
 static struct jz4740_pdata n516_nand_pdata = {
-	.partitions	= n516_nand_parts,
-	.nr_partitions	= ARRAY_SIZE(n516_nand_parts),
+	.part_probe_types = (const char *[]) {"cmdlinepart", NULL}
 };
 
 static struct platform_device n516_nand_dev = {
