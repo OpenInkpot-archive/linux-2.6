@@ -285,6 +285,11 @@ static struct platform_device n516_nand_dev = {
 	},
 };
 
+static struct platform_device n516_rtc_dev = {
+	.name		= "jz-rtc",
+	.id		= -1,
+};
+
 static struct platform_device n516_usb_power = {
 	.name		= "n516-usb-power",
 	.id		= -1,
@@ -298,6 +303,7 @@ static int n516_setup_platform(void)
 	platform_device_register(&n516_led);
 	platform_device_register(&n516_nand_dev);
 	platform_device_register(&n516_usb_power);
+	platform_device_register(&n516_rtc_dev);
 
 	return 0;
 }
