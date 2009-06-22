@@ -2221,7 +2221,6 @@ static int jz4740_udc_remove(struct platform_device *pdev)
 
 	free_irq(IRQ_UDC, dev);
 	platform_set_drvdata(pdev, 0);
-	device_unregister(&dev->gadget.dev);
 	the_controller = 0;
 
 	return 0;
