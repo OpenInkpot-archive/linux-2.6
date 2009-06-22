@@ -63,7 +63,7 @@ static unsigned int udc_debug = 0; /* 0: normal mode, 1: test udc cable type mod
 module_param(udc_debug, int, 0);
 MODULE_PARM_DESC(udc_debug, "test udc cable or power type");
 
-static unsigned int use_dma = 1;   /* 1: use DMA, 0: use PIO */
+static unsigned int use_dma = 0;   /* 1: use DMA, 0: use PIO */
 
 module_param(use_dma, int, 0);
 MODULE_PARM_DESC(use_dma, "DMA mode enable flag");
@@ -531,6 +531,41 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 
 EXPORT_SYMBOL(usb_gadget_unregister_driver);
 
+static void dump_dma_regs(void)
+{
+
+	printk("FADDR = 0x%x\n", usb_readb(USB_REG_FADDR));
+	printk("POWER = 0x%x\n", usb_readb(USB_REG_POWER));
+	printk("INTRINE = 0x%x\n", usb_readw(USB_REG_INTRINE));
+	printk("INTROUTE = 0x%x\n", usb_readw(USB_REG_INTROUTE));
+	printk("INTRUSBE = 0x%x\n", usb_readb(USB_REG_INTRUSBE));
+
+	printk("INCSR = 0x%x\n", usb_readw(USB_REG_INCSR));
+	printk("ADDR1 = 0x%x\n", usb_readw(USB_REG_ADDR1));
+	printk("COUNT1 = 0x%x\n", usb_readw(USB_REG_COUNT1));
+	printk("CNTL1 = 0x%x\n", usb_readw(USB_REG_CNTL1));
+
+	printk("OUTCSR = 0x%x\n", usb_readb(USB_REG_OUTCSR));
+	printk("ADDR2 = 0x%x\n", usb_readw(USB_REG_ADDR2));
+	printk("COUNT2 = 0x%x\n", usb_readw(USB_REG_COUNT2));
+	printk("CNTL2 = 0x%x\n", usb_readw(USB_REG_CNTL2));
+
+	usb_set_index(0);
+	printk("CSR0 = 0x%x\n", usb_readb(USB_REG_CSR0));
+	printk("COUNT0 = 0x%x\n", usb_readb(USB_REG_OUTCOUNT));
+
+	usb_set_index(1);
+	printk("USB_REG_INCSRH = 0x%x\n", usb_readb(USB_REG_INCSRH));
+	printk("USB_REG_INCSR = 0x%x\n", usb_readb(USB_REG_INCSR));
+
+	usb_set_index(1);
+	printk("USB_REG_OUTCSRH = 0x%x\n", usb_readb(USB_REG_OUTCSRH));
+	printk("USB_REG_OUTCSR = 0x%x\n", usb_readb(USB_REG_OUTCSR));
+
+	usb_set_index(0);
+
+}
+
 /*-------------------------------------------------------------------------*/
 
 /*
@@ -541,6 +576,7 @@ static void kick_dma(struct jz4740_ep *ep, struct jz4740_request *req)
 	u32 count = req->req.length;
 	u32 physaddr = virt_to_phys((void *)req->req.buf);
 
+	DEBUG("%s: EP %d, %s\n", __FUNCTION__, ep_index(ep), ep_is_in(ep) ? "IN" : "OUT");
 	usb_set_index(ep_index(ep));
 	if (ep_is_in(ep)) { /* Bulk-IN transfer using DMA channel 1 */
 		ep->reg_addr = USB_REG_ADDR1;
@@ -554,10 +590,11 @@ static void kick_dma(struct jz4740_ep *ep, struct jz4740_request *req)
 
 		usb_writel(USB_REG_ADDR1, physaddr);
 		usb_writel(USB_REG_COUNT1, count);
-		usb_writel(USB_REG_CNTL1, USB_CNTL_ENA | USB_CNTL_DIR_IN | USB_CNTL_MODE_1 | 
+		usb_writew(USB_REG_CNTL1, USB_CNTL_ENA | USB_CNTL_DIR_IN | USB_CNTL_MODE_1 | 
 			   USB_CNTL_INTR_EN | USB_CNTL_BURST_16 | USB_CNTL_EP(ep_index(ep)));
 	}
 	else { /* Bulk-OUT transfer using DMA channel 2 */
+
 		ep->reg_addr = USB_REG_ADDR2;
 
 		dma_cache_wback_inv((unsigned long)req->req.buf, count);
@@ -572,13 +609,15 @@ static void kick_dma(struct jz4740_ep *ep, struct jz4740_request *req)
 		/* Hardware (?) bug: if we select Burst Mode 1,2 or 3, then four bytes every 64
 		 * bytes are dropped.
 		 */
-		usb_writel(USB_REG_CNTL2, USB_CNTL_ENA | USB_CNTL_MODE_1 | 
+		usb_writew(USB_REG_CNTL2, USB_CNTL_ENA | USB_CNTL_MODE_1 | 
 			   USB_CNTL_INTR_EN | USB_CNTL_BURST_0 | USB_CNTL_EP(ep_index(ep)));
 	}
+//	dump_dma_regs();
 }
 
 /*-------------------------------------------------------------------------*/
 
+#define IN_DMA_MODE_0
 /** Write request to FIFO (max write == maxp size)
  *  Return:  0 = still running, 1 = completed, negative = errno
  *  NOTE: INDEX register must be set for EP
@@ -589,7 +628,51 @@ static int write_fifo(struct jz4740_ep *ep, struct jz4740_request *req)
 	u32 physaddr = virt_to_phys((void *)req->req.buf);
 
 	max = le16_to_cpu(ep->desc->wMaxPacketSize);
+#ifdef IN_DMA_MODE_0
+	if (use_dma) {
+		unsigned int length;
+		u8 *buf;
 
+		DEBUG("Transfer packet using DMA mode 0\n");
+
+		if (req->req.length == req->req.actual) {
+			DEBUG("packet transferred, finish him\n");
+			done(ep, req, 0);
+			if (list_empty(&ep->queue)) {
+				pio_irq_disable(ep);
+				return 1;
+			}
+			else {
+				/* advance the request queue */
+				req = list_entry(ep->queue.next, struct jz4740_request, queue);
+//				kick_dma(ep, req);
+//				return 0;
+			}
+			return 0;
+		}
+		buf = req->req.buf + req->req.actual;
+		physaddr += req->req.actual;
+		length = req->req.length - req->req.actual;
+		length = min(length, max);
+
+		DEBUG("req length=%d, actual=%d, transfer length = %d\n", req->req.length, req->req.actual, length);
+
+
+		req->req.actual += length;
+
+		ep->reg_addr = USB_REG_ADDR1;
+		dma_cache_wback_inv((unsigned long)req->req.buf, req->req.length);
+
+//		pio_irq_enable(ep);
+
+		usb_writeb(USB_REG_INCSRH, 0);
+		usb_writel(USB_REG_ADDR1, physaddr);
+		usb_writel(USB_REG_COUNT1, length);
+		usb_writel(USB_REG_CNTL1, USB_CNTL_ENA | USB_CNTL_DIR_IN | 
+				USB_CNTL_INTR_EN | USB_CNTL_BURST_16 | USB_CNTL_EP(ep_index(ep)));
+		return 0;
+	}
+#else
 	if (use_dma) {
 		u32 dma_count;
 
@@ -615,7 +698,7 @@ static int write_fifo(struct jz4740_ep *ep, struct jz4740_request *req)
 			return 0;
 		}
 	}
-
+#endif
 	/*
 	 * PIO mode handling starts here ...
 	 */
@@ -1183,6 +1266,8 @@ static int jz4740_queue(struct usb_ep *_ep, struct usb_request *_req,
 	/* kickstart this i/o queue? */
 	DEBUG("Add to %d Q %d %d\n", ep_index(ep), list_empty(&ep->queue),
 	      ep->stopped);
+	DEBUG("------USB_REG_INCSR = 0x%x\n", usb_readw(USB_REG_INCSR));
+
 	if (list_empty(&ep->queue) && likely(!ep->stopped)) {
 		u32 csr;
 
@@ -1191,7 +1276,11 @@ static int jz4740_queue(struct usb_ep *_ep, struct usb_request *_req,
 			list_add_tail(&req->queue, &ep->queue);
 			jz4740_ep0_kick(dev, ep);
 			req = 0;
-		} else if (use_dma) {
+		} else if (use_dma
+#ifdef IN_DMA_MODE_0
+				&& !(ep_is_in(ep) && (ep_index(ep) == 1))
+#endif
+				) {
 			/* DMA */
 			kick_dma(ep, req);
 		}
@@ -1991,12 +2080,14 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 	u32 intr_in  = usb_readw(USB_REG_INTRIN);
 	u32 intr_out = usb_readw(USB_REG_INTROUT);
 	u32 intr_dma = usb_readb(USB_REG_INTR);
+	u32 dma_cntl = usb_readw(USB_REG_CNTL1);
+	u32 dma_cntl2 = usb_readw(USB_REG_CNTL2);
 
 	if (!intr_usb && !intr_in && !intr_out && !intr_dma)
 		return IRQ_HANDLED;
 
-	DEBUG("intr_out = %x intr_in=%x intr_usb=%x intr_dma=%x\n", 
-	      intr_out, intr_in, intr_usb, intr_dma);
+	DEBUG("intr_out = %x intr_in=%x intr_usb=%x intr_dma=%x, dma_cntl1=0x%x, dma_cntl2=0x%x\n", 
+	      intr_out, intr_in, intr_usb, intr_dma, dma_cntl, dma_cntl2);
 
 	spin_lock(&dev->lock);
 
@@ -2032,8 +2123,12 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 	/* Check for Bulk-IN DMA interrupt */
 	if (intr_dma & 0x1) {
 		int ep_num;
+		struct jz4740_ep *ep;
 		ep_num = (usb_readl(USB_REG_CNTL1) >> 4) & 0xf;
-		jz4740_in_epn(dev, ep_num, intr_in);
+		ep = &dev->ep[ep_num + 1];
+		usb_set_index(ep_num);
+		usb_setb(ep->csr, USB_INCSR_INPKTRDY);
+//		jz4740_in_epn(dev, ep_num, intr_in);
 	}
 
 	/* Check for Bulk-OUT DMA interrupt */
