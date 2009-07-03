@@ -516,6 +516,7 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 	u32 tmp;
 	unsigned int change_count = 0;
 	int m;
+	static int is_first_update = 1;
 
 	fbsize = par->info->fix.smem_len;
 
@@ -534,7 +535,7 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 
 	*((u16 *)(par->metromem_img) + fbsize/2) = cksum;
 
-	if (clear_all)
+	if (clear_all || is_first_update)
 		m = WF_MODE_GC;
 	else
 		if (change_count < fbsize / 100 * par->manual_refresh_threshold)
@@ -552,6 +553,7 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 
 	metronome_display_cmd(par);
 	check_err(par);
+	is_first_update = 0;
 }
 
 /* this is called back from the deferred io workqueue */
@@ -900,9 +902,6 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		goto err_free_irq;
 
 	info->flags = FBINFO_FLAG_DEFAULT | FBINFO_VIRTFB;
-
-	/* Initialize display */
-	metronomefb_dpy_update(par, 1);
 
 	info->fbdefio = &metronomefb_defio;
 	fb_deferred_io_init(info);
