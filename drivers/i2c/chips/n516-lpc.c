@@ -24,6 +24,9 @@
 
 #define IRQ_LPC_INT	(IRQ_GPIO_0 + GPIO_LPC_INT)
 
+static int batt_level=0;
+module_param(batt_level, int, 0);
+
 struct n516_lpc_chip {
 	struct i2c_client	*i2c_client;
 	struct work_struct	work;
@@ -248,7 +251,8 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	the_lpc = chip;
 	chip->i2c_client = client;
-	chip->battery_level = 0;
+	if ((batt_level > 0) && (batt_level < ARRAY_SIZE(batt_charge)))
+		chip->battery_level = batt_level;
 	INIT_WORK(&chip->work, n516_lpc_read_keys);
 	i2c_set_clientdata(client, chip);
 
