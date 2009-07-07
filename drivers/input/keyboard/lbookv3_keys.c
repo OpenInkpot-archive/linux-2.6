@@ -47,8 +47,8 @@ static unsigned long keypad_state[ARRAY_SIZE(row_pins)][ARRAY_SIZE(column_pins)]
 
 
 static unsigned char keypad_codes[ARRAY_SIZE(row_pins)][ARRAY_SIZE(column_pins)] = {
-	{ KEY_1, KEY_7, KEY_4, KEY_0, KEY_KPPLUS, KEY_ENTER, KEY_UP },
-	{ KEY_6, KEY_3, KEY_9, KEY_RESERVED, KEY_KPMINUS, KEY_ESC, KEY_DOWN },
+	{ KEY_1, KEY_7, KEY_4, KEY_0, KEY_KPPLUS, KEY_ENTER, KEY_RIGHT },
+	{ KEY_6, KEY_3, KEY_9, KEY_RESERVED, KEY_KPMINUS, KEY_ESC, KEY_LEFT },
 	{ KEY_2, KEY_8, KEY_5, KEY_RESERVED, KEY_RESERVED, KEY_RESERVED, KEY_RESERVED }
 };
 
