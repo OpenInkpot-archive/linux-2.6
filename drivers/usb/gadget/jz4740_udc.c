@@ -511,16 +511,17 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 
 	if (!dev)
 		return -ENODEV;
-	if (!driver || driver != dev->driver)
+	if (!driver || driver != dev->driver || !driver->unbind)
 		return -EINVAL;
 
 	spin_lock_irqsave(&dev->lock, flags);
 	dev->driver = 0;
 	stop_activity(dev, driver);
 	spin_unlock_irqrestore(&dev->lock, flags);
-	device_del(&dev->gadget.dev);
 
-//	driver->unbind(&dev->gadget);
+	driver->unbind(&dev->gadget);
+
+	device_del(&dev->gadget.dev);
 
 	udc_disable(dev);
 
@@ -1513,6 +1514,7 @@ static inline int jz4740_fifo_read(struct jz4740_ep *ep,
 	int count = usb_readw(USB_REG_OUTCOUNT);
 	volatile u8 *fifo = (volatile u8 *)ep->fifo;
 
+	DEBUG_EP0("%s: count= %d\n", __FUNCTION__, count);
 	if (count > max)
 		count = max;
 	bytes = count;
@@ -1551,6 +1553,7 @@ static int read_fifo_ep0(struct jz4740_ep *ep, struct jz4740_request *req)
 	if (likely(csr & USB_CSR0_OUTPKTRDY)) {
 		count = usb_readw(USB_REG_OUTCOUNT);
 		req->req.actual += min(count, bufferspace);
+		DEBUG_EP0("%s: count= %d\n", __FUNCTION__, count);
 	} else			/* zlp */
 		count = 0;
 
@@ -1609,7 +1612,7 @@ static void udc_set_address(struct jz4740_udc *dev, unsigned char address)
  *              set USB_CSR0_SVDOUTPKTRDY bit
 				if last set USB_CSR0_DATAEND bit
  */
-static void jz4740_ep0_out(struct jz4740_udc *dev, u32 csr)
+static void jz4740_ep0_out(struct jz4740_udc *dev, u32 csr, int kickstart)
 {
 	struct jz4740_request *req;
 	struct jz4740_ep *ep = &dev->ep[0];
@@ -1625,21 +1628,28 @@ static void jz4740_ep0_out(struct jz4740_udc *dev, u32 csr)
 	if (req) {
 		if (req->req.length == 0) {
 			DEBUG_EP0("ZERO LENGTH OUT!\n");
+			DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY & USB_CSR0_DATAEND...\n");
 			usb_setb(USB_REG_CSR0, (USB_CSR0_SVDOUTPKTRDY | USB_CSR0_DATAEND));
 //			usb_setb(USB_REG_CSR0, (USB_CSR0_SVDOUTPKTRDY));
 			dev->ep0state = WAIT_FOR_SETUP;
 			return;
+		} else if (kickstart) {
+			usb_setb(USB_REG_CSR0, (USB_CSR0_SVDOUTPKTRDY));
+			return;
 		}
+
 		ret = read_fifo_ep0(ep, req);
 		if (ret) {
 			/* Done! */
 			DEBUG_EP0("%s: finished, waiting for status\n",
 				  __FUNCTION__);
+			DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY & USB_CSR0_DATAEND...\n");
 			usb_setb(USB_REG_CSR0, (USB_CSR0_SVDOUTPKTRDY | USB_CSR0_DATAEND));
 			dev->ep0state = WAIT_FOR_SETUP;
 		} else {
 			/* Not done yet.. */
 			DEBUG_EP0("%s: not finished\n", __FUNCTION__);
+			DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY...\n");
 			usb_setb(USB_REG_CSR0, USB_CSR0_SVDOUTPKTRDY);
 		}
 	} else {
@@ -1770,6 +1780,7 @@ static int jz4740_handle_get_status(struct jz4740_udc *dev,
 	}
 
 	/* Clear "out packet ready" */
+	DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY...\n");
 	usb_setb(USB_REG_CSR0, USB_CSR0_SVDOUTPKTRDY);
 	/* Put status to FIFO */
 	jz4740_fifo_write(ep0, (u8 *) & val, sizeof(val));
@@ -1823,6 +1834,7 @@ static void jz4740_ep0_setup(struct jz4740_udc *dev, u32 csr)
 
 		DEBUG_SETUP("USB_REQ_SET_ADDRESS (%d)\n", ctrl.wValue);
 		udc_set_address(dev, ctrl.wValue);
+		DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY & USB_CSR0_DATAEND...\n");
 		usb_setb(USB_REG_CSR0, (USB_CSR0_SVDOUTPKTRDY | USB_CSR0_DATAEND));
 		return;
 
@@ -1878,6 +1890,7 @@ static void jz4740_ep0_setup(struct jz4740_udc *dev, u32 csr)
 			usb_set_index(0);
 
 			/* Reply with a ZLP on next IN token */
+			DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY & USB_CSR0_DATAEND...\n");
 			usb_setb(USB_REG_CSR0, 
 				 (USB_CSR0_SVDOUTPKTRDY | USB_CSR0_DATAEND));
 			return;
@@ -1905,6 +1918,7 @@ static void jz4740_ep0_setup(struct jz4740_udc *dev, u32 csr)
 			    ("  --> ERROR: gadget setup FAILED (stalling), setup returned %d\n",
 			     i);
 			usb_set_index(0);
+			DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY & USB_CSR0_DATAEND...\n");
 			usb_setb(USB_REG_CSR0, (USB_CSR0_SVDOUTPKTRDY | USB_CSR0_DATAEND | USB_CSR0_SENDSTALL));
 
 			/* ep->stopped = 1; */
@@ -2024,7 +2038,7 @@ static void jz4740_handle_ep0(struct jz4740_udc *dev, u32 intr)
 
 		case DATA_STATE_RECV:
 			DEBUG_EP0("DATA_STATE_RECV\n");
-			jz4740_ep0_out(dev, csr);
+			jz4740_ep0_out(dev, csr, 0);
 			break;
 
 		default:
@@ -2041,20 +2055,23 @@ static void jz4740_ep0_kick(struct jz4740_udc *dev, struct jz4740_ep *ep)
 	u32 csr;
 
 	usb_set_index(0);
-	csr = usb_readb(USB_REG_CSR0);
-
-	DEBUG_EP0("%s: %x\n", __FUNCTION__, csr);
 
 //	/* Clear "out packet ready" */
 //	usb_setb(USB_REG_CSR0, USB_CSR0_SVDOUTPKTRDY);
 
+	csr = usb_readb(USB_REG_CSR0);
+
+	DEBUG_EP0("%s: %x\n", __FUNCTION__, csr);
+
 	if (ep_is_in(ep)) {
+		DEBUG_EP0("Setting USB_CSR0_SVDOUTPKTRDY...\n");
 		usb_setb(USB_REG_CSR0, USB_CSR0_SVDOUTPKTRDY);
+		csr = usb_readb(USB_REG_CSR0);
 		dev->ep0state = DATA_STATE_XMIT;
 		jz4740_ep0_in(dev, csr);
 	} else {
 		dev->ep0state = DATA_STATE_RECV;
-		jz4740_ep0_out(dev, csr);
+		jz4740_ep0_out(dev, csr, 1);
 	}
 }
 
