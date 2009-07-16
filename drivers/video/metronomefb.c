@@ -468,17 +468,18 @@ static int metronome_bootup(struct metronomefb_par *par)
 {
 	int res;
 
+	mutex_lock(&par->lock);
 	res = metronome_powerup_cmd(par);
 	if (res) {
 		dev_err(&par->pdev->dev, "metronomefb: POWERUP cmd failed\n");
-		return res;
+		goto finish;
 	}
 
 	check_err(par);
 	res = metronome_config_cmd(par);
 	if (res) {
 		dev_err(&par->pdev->dev, "metronomefb: CONFIG cmd failed\n");
-		return res;
+		goto finish;
 	}
 	check_err(par);
 
@@ -487,6 +488,8 @@ static int metronome_bootup(struct metronomefb_par *par)
 		dev_err(&par->pdev->dev, "metronomefb: INIT cmd failed\n");
 	check_err(par);
 
+finish:
+	mutex_unlock(&par->lock);
 	return res;
 }
 
@@ -566,7 +569,9 @@ static void metronomefb_dpy_deferred_io(struct fb_info *info,
 	 * 'previous image' field in pixels which was changed at
 	 * previous refresh
 	 */
+	mutex_lock(&par->lock);
 	metronomefb_dpy_update(par, 0);
+	mutex_unlock(&par->lock);
 }
 
 static void metronomefb_fillrect(struct fb_info *info,
@@ -574,8 +579,10 @@ static void metronomefb_fillrect(struct fb_info *info,
 {
 	struct metronomefb_par *par = info->par;
 
+	mutex_lock(&par->lock);
 	sys_fillrect(info, rect);
 	metronomefb_dpy_update(par, 0);
+	mutex_unlock(&par->lock);
 }
 
 static void metronomefb_copyarea(struct fb_info *info,
@@ -583,8 +590,10 @@ static void metronomefb_copyarea(struct fb_info *info,
 {
 	struct metronomefb_par *par = info->par;
 
+	mutex_lock(&par->lock);
 	sys_copyarea(info, area);
 	metronomefb_dpy_update(par, 0);
+	mutex_unlock(&par->lock);
 }
 
 static void metronomefb_imageblit(struct fb_info *info,
@@ -592,8 +601,10 @@ static void metronomefb_imageblit(struct fb_info *info,
 {
 	struct metronomefb_par *par = info->par;
 
+	mutex_lock(&par->lock);
 	sys_imageblit(info, image);
 	metronomefb_dpy_update(par, 0);
+	mutex_unlock(&par->lock);
 }
 
 /*
@@ -631,6 +642,8 @@ static ssize_t metronomefb_write(struct fb_info *info, const char __user *buf,
 
 	dst = (void __force *)(info->screen_base + p);
 
+	mutex_lock(&par->lock);
+
 	if (copy_from_user(dst, buf, count))
 		err = -EFAULT;
 
@@ -638,6 +651,7 @@ static ssize_t metronomefb_write(struct fb_info *info, const char __user *buf,
 		*ppos += count;
 
 	metronomefb_dpy_update(par, 0);
+	mutex_unlock(&par->lock);
 
 	return (err) ? err : count;
 }
@@ -852,6 +866,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	par->pdev = dev;
 	init_waitqueue_head(&par->waitq);
 	par->manual_refresh_threshold = 12;
+	mutex_init(&par->lock);
 
 	/* this table caches per page csum values. */
 	par->csum_table = vmalloc(videomemorysize/PAGE_SIZE);

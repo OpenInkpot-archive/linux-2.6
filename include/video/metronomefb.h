@@ -38,6 +38,7 @@ struct metronomefb_par {
 	int current_wf_temp;
 	unsigned int manual_refresh_threshold;
 	int dt;
+	struct mutex lock;
 };
 
 #define METRONOME_POWER_OFF	0
