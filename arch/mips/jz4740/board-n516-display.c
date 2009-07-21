@@ -206,8 +206,10 @@ static void n516_power_ctl(struct metronomefb_par *par, int cmd)
 	switch (cmd) {
 	case METRONOME_POWER_OFF:
 		__gpio_set_pin(GPIO_DISP_OFF_N);
+		__lcd_clr_ena(); /* Quick Disable */
 		break;
 	case METRONOME_POWER_ON:
+		__lcd_set_ena();
 		__gpio_clear_pin(GPIO_DISP_OFF_N);
 		break;
 	}
@@ -261,23 +263,25 @@ static int n516_wait_event(struct metronomefb_par *par)
 {
 	unsigned long timeout = jiffies + HZ/20;
 
+	dev_dbg(&n516_device->dev, "ENTER1 %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
 	while (get_rdy() && time_before(jiffies, timeout))
 		schedule();
 
-	dev_dbg(&n516_device->dev, "ENTER %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
-	return wait_event_timeout(par->waitq, get_rdy(), HZ * 3) ? 0 : -EIO;
+	dev_dbg(&n516_device->dev, "ENTER2 %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
+	return wait_event_timeout(par->waitq, get_rdy(), HZ * 2) ? 0 : -EIO;
 }
 
 static int n516_wait_event_intr(struct metronomefb_par *par)
 {
 	unsigned long timeout = jiffies + HZ/20;
 
+	dev_dbg(&n516_device->dev, "ENTER1 %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
 	while (get_rdy() && time_before(jiffies, timeout))
 		schedule();
 
-	dev_dbg(&n516_device->dev, "ENTER %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
+	dev_dbg(&n516_device->dev, "ENTER2 %s, RDY=%d\n", __func__, __gpio_get_pin(RDY_GPIO_PIN));
 	return wait_event_interruptible_timeout(par->waitq,
-					get_rdy(), HZ * 3) ? 0 : -EIO;
+					get_rdy(), HZ * 2) ? 0 : -EIO;
 }
 
 static void n516_cleanup(struct metronomefb_par *par)
