@@ -1250,7 +1250,6 @@ static int jzfb_resume(struct platform_device *dev)
 	__gpio_set_pin(GPIO_DISP_OFF_N); 
 	__lcd_special_on();
 	__lcd_set_ena();
-	mdelay(200);
 	__lcd_set_backlight_level(80); 
 
 	return 0;
