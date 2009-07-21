@@ -340,7 +340,6 @@ static int load_waveform(u8 *mem, size_t size, int m, int t,
 	return 0;
 }
 
-#ifdef DEBUG
 static int check_err(struct metronomefb_par *par)
 {
 	int res;
@@ -350,16 +349,13 @@ static int check_err(struct metronomefb_par *par)
 	return res;
 }
 
-#else
-#define check_err(par) do { } while (0)
-#endif
-
 static int metronome_display_cmd(struct metronomefb_par *par)
 {
 	int i;
 	u16 cs;
 	u16 opcode;
 	static u8 borderval;
+	int res;
 
 	dev_dbg(&par->pdev->dev, "%s: ENTER\n", __func__);
 	/* setup display command
@@ -385,13 +381,17 @@ static int metronome_display_cmd(struct metronomefb_par *par)
 	par->metromem_cmd->csum = cs;
 	par->metromem_cmd->opcode = opcode; /* display cmd */
 
-	return par->board->met_wait_event_intr(par);
+	res = par->board->met_wait_event_intr(par);
+	dev_dbg(&par->pdev->dev, "%s: EXIT: %d\n", __func__, res);
+	return res;
+
 }
 
 static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 {
 	int i;
 	u16 cs;
+	int res;
 
 	dev_dbg(&par->pdev->dev, "%s: ENTER\n", __func__);
 	/* setup power up command */
@@ -400,7 +400,8 @@ static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 
 	/* set pwr1,2,3 to 1024 */
 	for (i = 0; i < 3; i++) {
-		par->metromem_cmd->args[i] = 1024;
+//		par->metromem_cmd->args[i] = 1024;
+		par->metromem_cmd->args[i] = 100;
 		cs += par->metromem_cmd->args[i];
 	}
 
@@ -415,7 +416,9 @@ static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 	msleep(1);
 	par->board->set_stdby(par, 1);
 
-	return par->board->met_wait_event(par);
+	res = par->board->met_wait_event(par);
+	dev_dbg(&par->pdev->dev, "%s: EXIT: %d\n", __func__, res);
+	return res;
 }
 
 static int __devinit metronome_config_cmd(struct metronomefb_par *par)
@@ -468,7 +471,6 @@ static int metronome_bootup(struct metronomefb_par *par)
 {
 	int res;
 
-	mutex_lock(&par->lock);
 	res = metronome_powerup_cmd(par);
 	if (res) {
 		dev_err(&par->pdev->dev, "metronomefb: POWERUP cmd failed\n");
@@ -489,7 +491,6 @@ static int metronome_bootup(struct metronomefb_par *par)
 	check_err(par);
 
 finish:
-	mutex_unlock(&par->lock);
 	return res;
 }
 
@@ -506,7 +507,9 @@ static int __devinit metronome_init_regs(struct metronomefb_par *par)
 		return res;
 	}
 
-	return metronome_bootup(par);
+	res =  metronome_bootup(par);
+
+	return res;
 }
 
 static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
@@ -554,8 +557,26 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 		load_waveform((u8 *) par->firmware->data, par->firmware->size,
 				m, par->current_wf_temp, par);
 
-	metronome_display_cmd(par);
-	check_err(par);
+	for(;;) {
+		metronome_display_cmd(par);
+		if (!check_err(par))
+			break;
+
+		par->board->set_stdby(par, 0);
+		printk("Resetting Metronome\n");
+		par->board->set_rst(par, 0);
+		mdelay(1);
+		if (par->board->power_ctl)
+			par->board->power_ctl(par, METRONOME_POWER_OFF);
+
+		mdelay(1);
+		load_waveform((u8 *) par->firmware->data, par->firmware->size,
+				WF_MODE_GC, par->current_wf_temp, par);
+		if (par->board->power_ctl)
+			par->board->power_ctl(par, METRONOME_POWER_ON);
+		metronome_bootup(par);
+	}
+
 	is_first_update = 0;
 }
 
@@ -1031,7 +1052,9 @@ static int metronomefb_resume(struct platform_device *pdev)
 	if (par->board->power_ctl)
 		par->board->power_ctl(par, METRONOME_POWER_ON);
 
+	mutex_lock(&par->lock);
 	metronome_bootup(par);
+	mutex_unlock(&par->lock);
 
 	return 0;
 }
