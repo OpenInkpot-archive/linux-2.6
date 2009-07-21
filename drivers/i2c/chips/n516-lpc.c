@@ -245,7 +245,7 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	printk("%s\n", __func__);
 
-	chip = kmalloc(sizeof(*chip), GFP_KERNEL);
+	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
 
