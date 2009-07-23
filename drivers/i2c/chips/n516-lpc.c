@@ -187,8 +187,11 @@ static void n516_lpc_read_keys(struct work_struct *work)
 				input_sync(chip->input);
 			}
 		if ((raw_msg >= 0x81) && (raw_msg <= 0x87)) {
+			unsigned int old_level = chip->battery_level;
+
 			chip->battery_level = raw_msg - 0x81;
-			power_supply_changed(&n516_battery);
+			if (old_level != chip->battery_level)
+				power_supply_changed(&n516_battery);
 		}
 	}
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
