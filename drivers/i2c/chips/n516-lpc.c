@@ -74,7 +74,7 @@ static const unsigned int keymap[][2] = {
 	{0x1f, KEY_WAKEUP},
 };
 
-static const unsigned int batt_charge[] = {0, 17, 33, 50, 67, 83, 100};
+static const unsigned int batt_charge[] = {0, 7, 20, 45, 65, 80, 100};
 
 /* Insmod parameters */
 I2C_CLIENT_INSMOD_1(n516_lpc);
