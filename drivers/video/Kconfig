@@ -956,6 +956,14 @@ config FB_EINK_APOLLO
 	 To compile this driver as a module, choose M here: the
 	 module will be called eink_apollofb.
 
+config FB_EINK_APOLLO_DEFAULT_DELAY
+	int "Default delay for deferred IO in Apollo E-Ink driver"
+	depends on FB_EINK_APOLLO
+	default 300
+	help
+	  Default delay (in ms) for batching framebuffer updates for deferred_io
+	  in Apollo E-Ink controller, can be overriden runtime through sysfs.
+
 config FB_HGA
 	tristate "Hercules mono graphics support"
 	depends on FB && X86

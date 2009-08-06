@@ -854,7 +854,7 @@ static struct fb_ops apollofb_ops = {
 };
 
 static struct fb_deferred_io apollofb_defio = {
-	.delay		= HZ / 2,
+	.delay		= CONFIG_FB_EINK_APOLLO_DEFAULT_DELAY * HZ / 1000,
 	.deferred_io	= apollofb_dpy_deferred_io,
 };
 
