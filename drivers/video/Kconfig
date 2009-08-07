@@ -959,7 +959,7 @@ config FB_EINK_APOLLO
 config FB_EINK_APOLLO_DEFAULT_DELAY
 	int "Default delay for deferred IO in Apollo E-Ink driver"
 	depends on FB_EINK_APOLLO
-	default 300
+	default 200
 	help
 	  Default delay (in ms) for batching framebuffer updates for deferred_io
 	  in Apollo E-Ink controller, can be overriden runtime through sysfs.
