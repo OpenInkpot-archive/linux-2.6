@@ -53,6 +53,7 @@ static unsigned char keypad_codes[ARRAY_SIZE(row_pins)][ARRAY_SIZE(column_pins)]
 };
 
 static struct timer_list kb_timer;
+static struct timer_list power_timer;
 
 static inline void set_col(int col, int to)
 {
@@ -158,20 +159,48 @@ static void lbookv3_keys_kb_timer(unsigned long data)
 	}
 }
 
+static unsigned long int power_longpress_timeout;
+
+static void lbookv3_keys_power_timer(unsigned long data)
+{
+	struct input_dev *input = (struct input_dev *)data;
+	static int prev_state = 0;
+	int pressed;
+
+	pressed = !s3c2410_gpio_getpin(S3C2410_GPF6);
+
+	if (pressed) {
+
+		if (time_before(jiffies, power_longpress_timeout)) {
+			power_timer.expires = jiffies + poll_interval;
+			add_timer(&power_timer);
+			prev_state = pressed;
+			return;
+		} else {
+			generate_longpress_event(input, KEY_POWER);
+		}
+
+	} else if ((prev_state && !pressed) &&
+			time_before(jiffies, power_longpress_timeout)) {
+		input_event(input, EV_KEY, KEY_POWER, 1);
+		input_event(input, EV_KEY, KEY_POWER, 0);
+		input_sync(input);
+	}
+	prev_state = pressed;
+
+	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_EINT6);
+}
+
 static irqreturn_t lbookv3_powerkey_isr(int irq, void *dev_id)
 {
-	struct input_dev *input = dev_id;
+	if (s3c2410_gpio_getpin(S3C2410_GPF6))
+		return IRQ_HANDLED;
 
 	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_INP);
 
-	if (s3c2410_gpio_getpin(S3C2410_GPF6))
-		input_event(input, EV_KEY, KEY_POWER, 0);
-	else
-		input_event(input, EV_KEY, KEY_POWER, 1);
-
-	input_sync(input);
-
-	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_EINT6);
+	power_longpress_timeout = jiffies + longpress_time;
+	power_timer.expires = jiffies + poll_interval;
+	add_timer(&power_timer);
 
 	return IRQ_HANDLED;
 }
@@ -245,6 +274,7 @@ static int __init lbookv3_keys_init(void)
 	input->id.version = 0x0100;
 
 	setup_timer(&kb_timer, lbookv3_keys_kb_timer, (unsigned long)input);
+	setup_timer(&power_timer, lbookv3_keys_power_timer, (unsigned long)input);
 	memset(keypad_state, 0, sizeof(keypad_state));
 
 	for (i = 0; i < ARRAY_SIZE(row_pins); i++) {
@@ -295,7 +325,7 @@ static int __init lbookv3_keys_init(void)
 		enable_irq_wake(irq);
 	}
 
-	set_irq_type(IRQ_EINT6, IRQ_TYPE_EDGE_BOTH);
+	set_irq_type(IRQ_EINT6, IRQ_TYPE_EDGE_FALLING);
 	error = request_irq(IRQ_EINT6, lbookv3_powerkey_isr, IRQF_SAMPLE_RANDOM,
 			"lbookv3_keys", input);
 	if (error) {
@@ -339,6 +369,7 @@ static void __exit lbookv3_keys_exit(void)
 	}
 
 	del_timer_sync(&kb_timer);
+	del_timer_sync(&power_timer);
 	input_unregister_device(input);
 }
 
