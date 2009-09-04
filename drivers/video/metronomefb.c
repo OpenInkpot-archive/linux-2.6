@@ -886,7 +886,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	par->dt = epd_dt_index;
 	par->pdev = dev;
 	init_waitqueue_head(&par->waitq);
-	par->manual_refresh_threshold = 12;
+	par->manual_refresh_threshold = 5;
 	mutex_init(&par->lock);
 
 	/* this table caches per page csum values. */
