@@ -16,6 +16,7 @@
 #include <linux/input.h>
 #include <linux/workqueue.h>
 #include <linux/power_supply.h>
+#include <linux/suspend.h>
 
 #include <linux/i2c.h>
 
@@ -32,6 +33,7 @@ struct n516_lpc_chip {
 	struct work_struct	work;
 	struct input_dev	*input;
 	unsigned int		battery_level;
+	unsigned int		suspending:1, can_sleep:1;
 };
 
 static struct n516_lpc_chip *the_lpc;
@@ -193,6 +195,8 @@ static void n516_lpc_read_keys(struct work_struct *work)
 			if (old_level != chip->battery_level)
 				power_supply_changed(&n516_battery);
 		}
+		if (the_lpc->suspending)
+			the_lpc->can_sleep = 0;
 	}
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
 }
@@ -238,6 +242,31 @@ static int n516_lpc_detect(struct i2c_client *client, int kind, struct i2c_board
 {
 	return 0;
 }
+
+
+static int n516_lpc_suspend_notifier(struct notifier_block *nb,
+		                                unsigned long event,
+						void *dummy)
+{
+	switch(event) {
+	case PM_SUSPEND_PREPARE:
+		the_lpc->suspending = 1;
+		the_lpc->can_sleep = 1;
+		break;
+	case PM_POST_SUSPEND:
+		the_lpc->suspending = 0;
+		the_lpc->can_sleep = 1;
+		break;
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block n516_lpc_notif_block = {
+	.notifier_call = n516_lpc_suspend_notifier,
+};
+
 
 static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -316,9 +345,16 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 	}
 
 	pm_power_off = n516_lpc_power_off;
+	ret = register_pm_notifier(&n516_lpc_notif_block);
+	if (ret) {
+		dev_err(&client->dev, "Unable to register PM notify block\n");
+		goto err_reg_pm_notifier;
+	}
 
 	return 0;
 
+	unregister_pm_notifier(&n516_lpc_notif_block);
+err_reg_pm_notifier:
 	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
 err_request_chrg_irq:
 	free_irq(IRQ_LPC_INT, chip);
@@ -339,6 +375,7 @@ static int n516_lpc_remove(struct i2c_client *client)
 {
 	struct n516_lpc_chip *chip = i2c_get_clientdata(client);
 
+	unregister_pm_notifier(&n516_lpc_notif_block);
 	pm_power_off = NULL;
 	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
 	__gpio_as_input(GPIO_LPC_INT);
@@ -354,6 +391,9 @@ static int n516_lpc_remove(struct i2c_client *client)
 #if CONFIG_PM
 static int n516_lpc_suspend(struct i2c_client *client, pm_message_t msg)
 {
+	if (!the_lpc->can_sleep)
+		return -EBUSY;
+
 	disable_irq(IRQ_LPC_INT);
 	return 0;
 }
