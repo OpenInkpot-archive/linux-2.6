@@ -814,6 +814,10 @@ void __init setup_arch(char **cmdline_p)
 	if (mdesc->soft_reboot)
 		reboot_setup("s");
 
+	#ifdef ARCH_EB600
+	__atags_pointer = NULL;
+	#endif
+
 	if (__atags_pointer)
 		tags = phys_to_virt(__atags_pointer);
 	else if (mdesc->boot_params)

@@ -189,7 +189,7 @@ static void apollo_set_ctl_pin(unsigned int pin, unsigned char val)
 	s3c2410_gpio_setpin(apollo_pins[pin], val);
 }
 
-static void apollo_set_data_pins_as_output()
+static void apollo_set_data_pins_as_output(void)
 {
 	s3c2410_gpio_cfgpin(S3C2410_GPC0, S3C2410_GPC0_OUTP);
 	s3c2410_gpio_cfgpin(S3C2410_GPC1, S3C2410_GPC1_OUTP);
@@ -201,7 +201,7 @@ static void apollo_set_data_pins_as_output()
 	s3c2410_gpio_cfgpin(S3C2410_GPC7, S3C2410_GPC7_OUTP);
 }
 
-static void apollo_set_data_pins_as_input()
+static void apollo_set_data_pins_as_input(void)
 {
 	s3c2410_gpio_cfgpin(S3C2410_GPC0, S3C2410_GPC0_INP);
 	s3c2410_gpio_cfgpin(S3C2410_GPC1, S3C2410_GPC1_INP);
@@ -216,11 +216,9 @@ static void apollo_set_data_pins_as_input()
 static void apollo_write_value(unsigned char val)
 {
 	unsigned char pin;
+	unsigned char mask;
 	
-	for (pin=H_D0; pin<=H_D7; pin++)
-		apollo_set_ctl_pin(pin, 0);
-	
-	unsigned char mask = 0x1;
+	mask = 0x1;
 	for (pin=H_D0; pin<=H_D7; pin++)
 	{
 		apollo_set_ctl_pin(pin, (val & mask)==mask ? 1 : 0 );
@@ -231,11 +229,12 @@ static void apollo_write_value(unsigned char val)
 static unsigned char apollo_read_value(void)
 {
 	unsigned char res = 0;
+	unsigned char mask;
 	unsigned char pin;
 
 	apollo_set_data_pins_as_input();
 
-	unsigned char mask = 0x1;
+	mask = 0x1;
 	for (pin=H_D0; pin<=H_D7; pin++)
 	{
 		if (apollo_get_ctl_pin(pin) == 1)

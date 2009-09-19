@@ -138,6 +138,14 @@ config MACH_RX3715
 	help
 	  Say Y here if you are using the HP iPAQ rx3715.
 
+config ARCH_EB600
+	bool "Netronix EB-600"
+	select CPU_S3C2440
+	select MACH_SMDK
+	help
+	  Say Y here if you are using the Netronix EB-600 based eink reader.
+
+
 config ARCH_S3C2440
 	bool "SMDK2440"
 	select CPU_S3C2440

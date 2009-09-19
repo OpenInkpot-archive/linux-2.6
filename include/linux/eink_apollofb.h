@@ -6,6 +6,17 @@ enum eink_apollo_controls {
 	H_ACK = 3,
 	H_WUP = 4,
 	H_NRST = 5,
+
+	/* next pins using by Netronix EB600 */
+	H_PWR = 6,
+	H_D0 = 7,
+	H_D1 = 8,
+	H_D2 = 9,
+	H_D3 = 10,
+	H_D4 = 11,
+	H_D5 = 12,
+	H_D6 = 13,
+	H_D7 = 14,
 };
 
 struct eink_apollo_operations {
