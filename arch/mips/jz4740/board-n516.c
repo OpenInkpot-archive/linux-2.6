@@ -77,7 +77,8 @@ do {	                                      \
 	REG_GPIO_PXFUNC(3) =  0xefc57f7f;     \
 	REG_GPIO_PXSELC(3) =  0xefc57f7f;     \
 	REG_GPIO_PXDIRC(3) =  0xefc57f7f;     \
-	REG_GPIO_PXPES(3)  =  0xffffffff;     \
+	REG_GPIO_PXPES(3)  =  0xfbffffff;     \
+	REG_GPIO_PXPEC(3)  =  0x04000000;     \
 } while (0)
 
 static long n516_panic_blink(long time)
@@ -233,6 +234,8 @@ static void __init board_gpio_setup(void)
 	__gpio_as_output(GPIO_DISPLAY_RST_L);
 	__gpio_clear_pin(GPIO_DISPLAY_STBY);
 	__gpio_clear_pin(GPIO_DISPLAY_RST_L);
+
+	__gpio_enable_pull(JZ4740_GPD26);
 }
 
 void __init jz_board_setup(void)
