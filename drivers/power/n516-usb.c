@@ -24,6 +24,11 @@
 
 #include <asm/jzsoc.h>
 
+/* in ms */
+#define USB_STATUS_DELAY 50
+
+static struct timer_list n516_usb_timer;
+
 static inline int n516_usb_connected(void)
 {
 	return !__gpio_get_pin(GPIO_USB_DETECT);
@@ -44,18 +49,25 @@ static int n516_usb_pwr_get_property(struct power_supply *psy,
 	return 0;
 }
 
+static void n516_usb_pwr_change_timer_func(unsigned long data)
+{
+	struct power_supply *psy = (struct power_supply *)data;
+
+	if (!n516_usb_connected())
+		__gpio_as_irq_fall_edge(GPIO_USB_DETECT);
+	else
+		__gpio_as_irq_rise_edge(GPIO_USB_DETECT);
+
+	power_supply_changed(psy);
+}
+
 static irqreturn_t n516_usb_pwr_change_irq(int irq, void *dev)
 {
 	struct power_supply *psy = dev;
 
 	dev_dbg(psy->dev, "USB change IRQ\n");
 
-	power_supply_changed(psy);
-
-	if (!n516_usb_connected())
-		__gpio_as_irq_fall_edge(GPIO_USB_DETECT);
-	else
-		__gpio_as_irq_rise_edge(GPIO_USB_DETECT);
+	mod_timer(&n516_usb_timer, jiffies + msecs_to_jiffies(USB_STATUS_DELAY));
 
 	return IRQ_HANDLED;
 }
@@ -83,6 +95,8 @@ static int __devinit n516_usb_pwr_probe(struct platform_device *pdev)
 {
 	int ret;
 
+
+	setup_timer(&n516_usb_timer, n516_usb_pwr_change_timer_func, (unsigned long)&n516_usb_psy);
 
 	ret = power_supply_register(NULL, &n516_usb_psy);
 	if (ret) {
@@ -117,6 +131,7 @@ err_claim_irq:
 static int __devexit n516_usb_pwr_remove(struct platform_device *pdev)
 {
 	free_irq(gpio_to_irq(GPIO_USB_DETECT), &n516_usb_psy);
+	del_timer_sync(&n516_usb_timer);
 	power_supply_unregister(&n516_usb_psy);
 
 	return 0;
