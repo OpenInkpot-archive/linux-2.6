@@ -1,17 +1,25 @@
 /* linux/arch/arm/mach-s3c2440/mach-eb600.c
  *
- * Copyright (c) 2004,2005 Simtec Electronics
- *	Ben Dooks <ben@simtec.co.uk>
+ * Copyright (c) 2009 
+ * 	Alexandr Tsidaev <a.tsidaev@gmail.com>
+ * 
+ *  Based on linux/arch/arm/mach-s3c2440/mach-eb600.c
+ *    by Ben Dooks <ben@simtec.co.uk>
  *
- * http://www.fluff.org/ben/smdk2440/
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
  *
- * Thanks to Dimity Andric and TomTom for the loan of an SMDK2440.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Modified for Netronix EB-600 by Alexandr Tsidaev <a.tsidaev@gmail.com>
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
 */
 
 #include <linux/kernel.h>
@@ -87,9 +95,7 @@ static struct map_desc eb600_iodesc[] __initdata = {
 	}
 };
 
-#define UCON S3C2410_UCON_DEFAULT | S3C2410_UCON_UCLK
-#define ULCON S3C2410_LCON_CS8 | S3C2410_LCON_PNONE | S3C2410_LCON_STOPB
-#define UFCON S3C2410_UFCON_RXTRIG8 | S3C2410_UFCON_FIFOMODE
+/* UART configuration */
 
 static struct s3c2410_uartcfg eb600_uartcfgs[] __initdata = {
 	[0] = {
@@ -116,6 +122,7 @@ static struct s3c2410_uartcfg eb600_uartcfgs[] __initdata = {
 };
 
 /* NAND driver info */
+
 static struct mtd_partition eb600_nand_part[] = {
 	[0] = {
 		.name	= "uboot",
@@ -342,11 +349,9 @@ static void __init eb600_machine_init(void)
 	s3c_i2c0_set_platdata(NULL);
 
 	s3c_device_nand.dev.platform_data = &eb600_nand_info;
-
 	s3c_device_sdi.dev.platform_data = &eb600_mmc_cfg;
 
 	platform_add_devices(eb600_devices, ARRAY_SIZE(eb600_devices));
-	smdk_machine_init();
 }
 
 MACHINE_START(EB600, "Netronix EB-600")
