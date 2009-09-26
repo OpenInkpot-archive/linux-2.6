@@ -178,6 +178,14 @@ static struct s3c2410_platform_nand eb600_nand_info = {
 	.sets		= eb600_nand_sets,
 };
 
+/* Keyboard */
+
+static struct platform_device eb600_keys = {
+	.name		= "eb600-keys",
+	.id		= -1,
+};
+
+
 /* Apollo eInk driver info */
 
 const unsigned int apollo_pins[] = {S3C2410_GPC10, S3C2410_GPC11,
@@ -335,6 +343,7 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&s3c_device_adc,
 	&s3c_device_rtc,
 	&eb600_apollo,
+	&eb600_keys,
 };
 
 static void __init eb600_map_io(void)
