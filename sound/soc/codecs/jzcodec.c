@@ -109,6 +109,7 @@ static inline void jzcodec_write_reg_cache(struct snd_soc_codec *codec,
 static int jzcodec_write(struct snd_soc_codec *codec, unsigned int reg,
 	unsigned int value)
 {
+//	dump_stack();
 	jzcodec_write_reg_cache(codec, reg, value);
 	if(codec->hw_write)
 		codec->hw_write(&value, NULL, reg);	
@@ -135,10 +136,23 @@ static int jzcodec_reset(struct snd_soc_codec *codec)
 static const struct snd_kcontrol_new jzcodec_snd_controls[] = {
 
 	//SOC_DOUBLE_R("Master Playback Volume", 1, 1, 0, 3, 0),
-	SOC_DOUBLE_R("Master Playback Volume", ICODEC_2_LOW, ICODEC_2_LOW, 0, 3, 0),
+	SOC_SINGLE("Master Playback Volume", ICODEC_2_LOW, 0, 3, 0),
 	//SOC_DOUBLE_R("MICBG", ICODEC_2_LOW, ICODEC_2_LOW, 4, 3, 0),
 	//SOC_DOUBLE_R("Line", 2, 2, 0, 31, 0),
-	SOC_DOUBLE_R("Line", ICODEC_2_HIGH, ICODEC_2_HIGH, 0, 31, 0),
+//	SOC_DOUBLE_R("Line", ICODEC_2_HIGH, ICODEC_2_HIGH, 0, 31, 0),
+	SOC_SINGLE("HP Mute Switch", ICODEC_1_LOW, 14, 1, 0),
+	SOC_SINGLE("MIC Boost Gain", ICODEC_2_LOW, 4, 3, 0),
+	SOC_SINGLE("Capture Volume", ICODEC_2_HIGH, 0, 31, 0),
+};
+
+static const struct snd_kcontrol_new jzcodec_output_mixer_controls[] = {
+	SOC_DAPM_SINGLE("Bypass Switch", ICODEC_1_HIGH, 11, 1, 0),
+	SOC_DAPM_SINGLE("Playback Switch", ICODEC_1_HIGH, 9, 1, 0),
+};
+
+static const struct snd_kcontrol_new jzcodec_input_mixer_controls[] = {
+	SOC_DAPM_SINGLE("Line Capture Switch", ICODEC_1_HIGH, 13, 1, 0),
+	SOC_DAPM_SINGLE("MIC Capture Switch", ICODEC_1_HIGH, 12, 1, 0),
 };
 
 /* add non dapm controls */
@@ -163,13 +177,21 @@ static const struct snd_soc_dapm_widget jzcodec_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("MICIN"),
 	SND_SOC_DAPM_INPUT("RLINEIN"),
 	SND_SOC_DAPM_INPUT("LLINEIN"),
+
+	SND_SOC_DAPM_MIXER("Output Mixer", SND_SOC_NOPM, 0, 0,
+			jzcodec_output_mixer_controls, ARRAY_SIZE(jzcodec_output_mixer_controls)),
+	SND_SOC_DAPM_MIXER("Input Mixer", SND_SOC_NOPM, 0, 0,
+			jzcodec_input_mixer_controls, ARRAY_SIZE(jzcodec_input_mixer_controls)),
+	SND_SOC_DAPM_ADC("ADC", "Capture", ICODEC_1_HIGH, 10, 0),
+	SND_SOC_DAPM_DAC("DAC", "Playback", ICODEC_1_HIGH, 8, 0),
+
+	SND_SOC_DAPM_PGA("Line Input", SND_SOC_NOPM, 0, 0, NULL, 0),
 };
 
 static const struct snd_soc_dapm_route intercon[] = {
 	/* output mixer */
-	{"Output Mixer", "Line Bypass Switch", "Line Input"},
-	{"Output Mixer", "HiFi Playback Switch", "DAC"},
-	{"Output Mixer", "Mic Sidetone Switch", "Mic Bias"},
+	{"Output Mixer", "Bypass Switch", "Input Mixer"},
+	{"Output Mixer", "Playback Switch", "DAC"},
 
 	/* outputs */
 	{"RHPOUT", NULL, "Output Mixer"},
@@ -177,15 +199,14 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"LHPOUT", NULL, "Output Mixer"},
 	{"LOUT", NULL, "Output Mixer"},
 
-	/* input mux */
-	{"Input Mux", "Line In", "Line Input"},
-	{"Input Mux", "Mic", "Mic Bias"},
-	{"ADC", NULL, "Input Mux"},
+	/* input mixer */
+	{"Input Mixer", "Line Capture Switch", "Line Input"},
+	{"Input Mixer", "MIC Capture Switch", "MICIN"},
+	{"ADC", NULL, "Input Mixer"},
 
 	/* inputs */
 	{"Line Input", NULL, "LLINEIN"},
 	{"Line Input", NULL, "RLINEIN"},
-	{"Mic Bias", NULL, "MICIN"},
 };
 
 static int jzcodec_add_widgets(struct snd_soc_codec *codec)
@@ -416,48 +437,69 @@ static int jzcodec_set_dai_fmt(struct snd_soc_dai *codec_dai,
 
 static int jzcodec_set_bias_level(struct snd_soc_codec *codec, enum snd_soc_bias_level level)
 {
-/*	u16 reg_val; */
+	u16 reg_val;
+	int hpmute;
 
 	switch (level) {
 	case SND_SOC_BIAS_ON: /* full On */
 		/* vref/mid, osc on, dac unmute */
-		/* u16 reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_LOW); */
-		/* jzcodec_write(codec, 0, val); */
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_HIGH);
+		reg_val &= ~(ICODEC_1_HIGH_PDVR | ICODEC_1_HIGH_PDVRA);
+		reg_val &= ~(ICODEC_1_HIGH_VRCGL | ICODEC_1_HIGH_VRCGH);
+		jzcodec_write_reg_cache(codec, ICODEC_1_HIGH, reg_val);
+
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_LOW);
+		hpmute = reg_val & ICODEC_1_LOW_HPMUTE;
+		reg_val |= ICODEC_1_LOW_HPOV0 | ICODEC_1_LOW_HPCG | ICODEC_1_LOW_PDHP | ICODEC_1_LOW_PDHPM | ICODEC_1_LOW_SUSP;
+		jzcodec_write(codec, ICODEC_1_LOW, reg_val);
+		mdelay(1);
+
+		reg_val &= ~(ICODEC_1_LOW_HPOV0 | ICODEC_1_LOW_PDHP | ICODEC_1_LOW_PDHPM | ICODEC_1_LOW_SUSP);
+		jzcodec_write(codec, ICODEC_1_LOW, reg_val);
+		mdelay(1);
+
+		reg_val &= ~(ICODEC_1_LOW_HPMUTE | ICODEC_1_LOW_HPCG);
+		reg_val |= hpmute | ICODEC_1_LOW_HPOV0;
+		jzcodec_write(codec, ICODEC_1_LOW, reg_val);
 		break;
+
 	case SND_SOC_BIAS_PREPARE: /* partial On */
 		break;
 	case SND_SOC_BIAS_STANDBY: /* Off, with power */
 		/* everything off except vref/vmid, */
-		/*reg_val = 0x0800;
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_LOW);
+		reg_val &= ~ICODEC_1_LOW_HPOV0;
+		reg_val |= ICODEC_1_LOW_PDHPM | ICODEC_1_LOW_PDHP;
 		jzcodec_write_reg_cache(codec, ICODEC_1_LOW, reg_val);
-		reg_val = 0x0017;
-		jzcodec_write_reg_cache(codec, ICODEC_1_HIGH, reg_val);
-		REG_ICDC_CDCCR1 = jzcodec_reg[0];
-		mdelay(2);
-		reg_val = 0x2102;
-		jzcodec_write_reg_cache(codec, ICODEC_1_LOW, reg_val);
-		reg_val = 0x001f;
-		jzcodec_write_reg_cache(codec, ICODEC_1_HIGH, reg_val);
-		REG_ICDC_CDCCR1 = jzcodec_reg[0];
-		mdelay(2);
-		reg_val = 0x3302;
-		jzcodec_write_reg_cache(codec, ICODEC_1_LOW, reg_val);
-		reg_val = 0x0003;
-		jzcodec_write_reg_cache(codec, ICODEC_1_HIGH, reg_val);
-		REG_ICDC_CDCCR1 = jzcodec_reg[0];*/
-		break;
-	case SND_SOC_BIAS_OFF: /* Off, without power */
-		/* everything off, dac mute, inactive */
-		/*reg_val = 0x2302;
-		jzcodec_write(codec, ICODEC_1_LOW, reg_val);
-		reg_val = 0x001b;
+
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_HIGH);
+		reg_val |= ICODEC_1_HIGH_VRCGL | ICODEC_1_HIGH_VRCGH;
 		jzcodec_write(codec, ICODEC_1_HIGH, reg_val);
-		mdelay(1);
-		reg_val = 0x2102;
+
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_LOW);
+		reg_val &= ~(ICODEC_1_LOW_PDHPM);
+		reg_val |= (ICODEC_1_LOW_SUSP
+				| ICODEC_1_LOW_PDHP
+				| ICODEC_1_LOW_PDHPM
+				);
 		jzcodec_write(codec, ICODEC_1_LOW, reg_val);
-		reg_val = 0x001b;
-		jzcodec_write(codec, ICODEC_1_HIGH, reg_val);*/
 		break;
+
+	case SND_SOC_BIAS_OFF: /* Off, without power */
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_HIGH);
+		reg_val |= ICODEC_1_HIGH_VRCGL | ICODEC_1_HIGH_VRCGH;
+		jzcodec_write_reg_cache(codec, ICODEC_1_HIGH, reg_val);
+
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_LOW);
+		reg_val |= (ICODEC_1_LOW_SUSP | ICODEC_1_LOW_PDHP | ICODEC_1_LOW_PDHPM |
+				ICODEC_1_LOW_HPPLDM | ICODEC_1_LOW_HPPLDR);
+		jzcodec_write(codec, ICODEC_1_LOW, reg_val);
+
+		reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_HIGH);
+		reg_val |= (ICODEC_1_HIGH_PDVR | ICODEC_1_HIGH_PDVRA);
+		jzcodec_write(codec, ICODEC_1_HIGH, reg_val);
+		break;
+
 	}
 	codec->bias_level = level;
 	return 0;
@@ -485,7 +527,6 @@ struct snd_soc_dai jzcodec_dai = {
 		.rates = JZCODEC_RATES,
 		.formats = JZCODEC_FORMATS,},
 	.ops = {
-		.trigger = jzcodec_pcm_trigger,
 		.prepare = jzcodec_pcm_prepare,
 		.hw_params = jzcodec_hw_params,
 		.shutdown = jzcodec_shutdown,
@@ -545,6 +586,9 @@ static int jzcodec_init(struct snd_soc_device *socdev)
 	int reg, ret = 0;
 	u16 reg_val;
 
+	/* Default values at reset */
+	REG_ICDC_CDCCR1 = 0x001b2302;
+	REG_ICDC_CDCCR2 = 0x00017803;
 	for (reg = 0; reg < JZCODEC_CACHEREGNUM / 2; reg++) {
 		switch (reg) {
 		case 0:
@@ -571,7 +615,7 @@ static int jzcodec_init(struct snd_soc_device *socdev)
 	codec->reg_cache = kmemdup(jzcodec_reg_LH, sizeof(jzcodec_reg_LH), GFP_KERNEL);
 	if (codec->reg_cache == NULL)
 		return -ENOMEM;
-       
+
 	jzcodec_reset(codec);
 	/* register pcms */
 	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
@@ -580,30 +624,19 @@ static int jzcodec_init(struct snd_soc_device *socdev)
 		goto pcm_err;
 	}
 
+	/* Set HPVOL to 0 */
+	reg_val = jzcodec_read_reg_cache(codec, ICODEC_2_LOW);
+	reg_val &= ~0x00000003ul;
+	jzcodec_write(codec, ICODEC_2_LOW, reg_val);
+
+	/* Enable playback path by default */
+	reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_HIGH);
+	reg_val |= ICODEC_1_HIGH_SW2ON;
+	jzcodec_write(codec, ICODEC_1_HIGH, reg_val);
+
 	/* power on device */
 	jzcodec_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-  
-	/* clear suspend bit of jz4740 internal codec */
-	reg_val = jzcodec_read_reg_cache(codec, ICODEC_1_LOW);
-	reg_val = reg_val & ~(0x2);
-	jzcodec_write(codec, ICODEC_1_LOW, reg_val);
-	/* set vol bits */
-	reg_val = jzcodec_read_reg_cache(codec, ICODEC_2_LOW);
-	reg_val = reg_val | 0x3;
-	jzcodec_write(codec, ICODEC_2_LOW, reg_val);
-	/* set line in capture gain bits */
-	reg_val = jzcodec_read_reg_cache(codec, ICODEC_2_HIGH);
-	reg_val = reg_val | 0x1f;
-	jzcodec_write(codec, ICODEC_2_HIGH, reg_val);
-	/* set mic boost gain bits */
-	reg_val = jzcodec_read_reg_cache(codec, ICODEC_2_LOW);
-	reg_val = reg_val | (0x3 << 4);
-	jzcodec_write(codec, ICODEC_2_LOW, reg_val);
-	mdelay(5);
-	reg_val = 0x3300;
-	jzcodec_write(codec, ICODEC_1_LOW, reg_val);
-	reg_val = 0x0003;
-	jzcodec_write(codec, ICODEC_1_HIGH, reg_val);
+
 	jzcodec_add_controls(codec);
 	jzcodec_add_widgets(codec);
 
