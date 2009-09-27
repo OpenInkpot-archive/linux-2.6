@@ -1,3 +1,20 @@
+linux-2.6 (2.6.29-22) asimov; urgency=low
+
+  [ David Brownell ]
+  * USB: RNDIS gadget, fix issues talking from PXA
+
+  [ Qiuping Chen ]
+  * USB: gadget: rndis conformance tweak
+
+  [ Maulik Mankad ]
+  * USB: gadget : Fix RNDIS code to pass USB Compliance tests (USBCV)
+    with g_ether
+
+  [ Yauhen Kharuzhy ]
+  * jzcodec: Rewrite power management. Not completed yet
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 27 Sep 2009 23:04:05 +0300
+
 linux-2.6 (2.6.29-21) asimov; urgency=low
 
   * n516-usb: Suppress false USB connect/disconnect events
