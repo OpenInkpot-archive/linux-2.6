@@ -40,19 +40,22 @@ static unsigned long longpress_time = LONGPRESS_TIME;
 static unsigned long int key_pins[] = { 
 	S3C2410_GPG2, S3C2410_GPG3, S3C2410_GPG0, S3C2410_GPG1, S3C2410_GPF7, 
 	S3C2410_GPF6, S3C2410_GPF5, S3C2410_GPF4, S3C2410_GPF3,
-	S3C2410_GPG4, S3C2410_GPG5 };
+	S3C2410_GPG4, S3C2410_GPG5,
+	S3C2410_GPF0 };
 	
 static unsigned long key_state[ARRAY_SIZE(key_pins)];	
 	
 static unsigned char key_codes[] = {
 	KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER,
 	KEY_DELETE, KEY_ESC, KEY_MEDIA, KEY_MENU,
-	KEY_VOLUMEUP, KEY_VOLUMEDOWN };
+	KEY_VOLUMEUP, KEY_VOLUMEDOWN,
+	KEY_POWER };
 
 static unsigned int key_irq[] = {
 	IRQ_EINT10, IRQ_EINT11, IRQ_EINT8, IRQ_EINT9, IRQ_EINT7,
 	IRQ_EINT6, IRQ_EINT5, IRQ_EINT4, IRQ_EINT3,
-	IRQ_EINT12, IRQ_EINT13 };
+	IRQ_EINT12, IRQ_EINT13,
+	IRQ_EINT14 };
 
 static struct timer_list kb_timer;	
 
@@ -145,7 +148,7 @@ static int __init eb600_keys_init(void)
 {
 	int i, error;
 	for (i=0;i<ARRAY_SIZE(key_pins);i++)
-		s3c2410_gpio_cfgpin(key_pins[i], S3C2410_GPIO_OUTPUT);
+		s3c2410_gpio_cfgpin(key_pins[i], S3C2410_GPIO_INPUT);
 		
 	input = input_allocate_device();
 	if (!input)
@@ -184,7 +187,7 @@ static int __init eb600_keys_init(void)
 	eb600_keys_isr(0, input);
 
 	for (i = 0; i < ARRAY_SIZE(key_pins); i++) {
-		int irq = key_irq[i]; //s3c2410_gpio_getirq(key_pins[i]);
+		int irq = key_irq[i];
 
 		s3c2410_gpio_cfgpin(key_pins[i], S3C2410_GPIO_SFN2);
 		s3c2410_gpio_pullup(key_pins[i], 1);

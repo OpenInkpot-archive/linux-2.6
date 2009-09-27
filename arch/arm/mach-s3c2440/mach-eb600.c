@@ -59,6 +59,8 @@
 #include <linux/delay.h>
 #include <linux/spi/spi.h> 
 
+#include <mach/leds-gpio.h>
+
 #include <plat/s3c2410.h>
 #include <plat/s3c2440.h>
 #include <plat/clock.h>
@@ -119,6 +121,23 @@ static struct s3c2410_uartcfg eb600_uartcfgs[] __initdata = {
 		.ulcon	     = 0x43,
 		.ufcon	     = 0x51,
 	}
+};
+
+/* LEDS */
+
+static struct s3c24xx_led_platdata eb600_pdata_led_green = {
+	.gpio		= S3C2410_GPB8,
+	.flags		= S3C24XX_LEDF_ACTLOW,
+	.name		= "green",
+	.def_trigger	= "nand-disk",
+};
+
+static struct platform_device eb600_led_green = {
+	.name		= "s3c24xx_led",
+	.id		= 1,
+	.dev		= {
+		.platform_data = &eb600_pdata_led_green,
+	},
 };
 
 /* NAND driver info */
@@ -335,6 +354,7 @@ static struct s3c24xx_mci_pdata eb600_mmc_cfg = {
 };
 
 static struct platform_device *eb600_devices[] __initdata = {
+	&s3c_device_nand,
 	&s3c_device_usb,
 	&s3c_device_wdt,
 	&s3c_device_sdi,
@@ -342,6 +362,7 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&s3c_device_iis,
 	&s3c_device_adc,
 	&s3c_device_rtc,
+	&eb600_led_green,
 	&eb600_apollo,
 	&eb600_keys,
 };
@@ -353,8 +374,16 @@ static void __init eb600_map_io(void)
 	s3c24xx_init_uarts(eb600_uartcfgs, ARRAY_SIZE(eb600_uartcfgs));
 }
 
+static void __init eb600_init_gpio(void)
+{
+	s3c2410_gpio_cfgpin(eb600_pdata_led_green.gpio, S3C2410_GPIO_OUTPUT);
+	s3c2410_gpio_setpin(eb600_pdata_led_green.gpio, 1);
+}
+
 static void __init eb600_machine_init(void)
 {
+	eb600_init_gpio();
+	
 	s3c_i2c0_set_platdata(NULL);
 
 	s3c_device_nand.dev.platform_data = &eb600_nand_info;
