@@ -57,7 +57,6 @@
 
 #include <linux/eink_apollofb.h>
 #include <linux/delay.h>
-#include <linux/spi/spi.h> 
 
 #include <mach/leds-gpio.h>
 
@@ -65,6 +64,7 @@
 #include <plat/s3c2440.h>
 #include <plat/clock.h>
 #include <plat/devs.h>
+#include <plat/udc.h>
 #include <plat/cpu.h>
 #include <plat/nand.h>
 #include <plat/mci.h>
@@ -137,6 +137,20 @@ static struct platform_device eb600_led_green = {
 	.id		= 1,
 	.dev		= {
 		.platform_data = &eb600_pdata_led_green,
+	},
+};
+
+static struct s3c24xx_led_platdata eb600_pdata_led_usb = {
+	.gpio		= S3C2410_GPG6,
+	.flags		= 0,
+	.name		= "usb",
+};
+
+static struct platform_device eb600_led_usb = {
+	.name		= "s3c24xx_led",
+	.id		= 2,
+	.dev		= {
+		.platform_data = &eb600_pdata_led_usb,
 	},
 };
 
@@ -353,9 +367,34 @@ static struct s3c24xx_mci_pdata eb600_mmc_cfg = {
         .ocr_avail      = MMC_VDD_32_33,
 };
 
+/* UDC */
+
+static void eb600_udc_command(enum s3c2410_udc_cmd_e cmd)
+{
+	s3c2410_gpio_cfgpin(S3C2410_GPG6, S3C2410_GPIO_OUTPUT);
+	switch(cmd) {
+		case S3C2410_UDC_P_DISABLE:
+			s3c2410_gpio_setpin(S3C2410_GPG6, 0);
+			break;
+		case S3C2410_UDC_P_ENABLE:
+			s3c2410_gpio_setpin(S3C2410_GPG6, 1);
+			break;
+		case S3C2410_UDC_P_RESET:
+			s3c2410_gpio_setpin(S3C2410_GPG6, 0);
+			udelay(50);
+			s3c2410_gpio_setpin(S3C2410_GPG6, 1);
+			break;
+	}
+}
+
+static struct s3c2410_udc_mach_info eb600_udc_platform_data = {
+	.udc_command	= eb600_udc_command,
+};
+
 static struct platform_device *eb600_devices[] __initdata = {
 	&s3c_device_nand,
 	&s3c_device_usb,
+	&s3c_device_usbgadget,
 	&s3c_device_wdt,
 	&s3c_device_sdi,
 	&s3c_device_i2c0,
@@ -365,6 +404,7 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&eb600_led_green,
 	&eb600_apollo,
 	&eb600_keys,
+	&eb600_led_usb
 };
 
 static void __init eb600_map_io(void)
@@ -376,19 +416,28 @@ static void __init eb600_map_io(void)
 
 static void __init eb600_init_gpio(void)
 {
+	// Green led
 	s3c2410_gpio_cfgpin(eb600_pdata_led_green.gpio, S3C2410_GPIO_OUTPUT);
 	s3c2410_gpio_setpin(eb600_pdata_led_green.gpio, 1);
+	
+	//USB:
+	// Switching FSUSB20L to s3c onboard usb:
+	s3c2410_gpio_cfgpin(S3C2410_GPH8, S3C2410_GPIO_OUTPUT);
+	s3c2410_gpio_setpin(S3C2410_GPH8, 1);
+	// Pulling up DP
+	eb600_udc_command(S3C2410_UDC_P_ENABLE);
 }
 
 static void __init eb600_machine_init(void)
 {
-	eb600_init_gpio();
-	
 	s3c_i2c0_set_platdata(NULL);
 
 	s3c_device_nand.dev.platform_data = &eb600_nand_info;
 	s3c_device_sdi.dev.platform_data = &eb600_mmc_cfg;
+	s3c_device_usbgadget.dev.platform_data = &eb600_udc_platform_data;
 
+	eb600_init_gpio();
+	
 	platform_add_devices(eb600_devices, ARRAY_SIZE(eb600_devices));
 }
 
