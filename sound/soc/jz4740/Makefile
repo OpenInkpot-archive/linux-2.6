@@ -11,7 +11,7 @@ obj-$(CONFIG_SND_JZ4740_SOC_I2S) += snd-soc-jz4740-i2s.o
 
 # Jz4740 Machine Support
 snd-soc-pavo-objs := pavo.o
-snd-soc-n516-objs := pavo.o
+snd-soc-n516-objs := n516.o
 
 obj-$(CONFIG_SND_JZ4740_SOC_PAVO) += snd-soc-pavo.o
 obj-$(CONFIG_SND_JZ4740_SOC_N516) += snd-soc-n516.o
