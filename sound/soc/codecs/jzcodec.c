@@ -178,7 +178,7 @@ static const struct snd_soc_dapm_widget jzcodec_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("RLINEIN"),
 	SND_SOC_DAPM_INPUT("LLINEIN"),
 
-	SND_SOC_DAPM_MIXER("Output Mixer", SND_SOC_NOPM, 0, 0,
+	SND_SOC_DAPM_MIXER("Output Mixer", ICODEC_1_LOW, 8, 1,
 			jzcodec_output_mixer_controls, ARRAY_SIZE(jzcodec_output_mixer_controls)),
 	SND_SOC_DAPM_MIXER("Input Mixer", SND_SOC_NOPM, 0, 0,
 			jzcodec_input_mixer_controls, ARRAY_SIZE(jzcodec_input_mixer_controls)),
