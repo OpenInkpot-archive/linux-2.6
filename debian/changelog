@@ -1,3 +1,12 @@
+linux-2.6 (2.6.29-24) asimov; urgency=low
+
+  * jzcodec: Disable HP output with DAPM
+  * N516: Remove wrong __gpio_unmask()
+  * ALSA: Add board-specific driver for N516
+  * V3, V3ext: Decrease kernel image size by disabling debug simbols
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 18 Oct 2009 23:48:52 +0300
+
 linux-2.6 (2.6.29-23) asimov; urgency=low
 
   * Merge with 2.6.29.6
