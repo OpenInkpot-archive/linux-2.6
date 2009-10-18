@@ -162,7 +162,6 @@ void n516_setup_wakeup_ints(void)
 {
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
 	__gpio_unmask_irq(GPIO_LPC_INT);
-	__gpio_unmask_irq(IRQ_GPIO3);
 	__gpio_unmask_irq(MSC_HOTPLUG_PIN);
 	__gpio_unmask_irq(GPIO_USB_DETECT);
 	__gpio_unmask_irq(GPIO_CHARG_STAT_N);
