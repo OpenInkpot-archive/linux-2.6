@@ -1,3 +1,9 @@
+linux-2.6 (2.6.29-25) asimov; urgency=low
+
+  * ALSA N516: Make headphone jack permanently enabled
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 19 Oct 2009 09:50:20 +0300
+
 linux-2.6 (2.6.29-24) asimov; urgency=low
 
   * jzcodec: Disable HP output with DAPM
