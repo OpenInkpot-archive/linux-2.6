@@ -224,6 +224,8 @@ static int n516_jzcodec_init(struct snd_soc_codec *codec)
 	else
 		__gpio_as_irq_rise_edge(GPIO_HPHONE_PLUG);
 
+	n516_headphone_present = 1; /* temporary workaround */
+
 	snd_soc_dapm_disable_pin(codec, "LLINEIN");
 	snd_soc_dapm_disable_pin(codec, "RLINEIN");
 
