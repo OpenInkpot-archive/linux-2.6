@@ -516,29 +516,39 @@ static int __devinit metronome_init_regs(struct metronomefb_par *par)
 
 static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 {
-	int fbsize, i;
+	int x, y;
+	int i;
 	u16 cksum = 0;
 	u32 *buf = (u32 __force *)par->info->screen_base;
 	u32 *img = (u32 *)(par->metromem_img);
 	u32 diff;
 	u32 tmp;
-	unsigned int change_count = 0;
+	unsigned int fbsize = par->info->fix.smem_len;
+	int fx = par->info->fix.line_length;
+	int fy = fbsize / fx;
+	int fx_buf = fx / sizeof(*buf);
 	int m;
 	static int is_first_update = 1;
+	u32 *fxbuckets = par->fxbuckets;
+	u32 *fybuckets = par->fybuckets;
 
-	fbsize = par->info->fix.smem_len;
+	memset(fxbuckets, 0, fx_buf * sizeof(*fxbuckets));
+	memset(fybuckets, 0, fy * sizeof(*fybuckets));
 
-	for (i = 0; i < fbsize / sizeof(*buf); i++) {
-		tmp = (buf[i] << 5) & 0xE0E0E0E0;
-		img[i] &= 0xF0F0F0F0;
-		diff = img[i] ^ tmp;
-		change_count += !!(diff & 0x000000ff);
-		change_count += !!(diff & 0x0000ff00);
-		change_count += !!(diff & 0x00ff0000);
-		change_count += !!(diff & 0xff000000);
-		img[i] = (img[i] >> 4) | tmp;
-		cksum += img[i] & 0x0000ffff;
-		cksum += (img[i] >> 16);
+	i = 0;
+	for (y = 0; y < fy; y++) {
+		for(x = 0; x < fx_buf; x++, i++) {
+			tmp = (buf[i] << 5) & 0xE0E0E0E0;
+			img[i] &= 0xF0F0F0F0;
+			diff = img[i] ^ tmp;
+
+			fxbuckets[x] |= diff;
+			fybuckets[y] |= diff;
+
+			img[i] = (img[i] >> 4) | tmp;
+			cksum += img[i] & 0x0000ffff;
+			cksum += (img[i] >> 16);
+		}
 	}
 
 	*((u16 *)(par->metromem_img) + fbsize/2) = cksum;
@@ -546,14 +556,53 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 	if (clear_all || is_first_update)
 		m = WF_MODE_GC;
 	else
+	{
+		int min_x = fx_buf;
+		int max_x = 0;
+		int min_y = fy;
+		int max_y = 0;
+		int change_count;
+
+		for (x = 0; x < fx_buf; x++)
+			if(fxbuckets[x]) {
+				min_x = x;
+				break;
+			}
+
+		for (x = fx_buf - 1; x >= 0; x--)
+			if(fxbuckets[x]) {
+				max_x = x;
+				break;
+			}
+
+		for (y = 0; y < fy; y++)
+			if(fybuckets[y]) {
+				min_y = y;
+				break;
+			}
+
+		for (y = fy - 1; y >= 0; y--)
+			if(fybuckets[y]) {
+				max_y = y;
+				break;
+			}
+
+		if ((min_x > max_x) || (min_y > max_y))
+			change_count = 0;
+		else
+			change_count = (max_x - min_x + 1) * (max_y - min_y + 1) * sizeof(*buf);
+
 		if (change_count < fbsize / 100 * par->manual_refresh_threshold)
 			m = WF_MODE_GU;
 		else
 			m = WF_MODE_GC;
 
-	dev_dbg(&par->pdev->dev, "change_count = %u, treshold = %u%% (%u pixels)\n",
-			change_count, par->manual_refresh_threshold,
-			fbsize / 100 * par->manual_refresh_threshold);
+		dev_dbg(&par->pdev->dev, "min_x = %d, max_x = %d, min_y = %d, max_y = %d\n",
+				min_x, max_x, min_y, max_y);
+		dev_dbg(&par->pdev->dev, "change_count = %u, treshold = %u%% (%u pixels)\n",
+				change_count, par->manual_refresh_threshold,
+				fbsize / 100 * par->manual_refresh_threshold);
+	}
 
 	if (m != par->current_wf_mode)
 		load_waveform((u8 *) par->firmware->data, par->firmware->size,
@@ -887,14 +936,23 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	par->board = board;
 	par->dt = epd_dt_index;
 	par->pdev = dev;
+
+	par->fxbuckets = kmalloc((fw / 4 + 1) * sizeof(*par->fxbuckets), GFP_KERNEL);
+	if (!par->fxbuckets)
+		goto err_vfree;
+
+	par->fybuckets = kmalloc(fh * sizeof(*par->fxbuckets), GFP_KERNEL);
+	if (!par->fybuckets)
+		goto err_fxbuckets;
+
 	init_waitqueue_head(&par->waitq);
-	par->manual_refresh_threshold = 5;
+	par->manual_refresh_threshold = 60;
 	mutex_init(&par->lock);
 
 	/* this table caches per page csum values. */
 	par->csum_table = vmalloc(videomemorysize/PAGE_SIZE);
 	if (!par->csum_table)
-		goto err_vfree;
+		goto err_fybuckets;
 
 	/* the physical framebuffer that we use is setup by
 	 * the platform device driver. It will provide us
@@ -993,6 +1051,10 @@ err_free_irq:
 	board->cleanup(par);
 err_csum_table:
 	vfree(par->csum_table);
+err_fybuckets:
+	kfree(par->fybuckets);
+err_fxbuckets:
+	kfree(par->fxbuckets);
 err_vfree:
 	vfree(videomemory);
 err_fb_rel:
@@ -1022,6 +1084,8 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 		fb_dealloc_cmap(&info->cmap);
 		par->board->cleanup(par);
 		vfree(par->csum_table);
+		kfree(par->fybuckets);
+		kfree(par->fxbuckets);
 		vfree((void __force *)info->screen_base);
 		module_put(par->board->owner);
 		release_firmware(par->firmware);

@@ -38,6 +38,8 @@ struct metronomefb_par {
 	int current_wf_temp;
 	unsigned int manual_refresh_threshold;
 	int dt;
+	u32 *fxbuckets;
+	u32 *fybuckets;
 	struct mutex lock;
 };
 
