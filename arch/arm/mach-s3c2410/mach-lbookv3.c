@@ -405,7 +405,6 @@ static struct eink_apollofb_platdata lbookv3_apollofb_platdata = {
 		.write_value	= apollo_write_value,
 		.initialize = apollo_init,
 	},
-	.defio_delay = HZ / 2,
 };
 
 static struct platform_device lbookv3_apollo = {
