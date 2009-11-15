@@ -1,3 +1,10 @@
+linux-2.6 (2.6.29-29) asimov; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Do not override defio delay specified in driver
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 16 Nov 2009 01:16:13 +0200
+
 linux-2.6 (2.6.29-28) asimov; urgency=low
 
   * metronomefb: Change counting of changed pixels to area-based
