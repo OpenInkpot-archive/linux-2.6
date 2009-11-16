@@ -1,3 +1,11 @@
+linux-2.6 (2.6.29-30) asimov; urgency=low
+
+  * Enable JFFS2 summary feature
+  * Revert using SLOB instead of SLAB: SLOB is pretty slow on
+    our workloads.
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Mon, 16 Nov 2009 09:49:31 +0600
+
 linux-2.6 (2.6.29-29) asimov; urgency=low
 
   [ Mikhail Gusarov ]
