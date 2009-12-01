@@ -1,8 +1,16 @@
-linux-2.6 (2.6.29-30) asimov; urgency=low
+linux-2.6 (2.6.29-31) asimov; urgency=low
 
   * metronomefb: Make metronome_display_cmd() non-blocking
 
  -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 01 Dec 2009 23:55:53 +0200
+
+linux-2.6 (2.6.29-30) asimov; urgency=low
+
+  * Enable JFFS2 summary feature
+  * Revert using SLOB instead of SLAB: SLOB is pretty slow on
+    our workloads.
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Mon, 16 Nov 2009 09:49:31 +0600
 
 linux-2.6 (2.6.29-29) asimov; urgency=low
 
