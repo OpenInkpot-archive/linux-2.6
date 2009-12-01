@@ -37,6 +37,7 @@ struct metronomefb_par {
 	int current_wf_mode;
 	int current_wf_temp;
 	unsigned int manual_refresh_threshold;
+	unsigned int partial_autorefresh_interval;
 	int dt;
 	u32 *fxbuckets;
 	u32 *fybuckets;
@@ -53,6 +54,7 @@ struct metronome_board {
 	void (*set_rst)(struct metronomefb_par *, int);
 	void (*set_stdby)(struct metronomefb_par *, int);
 	int (*get_err)(struct metronomefb_par *);
+	int (*get_rdy)(struct metronomefb_par *);
 	void (*cleanup)(struct metronomefb_par *);
 	int (*met_wait_event)(struct metronomefb_par *);
 	int (*met_wait_event_intr)(struct metronomefb_par *);

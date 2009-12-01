@@ -349,6 +349,16 @@ static int check_err(struct metronomefb_par *par)
 	return res;
 }
 
+static inline int wait_for_rdy(struct metronomefb_par *par)
+{
+	int res = 0;
+
+	if (!par->board->get_rdy(par))
+		res = par->board->met_wait_event_intr(par);
+
+	return res;
+}
+
 static int metronome_display_cmd(struct metronomefb_par *par)
 {
 	int i;
@@ -356,6 +366,10 @@ static int metronome_display_cmd(struct metronomefb_par *par)
 	u16 opcode;
 	static u8 borderval;
 	int res;
+
+	res = wait_for_rdy(par);
+	if (res)
+		return res;
 
 	dev_dbg(&par->pdev->dev, "%s: ENTER\n", __func__);
 	/* setup display command
@@ -382,9 +396,7 @@ static int metronome_display_cmd(struct metronomefb_par *par)
 	par->metromem_cmd->csum = cs;
 	par->metromem_cmd->opcode = opcode; /* display cmd */
 
-	res = par->board->met_wait_event_intr(par);
-	dev_dbg(&par->pdev->dev, "%s: EXIT: %d\n", __func__, res);
-	return res;
+	return 0;
 
 }
 
@@ -528,8 +540,11 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 	int fx_buf = fx / sizeof(*buf);
 	int m;
 	static int is_first_update = 1;
+	static int partial_updates_count = 0;
 	u32 *fxbuckets = par->fxbuckets;
 	u32 *fybuckets = par->fybuckets;
+
+	wait_for_rdy(par);
 
 	memset(fxbuckets, 0, fx_buf * sizeof(*fxbuckets));
 	memset(fybuckets, 0, fy * sizeof(*fybuckets));
@@ -552,10 +567,11 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 
 	*((u16 *)(par->metromem_img) + fbsize/2) = cksum;
 
-	if (clear_all || is_first_update)
+	if (clear_all || is_first_update ||
+		(partial_updates_count == par->partial_autorefresh_interval)) {
 		m = WF_MODE_GC;
-	else
-	{
+		partial_updates_count = 0;
+	} else {
 		int min_x = fx_buf;
 		int max_x = 0;
 		int min_y = fy;
@@ -601,6 +617,8 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 		dev_dbg(&par->pdev->dev, "change_count = %u, treshold = %u%% (%u pixels)\n",
 				change_count, par->manual_refresh_threshold,
 				fbsize / 100 * par->manual_refresh_threshold);
+
+		partial_updates_count++;
 	}
 
 	if (m != par->current_wf_mode)
@@ -608,9 +626,10 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 				m, par->current_wf_temp, par);
 
 	for(;;) {
-		metronome_display_cmd(par);
-		if (!check_err(par))
+		if (likely(!check_err(par))) {
+			metronome_display_cmd(par);
 			break;
+		}
 
 		par->board->set_stdby(par, 0);
 		printk("Resetting Metronome\n");
@@ -946,6 +965,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 
 	init_waitqueue_head(&par->waitq);
 	par->manual_refresh_threshold = 60;
+	par->partial_autorefresh_interval = 15;
 	mutex_init(&par->lock);
 
 	/* this table caches per page csum values. */
