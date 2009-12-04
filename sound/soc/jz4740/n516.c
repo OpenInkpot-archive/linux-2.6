@@ -25,15 +25,16 @@
 #include "jz4740-pcm.h"
 #include "jz4740-i2s.h"
 
-#define N516_SPK_OFF	0
-#define N516_SPK_ON	1
-#define N516_SPK_AUTO	2
+#define N516_SPK_AUTO	0
+#define N516_SPK_OFF	1
+#define N516_SPK_ON	2
 
  /* audio clock in Hz - rounded from 12.235MHz */
 #define N516_AUDIO_CLOCK 12288000
 
 static int n516_headphone_present;
 static int n516_spk_func;
+static int board_initialized = 0;
 
 /* in ms */
 #define HPLUG_DETECT_DELAY 50
@@ -171,9 +172,9 @@ static void n516_hplug_timer_func(unsigned long data)
 
 static irqreturn_t n516_hplug_irq(int irq, void *dev)
 {
-	printk("%s!\n", __FUNCTION__);
-	mod_timer(&n516_hplug_timer, jiffies + msecs_to_jiffies(HPLUG_DETECT_DELAY));
-
+	if (board_initialized) {
+		mod_timer(&n516_hplug_timer, jiffies + msecs_to_jiffies(HPLUG_DETECT_DELAY));
+	}
 	return IRQ_HANDLED;
 }
 
@@ -199,7 +200,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"MICIN", NULL, "Mic"},
 };
 
-static const char *spk_function[] = {"Off", "On", "Auto"};
+static const char *spk_function[] = {"Auto", "Off", "On"};
 static const struct soc_enum n516_enum[] = {
 	SOC_ENUM_SINGLE_EXT(3, spk_function),
 };
@@ -216,15 +217,7 @@ static int n516_jzcodec_init(struct snd_soc_codec *codec)
 {
 	int i, err;
 
-	n516_headphone_present = __gpio_get_pin(GPIO_HPHONE_PLUG);
 	setup_timer(&n516_hplug_timer, n516_hplug_timer_func, (unsigned long)codec);
-
-	if (n516_headphone_present)
-		__gpio_as_irq_fall_edge(GPIO_HPHONE_PLUG);
-	else
-		__gpio_as_irq_rise_edge(GPIO_HPHONE_PLUG);
-
-	n516_headphone_present = 1; /* temporary workaround */
 
 	snd_soc_dapm_disable_pin(codec, "LLINEIN");
 	snd_soc_dapm_disable_pin(codec, "RLINEIN");
@@ -246,6 +239,8 @@ static int n516_jzcodec_init(struct snd_soc_codec *codec)
 	snd_soc_dapm_add_routes(codec, audio_map, ARRAY_SIZE(audio_map));
 
 	snd_soc_dapm_sync(codec);
+
+	board_initialized = 1;
 	return 0;
 }
 
@@ -291,8 +286,15 @@ static int __init n516_init(void)
 	if (ret)
 		platform_device_put(n516_snd_device);
 
-	__gpio_enable_pull(GPIO_HPHONE_PLUG);
-	__gpio_as_input(GPIO_HPHONE_PLUG);
+	__gpio_disable_pull(GPIO_HPHONE_PLUG);
+
+	n516_headphone_present = __gpio_get_pin(GPIO_HPHONE_PLUG);
+
+	if (n516_headphone_present)
+		__gpio_as_irq_fall_edge(GPIO_HPHONE_PLUG);
+	else
+		__gpio_as_irq_rise_edge(GPIO_HPHONE_PLUG);
+
 	ret = request_irq(gpio_to_irq(GPIO_HPHONE_PLUG),
 			n516_hplug_irq, IRQF_SHARED,
 			"Headphone detect", (void *)123123);
