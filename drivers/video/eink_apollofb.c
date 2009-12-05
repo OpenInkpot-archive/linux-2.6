@@ -497,7 +497,6 @@ static int apollofb_ioctl(struct fb_info *info, unsigned int cmd,
 {
 	int retval = -EFAULT;
 	struct apollofb_par *par = info->par;
-	unsigned int val;
 
 	switch(cmd) {
 		case FBIO_WAITFORVSYNC:
@@ -506,13 +505,11 @@ static int apollofb_ioctl(struct fb_info *info, unsigned int cmd,
 			else
 				retval = 0;
 			break;
-
 		case EINK_APOLLOFB_IOCTL_SET_AUTOREDRAW:
 			par->options.disable_auto_redraw = !arg;
 			printk("disable_auto_redraw = %d\n", par->options.disable_auto_redraw);
 			retval = 0;
 			break;
-			
 		case EINK_APOLLOFB_IOCTL_FORCE_REDRAW:
 			mutex_lock(&par->lock);
 			apollo_send_command(par, APOLLO_AUTO_REFRESH);
@@ -531,7 +528,6 @@ static int apollofb_ioctl(struct fb_info *info, unsigned int cmd,
 			mutex_unlock(&par->lock);
 			retval = 0;
 			break;
-
 		default:
 			retval = -ENOIOCTLCMD;
 			break;
@@ -715,7 +711,7 @@ static ssize_t apollofb_disable_auto_redraw_store(struct device *dev,
 {
 	struct fb_info *info = dev_get_drvdata(dev);
 	struct apollofb_par *par = info->par;
-	unsigned int val;
+	unsigned long val;
 
 	if (!strict_strtoul(buf, 10, &val)) {
 		if ((par->options.disable_auto_redraw == 1) 
@@ -739,7 +735,6 @@ static ssize_t apollofb_manual_refresh_thr_max_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct fb_info *info = dev_get_drvdata(dev);
-	struct apollofb_par *par = info->par;
 
 	return sprintf(buf, "%u\n", apollofb_get_screenpages_count(info));
 }
