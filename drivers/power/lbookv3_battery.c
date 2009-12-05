@@ -20,6 +20,7 @@
 #include <linux/interrupt.h>
 
 #include <mach/regs-gpio.h>
+#include <mach/gpio.h>
 #include <plat/regs-adc.h>
 #include <mach/io.h>
 #include <asm/mach/map.h>
@@ -94,7 +95,7 @@ static int lbookv3_battery_charging (void)
 
 static int lbookv3_usb_connected (void)
 {
-	return s3c2410_gpio_getpin(S3C2410_GPF4) ? 1 : 0;
+	return s3c2410_gpio_getpin(S3C2410_GPF(4)) ? 1 : 0;
 }
 
 static int lbookv3_battery_get_status(struct power_supply *b)
@@ -280,7 +281,7 @@ static int lbookv3_battery_probe(struct platform_device *dev)
 		goto err_reg_usb;
 	}
 
-	irq = s3c2410_gpio_getirq(S3C2410_GPF4);
+	irq = s3c2410_gpio_getirq(S3C2410_GPF(4));
 	ret = request_irq(irq, lbookv3_usb_change_irq,
 			IRQF_DISABLED | IRQF_TRIGGER_RISING
 			| IRQF_TRIGGER_FALLING | IRQF_SHARED,
@@ -326,7 +327,7 @@ static int lbookv3_battery_probe(struct platform_device *dev)
 err_lowbat_irq:
 	free_irq(s3c2410_gpio_getirq(LBOOK_V3_BAT_CHRG_PIN), &lbookv3_battery);
 err_chrg_irq:
-	free_irq(s3c2410_gpio_getirq(S3C2410_GPF4), &lbookv3_usb);
+	free_irq(s3c2410_gpio_getirq(S3C2410_GPF(4)), &lbookv3_usb);
 err_usb_irq:
 	power_supply_unregister(&lbookv3_usb);
 err_reg_usb:
@@ -341,9 +342,9 @@ err1:
 static int lbookv3_battery_remove(struct platform_device *dev)
 {
 	disable_irq_wake(s3c2410_gpio_getirq(LBOOK_V3_BAT_LOWBAT_PIN));
-	disable_irq_wake(s3c2410_gpio_getirq(S3C2410_GPF4));
+	disable_irq_wake(s3c2410_gpio_getirq(S3C2410_GPF(4)));
 	free_irq(s3c2410_gpio_getirq(LBOOK_V3_BAT_LOWBAT_PIN), &lbookv3_battery);
-	free_irq(s3c2410_gpio_getirq(S3C2410_GPF4), &lbookv3_usb);
+	free_irq(s3c2410_gpio_getirq(S3C2410_GPF(4)), &lbookv3_usb);
 	if (!buggy_hardware) {
 		disable_irq_wake(s3c2410_gpio_getirq(LBOOK_V3_BAT_CHRG_PIN));
 		free_irq(s3c2410_gpio_getirq(LBOOK_V3_BAT_CHRG_PIN), &lbookv3_battery);

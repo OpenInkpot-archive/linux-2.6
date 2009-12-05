@@ -20,6 +20,7 @@
 
 #include <mach/hardware.h>
 #include <mach/regs-gpio.h>
+#include <mach/gpio.h>
 
 MODULE_AUTHOR("Yauhen Kharuzhy <jekhor@gmail.com>");
 MODULE_DESCRIPTION("HanLin/lBook eReader V3 beeper driver");

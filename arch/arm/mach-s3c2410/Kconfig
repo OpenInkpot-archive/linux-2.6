@@ -75,6 +75,8 @@ config ARCH_LBOOK_V3
 	bool "lBook/HanLin eReader V3"
 	select CPU_S3C2410
 	select MACH_SMDK
+	select S3C_DEV_NAND
+	select S3C_DEV_USB_HOST
 	help
 	   Say Y here if you are using the lBook/HanLin eReader V3
 

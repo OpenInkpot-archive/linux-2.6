@@ -188,7 +188,7 @@ static void lbookv3_keys_power_timer(unsigned long data)
 	}
 	prev_state = pressed;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF(6)_EINT6);
+	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF6_EINT6);
 }
 
 static irqreturn_t lbookv3_powerkey_isr(int irq, void *dev_id)
@@ -196,7 +196,7 @@ static irqreturn_t lbookv3_powerkey_isr(int irq, void *dev_id)
 	if (s3c2410_gpio_getpin(S3C2410_GPF(6)))
 		return IRQ_HANDLED;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF(6)_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPIO_INPUT);
 
 	power_longpress_timeout = jiffies + longpress_time;
 	power_timer.expires = jiffies + poll_interval;
@@ -335,7 +335,7 @@ static int __init lbookv3_keys_init(void)
 	}
 	enable_irq_wake(IRQ_EINT6);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF(6)_EINT6);
+	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF6_EINT6);
 	s3c2410_gpio_pullup(S3C2410_GPF(6), 1);
 
 	return 0;

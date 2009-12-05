@@ -61,6 +61,7 @@
 #include <mach/regs-clock.h>
 #include <mach/leds-gpio.h>
 #include <mach/regs-gpio.h>
+#include <mach/gpio.h>
 #include <mach/spi.h>
 
 #include <plat/pll.h>
@@ -277,6 +278,7 @@ static struct s3c24xx_mci_pdata lbookv3_mmc_cfg = {
 	.gpio_detect	= S3C2410_GPF(5),
 	.set_power	= &lbookv3_mmc_set_power,
 	.ocr_avail	= MMC_VDD_32_33,
+	.use_dma	= 1,
 };
 
 static void lbookv3_udc_command(enum s3c2410_udc_cmd_e cmd)
@@ -550,6 +552,7 @@ static void __init lbookv3_init_gpio(void)
 	s3c2410_gpio_pullup(S3C2410_GPG(14), 0);
 	s3c2410_gpio_pullup(S3C2410_GPG(15), 1);
 
+	enable_irq_wake(gpio_to_irq(S3C2410_GPF(5)));
 }
 
 static void __init lbookv3_map_io(void)
@@ -582,7 +585,7 @@ static void __init lbookv3_init(void)
 
 	pm_power_off = &lbookv3_power_off;
 	panic_blink = lbookv3_panic_blink;
-	s3c2410_pm_init();
+	s3c_pm_init();
 }
 
 MACHINE_START(LBOOK_V3, "LBOOK_V3") /* @TODO: request a new identifier and switch
