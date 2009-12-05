@@ -93,11 +93,11 @@ static void s3c2410_pm_prepare(void)
 	}
 
 	if (machine_is_lbook_v3()) {
-/*		s3c2410_gpio_cfgpin(S3C2410_GPA17, S3C2410_GPA17_CLE);
-		s3c2410_gpio_cfgpin(S3C2410_GPA18, S3C2410_GPA18_ALE);
-		s3c2410_gpio_cfgpin(S3C2410_GPA19, S3C2410_GPA19_nFWE);
-		s3c2410_gpio_cfgpin(S3C2410_GPA20, S3C2410_GPA20_nFRE);
-		s3c2410_gpio_cfgpin(S3C2410_GPA22, S3C2410_GPA22_nFCE);
+/*		s3c2410_gpio_cfgpin(S3C2410_GPA(17), S3C2410_GPA17_CLE);
+		s3c2410_gpio_cfgpin(S3C2410_GPA(18), S3C2410_GPA18_ALE);
+		s3c2410_gpio_cfgpin(S3C2410_GPA(19), S3C2410_GPA19_nFWE);
+		s3c2410_gpio_cfgpin(S3C2410_GPA(20), S3C2410_GPA20_nFRE);
+		s3c2410_gpio_cfgpin(S3C2410_GPA(22), S3C2410_GPA22_nFCE);
 */
 		/* from Jinke kernel */
 		__raw_writel(0x00060fff,S3C2410_GPACON);
@@ -125,31 +125,31 @@ static void s3c2410_pm_prepare(void)
 		__raw_writel(0xffff,S3C2410_GPHUP);
 
 
-/*		s3c2410_gpio_setpin(S3C2410_GPA17, 0);
-		s3c2410_gpio_setpin(S3C2410_GPA18, 0);
-		s3c2410_gpio_setpin(S3C2410_GPA19, 0);
-		s3c2410_gpio_setpin(S3C2410_GPA20, 0);
-		s3c2410_gpio_setpin(S3C2410_GPA22, 1);
+/*		s3c2410_gpio_setpin(S3C2410_GPA(17), 0);
+		s3c2410_gpio_setpin(S3C2410_GPA(18), 0);
+		s3c2410_gpio_setpin(S3C2410_GPA(19), 0);
+		s3c2410_gpio_setpin(S3C2410_GPA(20), 0);
+		s3c2410_gpio_setpin(S3C2410_GPA(22), 1);
 
-		s3c2410_gpio_cfgpin(S3C2410_GPF7, S3C2410_GPF7_OUTP);
-		s3c2410_gpio_pullup(S3C2410_GPF7, 0);
-		s3c2410_gpio_setpin(S3C2410_GPF7, 1);
+		s3c2410_gpio_cfgpin(S3C2410_GPF(7), S3C2410_GPIO_OUTPUT);
+		s3c2410_gpio_pullup(S3C2410_GPF(7), 0);
+		s3c2410_gpio_setpin(S3C2410_GPF(7), 1);
 
-		s3c2410_gpio_cfgpin(S3C2410_GPH6, S3C2410_GPH6_nRTS1);
-		s3c2410_gpio_cfgpin(S3C2410_GPH7, S3C2410_GPH7_nCTS1);
+		s3c2410_gpio_cfgpin(S3C2410_GPH(6), S3C2410_GPH6_nRTS1);
+		s3c2410_gpio_cfgpin(S3C2410_GPH(7), S3C2410_GPH7_nCTS1);
 
-//		s3c2410_gpio_cfgpin(S3C2410_GPG1, S3C2410_GPG1_INP);
-//		s3c2410_gpio_cfgpin(S3C2410_GPG2, S3C2410_GPG2_INP);
+//		s3c2410_gpio_cfgpin(S3C2410_GPG(1), S3C2410_GPIO_INPUT);
+//		s3c2410_gpio_cfgpin(S3C2410_GPG(2), S3C2410_GPIO_INPUT);
 
-		s3c2410_gpio_setpin(S3C2410_GPB0, 0);
+		s3c2410_gpio_setpin(S3C2410_GPB(0), 0);
 */
-		s3c2410_gpio_cfgpin(S3C2410_GPH4, S3C2410_GPH4_OUTP);
-		s3c2410_gpio_setpin(S3C2410_GPH4, 1);
-		s3c2410_gpio_pullup(S3C2410_GPH4, 0);
+		s3c2410_gpio_cfgpin(S3C2410_GPH(4), S3C2410_GPIO_OUTPUT);
+		s3c2410_gpio_setpin(S3C2410_GPH(4), 1);
+		s3c2410_gpio_pullup(S3C2410_GPH(4), 0);
 
-		s3c2410_gpio_cfgpin(S3C2410_GPH5, S3C2410_GPH5_OUTP);
-		s3c2410_gpio_setpin(S3C2410_GPH5, 1);
-		s3c2410_gpio_pullup(S3C2410_GPH5, 0);
+		s3c2410_gpio_cfgpin(S3C2410_GPH(5), S3C2410_GPIO_OUTPUT);
+		s3c2410_gpio_setpin(S3C2410_GPH(5), 1);
+		s3c2410_gpio_pullup(S3C2410_GPH(5), 0);
 	}
 }
 

@@ -11,10 +11,10 @@
 #include <mach/regs-gpio.h>
 #include <mach/hardware.h>
 
-#define IC2201_SOUND_PIN	S3C2410_GPC11
-#define IC2201_RESET_PIN	S3C2410_GPC10
-#define IC2201_CCS_PIN		S3C2410_GPD8
-#define IC2201_DCS_PIN		S3C2410_GPD9
+#define IC2201_SOUND_PIN	S3C2410_GPC(11)
+#define IC2201_RESET_PIN	S3C2410_GPC(10)
+#define IC2201_CCS_PIN		S3C2410_GPD(8)
+#define IC2201_DCS_PIN		S3C2410_GPD(9)
 
 struct ic2201_data {
 	struct spi_device	*spi_sci;
@@ -81,11 +81,11 @@ static void ic2201_init_ios(struct ic2201_data *ic2201)
 	s3c2410_gpio_cfgpin(IC2201_SOUND_PIN, S3C2410_GPIO_OUTPUT);
 	s3c2410_gpio_setpin(IC2201_SOUND_PIN, 0);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPB8,S3C2410_GPB8_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPB8,1);
+	s3c2410_gpio_cfgpin(S3C2410_GPB(8),S3C2410_GPIO_OUTPUT);
+	s3c2410_gpio_setpin(S3C2410_GPB(8),1);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPB7,S3C2410_GPB7_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPB7,1);
+	s3c2410_gpio_cfgpin(S3C2410_GPB(7),S3C2410_GPIO_OUTPUT);
+	s3c2410_gpio_setpin(S3C2410_GPB(7),1);
 
 	mdelay(1);
 
@@ -97,15 +97,15 @@ static void ic2201_init_ios(struct ic2201_data *ic2201)
 	s3c2410_gpio_cfgpin(IC2201_CCS_PIN, S3C2410_GPIO_OUTPUT);
 	s3c2410_gpio_cfgpin(IC2201_DCS_PIN, S3C2410_GPIO_OUTPUT);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPG3,S3C2410_GPIO_INPUT);
+	s3c2410_gpio_cfgpin(S3C2410_GPG(3),S3C2410_GPIO_INPUT);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPE11, S3C2410_GPE11_SPIMISO0);
-	s3c2410_gpio_cfgpin(S3C2410_GPE12, S3C2410_GPE12_SPIMOSI0);
-	s3c2410_gpio_cfgpin(S3C2410_GPE13, S3C2410_GPE13_SPICLK0);
+	s3c2410_gpio_cfgpin(S3C2410_GPE(11), S3C2410_GPE11_SPIMISO0);
+	s3c2410_gpio_cfgpin(S3C2410_GPE(12), S3C2410_GPE12_SPIMOSI0);
+	s3c2410_gpio_cfgpin(S3C2410_GPE(13), S3C2410_GPE13_SPICLK0);
 
-	s3c2410_gpio_pullup(S3C2410_GPE11, 0);
-	s3c2410_gpio_pullup(S3C2410_GPE12, 0);
-	s3c2410_gpio_pullup(S3C2410_GPE13, 1);
+	s3c2410_gpio_pullup(S3C2410_GPE(11), 0);
+	s3c2410_gpio_pullup(S3C2410_GPE(12), 0);
+	s3c2410_gpio_pullup(S3C2410_GPE(13), 1);
 
 	ic2201_setpin(IC2201_DCS_PIN, 1);
 	ic2201_setpin(IC2201_CCS_PIN, 0);

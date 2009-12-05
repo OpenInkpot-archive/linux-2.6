@@ -26,14 +26,14 @@
 #include <asm/io.h>
 
 /* connected to AO pin of LTC3455 */
-#define LBOOK_V3_BAT_LOWBAT_PIN		S3C2410_GPG2
-#define LBOOK_V3_BAT_LOWBAT_PIN_INP	S3C2410_GPG2_INP
+#define LBOOK_V3_BAT_LOWBAT_PIN			S3C2410_GPG(2)
+#define LBOOK_V3_BAT_LOWBAT_PIN_INP		S3C2410_GPIO_INPUT
 /* 1 --- connect the PROG pin of LTC3455 to resistor */
-#define LBOOK_V3_BAT_ENABLE_CHRG_PIN	S3C2410_GPC0
-#define LBOOK_V3_BAT_ENABLE_CHRG_PIN_OUTP	S3C2410_GPC0_OUTP
+#define LBOOK_V3_BAT_ENABLE_CHRG_PIN		S3C2410_GPC(0)
+#define LBOOK_V3_BAT_ENABLE_CHRG_PIN_OUTP	S3C2410_GPIO_OUTPUT
 /* connected to nCHRG pin of LTC3455 */
-#define LBOOK_V3_BAT_CHRG_PIN		S3C2410_GPG1
-#define LBOOK_V3_BAT_CHRG_PIN_INP		S3C2410_GPG1_INP
+#define LBOOK_V3_BAT_CHRG_PIN			S3C2410_GPG(1)
+#define LBOOK_V3_BAT_CHRG_PIN_INP		S3C2410_GPIO_INPUT
 
 static int buggy_hardware = 0;
 
@@ -259,13 +259,13 @@ static int lbookv3_battery_probe(struct platform_device *dev)
 	if(ret != 0)
 		goto err1;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF4, S3C2410_GPF4_INP);	//USB_pin
+	s3c2410_gpio_cfgpin(S3C2410_GPF(4), S3C2410_GPIO_INPUT);	//USB_pin
 	s3c2410_gpio_cfgpin(LBOOK_V3_BAT_CHRG_PIN, LBOOK_V3_BAT_CHRG_PIN_INP);	//nCHRG
 	s3c2410_gpio_cfgpin(LBOOK_V3_BAT_LOWBAT_PIN, LBOOK_V3_BAT_LOWBAT_PIN_INP);	//nLBO
 	s3c2410_gpio_cfgpin(LBOOK_V3_BAT_ENABLE_CHRG_PIN, LBOOK_V3_BAT_ENABLE_CHRG_PIN_OUTP);	//PROG - auto charge, when pulled high
 	s3c2410_gpio_setpin(LBOOK_V3_BAT_ENABLE_CHRG_PIN, 1);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF4, S3C2410_GPF4_EINT4);
+	s3c2410_gpio_cfgpin(S3C2410_GPF(4), S3C2410_GPF4_EINT4);
 
 	ret = power_supply_register(NULL, &lbookv3_battery);
 	if(ret != 0)

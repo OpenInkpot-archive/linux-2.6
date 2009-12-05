@@ -131,12 +131,12 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 	s3c2410_gpio_setpin(info->pin_clk, 0);
 	s3c2410_gpio_cfgpin(info->pin_clk, S3C2410_GPIO_OUTPUT);
 
-	if (info->pin_mosi < S3C2410_GPH10) {
+	if (info->pin_mosi < S3C2410_GPH(10)) {
 		s3c2410_gpio_setpin(info->pin_mosi, 0);
 		s3c2410_gpio_cfgpin(info->pin_mosi, S3C2410_GPIO_OUTPUT);
 	}
 
-	if (info->pin_miso != S3C2410_GPA0 && info->pin_miso < S3C2410_GPH10)
+	if (info->pin_miso != S3C2410_GPA(0) && info->pin_miso < S3C2410_GPH(10))
 		s3c2410_gpio_cfgpin(info->pin_miso, S3C2410_GPIO_INPUT);
 
 	ret = spi_bitbang_start(&sp->bitbang);

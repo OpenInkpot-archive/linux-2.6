@@ -35,12 +35,12 @@ static unsigned long poll_interval = KEYB_DELAY;
 static unsigned long longpress_time = LONGPRESS_TIME;
 
 static unsigned long int column_pins[] = {
-	S3C2410_GPG6, S3C2410_GPG7, S3C2410_GPG8, S3C2410_GPG9, S3C2410_GPG10,
-	S3C2410_GPG11, S3C2410_GPG4,
+	S3C2410_GPG(6), S3C2410_GPG(7), S3C2410_GPG(8), S3C2410_GPG(9), S3C2410_GPG(10),
+	S3C2410_GPG(11), S3C2410_GPG(4),
 };
 
 static unsigned long int row_pins[] = {
-	S3C2410_GPF0, S3C2410_GPF1, S3C2410_GPF2,
+	S3C2410_GPF(0), S3C2410_GPF(1), S3C2410_GPF(2),
 };
 
 static unsigned long keypad_state[ARRAY_SIZE(row_pins)][ARRAY_SIZE(column_pins)];
@@ -167,7 +167,7 @@ static void lbookv3_keys_power_timer(unsigned long data)
 	static int prev_state = 0;
 	int pressed;
 
-	pressed = !s3c2410_gpio_getpin(S3C2410_GPF6);
+	pressed = !s3c2410_gpio_getpin(S3C2410_GPF(6));
 
 	if (pressed) {
 
@@ -188,15 +188,15 @@ static void lbookv3_keys_power_timer(unsigned long data)
 	}
 	prev_state = pressed;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_EINT6);
+	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF(6)_EINT6);
 }
 
 static irqreturn_t lbookv3_powerkey_isr(int irq, void *dev_id)
 {
-	if (s3c2410_gpio_getpin(S3C2410_GPF6))
+	if (s3c2410_gpio_getpin(S3C2410_GPF(6)))
 		return IRQ_HANDLED;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_INP);
+	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF(6)_INP);
 
 	power_longpress_timeout = jiffies + longpress_time;
 	power_timer.expires = jiffies + poll_interval;
@@ -308,7 +308,7 @@ static int __init lbookv3_keys_init(void)
 	lbookv3_powerkey_isr(0, input);
 	lbookv3_keys_isr(0, input);
 
-	for (i = S3C2410_GPF0; i <= S3C2410_GPF2; i++) {
+	for (i = S3C2410_GPF(0); i <= S3C2410_GPF(2); i++) {
 		int irq = s3c2410_gpio_getirq(i);
 
 		s3c2410_gpio_cfgpin(i, S3C2410_GPIO_SFN2);
@@ -335,15 +335,15 @@ static int __init lbookv3_keys_init(void)
 	}
 	enable_irq_wake(IRQ_EINT6);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF6, S3C2410_GPF6_EINT6);
-	s3c2410_gpio_pullup(S3C2410_GPF6, 1);
+	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF(6)_EINT6);
+	s3c2410_gpio_pullup(S3C2410_GPF(6), 1);
 
 	return 0;
 
 	free_irq(IRQ_EINT6, input);
 fail_reg_irqs:
 fail_reg_eint6:
-	for (i = i - 1; i >= S3C2410_GPF0; i--)
+	for (i = i - 1; i >= S3C2410_GPF(0); i--)
 		free_irq(s3c2410_gpio_getirq(i), input);
 
 	device_remove_file(&input->dev, &dev_attr_poll_interval);
@@ -361,7 +361,7 @@ static void __exit lbookv3_keys_exit(void)
 	disable_irq_wake(IRQ_EINT6);
 	free_irq(IRQ_EINT6, input);
 
-	for (i = S3C2410_GPF0; i <= S3C2410_GPF2; i++) {
+	for (i = S3C2410_GPF(0); i <= S3C2410_GPF(2); i++) {
 		int irq = s3c2410_gpio_getirq(i);
 
 		disable_irq_wake(irq);

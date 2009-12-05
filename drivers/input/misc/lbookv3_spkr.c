@@ -82,7 +82,7 @@ static int __devinit lbookv3_spkr_probe(struct platform_device *dev)
 		err = PTR_ERR(lbookv3_spkr_pwm);
 		goto pwm_req_err;
 	}
-	s3c2410_gpio_cfgpin(S3C2410_GPB0, S3C2410_GPB0_TOUT0);
+	s3c2410_gpio_cfgpin(S3C2410_GPB(0), S3C2410_GPB0_TOUT0);
 
 	err = input_register_device(lbookv3_spkr_dev);
 	if (err)
@@ -109,7 +109,7 @@ static int __devexit lbookv3_spkr_remove(struct platform_device *dev)
 	platform_set_drvdata(dev, NULL);
 	/* turn off the speaker */
 	lbookv3_spkr_event(NULL, EV_SND, SND_BELL, 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPB0, S3C2410_GPB0_OUTP);
+	s3c2410_gpio_cfgpin(S3C2410_GPB(0), S3C2410_GPIO_OUTPUT);
 	pwm_free(lbookv3_spkr_pwm);
 
 	return 0;
