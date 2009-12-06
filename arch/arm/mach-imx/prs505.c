@@ -11,6 +11,7 @@
 #include <linux/platform_device.h>
 #include <linux/mtd/physmap.h>
 #include <linux/mtd/nand.h>
+#include <linux/sched.h>
 #include <asm/system.h>
 #include <mach/hardware.h>
 #include <asm/irq.h>
@@ -20,11 +21,20 @@
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
+#include <asm/mach/time.h>
 
+#include <mach/common.h>
+#include <mach/hardware.h>
 #include <mach/gpio.h>
+#include <mach/iomux.h>
 #include <mach/imx-uart.h>
 #include <linux/interrupt.h>
-#include "generic.h"
+
+#include "devices.h"
+#include "crm_regs.h"
+
+#define PRS505_FLASH_PHYS	IMX_CS0_PHYS
+#define PRS505_FLASH_SIZE	IMX_CS0_SIZE
 
 /*the bitwise definition of UCR1*/
 #define SNDBRK		0x00000010
@@ -49,20 +59,22 @@
 #define UCR1_TRDYEN		0x00002000
 #define UCR1_TXMPTYEN	0x00000040
 
+# define __REG(x)     (*((volatile u32 *)IO_ADDRESS(x)))
+
 /*  08/5/27 */
 #define _reg_PORTC_GIUS			GIUS(2)
 #define _reg_PORTC_GPR			GPR(2)
-#define _reg_UART1_URXD		__REG(IMX_UART1_BASE + 0x0)
-#define _reg_UART1_UTXD		__REG(IMX_UART1_BASE + 0x40)
-#define _reg_UART1_UCR1		__REG(IMX_UART1_BASE + 0x80)
-#define _reg_UART1_UCR2		__REG(IMX_UART1_BASE + 0x84)
-#define _reg_UART1_UCR3		__REG(IMX_UART1_BASE + 0x88)
-#define _reg_UART1_UCR4		__REG(IMX_UART1_BASE + 0x8C)
-#define _reg_UART1_UFCR		__REG(IMX_UART1_BASE + 0x90)
-#define _reg_UART1_USR1		__REG(IMX_UART1_BASE + 0x94)
-#define _reg_UART1_USR2		__REG(IMX_UART1_BASE + 0x98)
-#define _reg_UART1_UBIR			__REG(IMX_UART1_BASE + 0xA4)
-#define _reg_UART1_UBMR		__REG(IMX_UART1_BASE + 0xA8)
+#define _reg_UART1_URXD		__REG(UART1_BASE_ADDR + 0x0)
+#define _reg_UART1_UTXD		__REG(UART1_BASE_ADDR + 0x40)
+#define _reg_UART1_UCR1		__REG(UART1_BASE_ADDR + 0x80)
+#define _reg_UART1_UCR2		__REG(UART1_BASE_ADDR + 0x84)
+#define _reg_UART1_UCR3		__REG(UART1_BASE_ADDR + 0x88)
+#define _reg_UART1_UCR4		__REG(UART1_BASE_ADDR + 0x8C)
+#define _reg_UART1_UFCR		__REG(UART1_BASE_ADDR + 0x90)
+#define _reg_UART1_USR1		__REG(UART1_BASE_ADDR + 0x94)
+#define _reg_UART1_USR2		__REG(UART1_BASE_ADDR + 0x98)
+#define _reg_UART1_UBIR			__REG(UART1_BASE_ADDR + 0xA4)
+#define _reg_UART1_UBMR		__REG(UART1_BASE_ADDR + 0xA8)
 #define _reg_AITC_INTSRCL		__REG(IMX_AITC_BASE + 0x4C)
 
 /*dma transmitting*/
@@ -87,83 +99,12 @@
 static const int nand_gpios[] = {PRS505_NAND_CE0, PRS505_NAND_BUSY,
 	PRS505_NAND_CLE, PRS505_NAND_ALE};
 
-
-static struct imxuart_platform_data uart_pdata = {
-	.flags = IMXUART_HAVE_RTSCTS,
-};
-
-static struct resource imx_uart1_resources[] = {
-	[0] = {
-		.start	= 0x00206000,
-		.end	= 0x002060FF,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= (UART1_MINT_RX),
-		.end	= (UART1_MINT_RX),
-		.flags	= IORESOURCE_IRQ,
-	},
-	[2] = {
-		.start	= (UART1_MINT_TX),
-		.end	= (UART1_MINT_TX),
-		.flags	= IORESOURCE_IRQ,
-	},
-	[3] = {
-		.start	= UART1_MINT_RTS,
-		.end	= UART1_MINT_RTS,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device imx_uart1_device = {
-	.name		= "imx-uart",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(imx_uart1_resources),
-	.resource	= imx_uart1_resources,
-	.dev = {
-		.platform_data = &uart_pdata,
-	}
-};
-
-static struct resource imx_uart2_resources[] = {
-	[0] = {
-		.start	= 0x00207000,
-		.end	= 0x002070FF,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= (UART2_MINT_RX),
-		.end	= (UART2_MINT_RX),
-		.flags	= IORESOURCE_IRQ,
-	},
-	[2] = {
-		.start	= (UART2_MINT_TX),
-		.end	= (UART2_MINT_TX),
-		.flags	= IORESOURCE_IRQ,
-	},
-	[3] = {
-		.start	= UART2_MINT_RTS,
-		.end	= UART2_MINT_RTS,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device imx_uart2_device = {
-	.name		= "imx-uart",
-	.id		= 1,
-	.num_resources	= ARRAY_SIZE(imx_uart2_resources),
-	.resource	= imx_uart2_resources,
-	.dev = {
-		.platform_data = &uart_pdata,
-	}
-};
-
-static int prs505_nand_setup_ios(struct mtd_info *mtd)
+static int prs505_nand_probe(struct platform_device *pdev)
 {
 	int i, err = 0;
 
 	for (i = 0; i < ARRAY_SIZE(nand_gpios); i++)
-		if (imx_gpio_request(nand_gpios[i], "prs505-nand")) {
+		if (gpio_request(nand_gpios[i], "prs505-nand")) {
 			err = -EBUSY;
 			goto err_gpio_request;
 		}
@@ -185,7 +126,7 @@ err_gpio_request:
 	return err;
 }
 
-static void prs505_nand_release_ios(struct mtd_info *mtd)
+static void prs505_nand_remove(struct platform_device *pdev)
 {
 	int i;
 
@@ -223,8 +164,8 @@ static struct platform_nand_data prs505_nand_flash_data = {
 	.ctrl	= {
 		.dev_ready	= prs505_nand_dev_ready,
 		.cmd_ctrl	= prs505_nand_cmd_ctrl,
-		.setup_ios	= prs505_nand_setup_ios,
-		.release_ios	= prs505_nand_release_ios,
+		.probe		= prs505_nand_probe,
+		.remove		= prs505_nand_remove,
 	},
 };
 
@@ -392,48 +333,53 @@ static void ebook_power_off(void)
     while(1);
 }
 
-
-static void __init
-mx1_init(void)
-{
+static int prs505_pins[] = {
+	PC9_PF_UART1_CTS,
+	PC10_PF_UART1_RTS,
+	PC11_PF_UART1_TXD,
+	PC12_PF_UART1_RXD,
+	PB28_PF_UART2_CTS,
+	PB29_PF_UART2_RTS,
+	PB30_PF_UART2_TXD,
+	PB31_PF_UART2_RXD,
+	GPIO_PORTA|GPIO_OUT| 18,
+	GPIO_PORTA|GPIO_IN|| 19,
+	GPIO_PORTA|GPIO_OUT| 20,
 #ifdef CONFIG_LEDS
-	imx_gpio_mode(GPIO_PORTA | GPIO_OUT | 2);
+	GPIO_PORTA|GPIO_OUT| 2,
 #endif
-	MPCTL0 = 0x003F1437;
-	SPCTL0 = 0x123638ad;
+};
+
+static void __init prs505_init(void)
+{
+	__raw_writel(0x003F1437, CCM_MPCTL0);
+	__raw_writel(0x123638ad, CCM_SPCTL0);
 
 /*MMC SD card CS*/
-	__REG(IMX_EIM_BASE + 0x18) = 0x00001800;
-	__REG(IMX_EIM_BASE + 0x1c) = 0xcccc0D01;
+	__REG(EIM_BASE_ADDR + 0x18) = 0x00001800;
+	__REG(EIM_BASE_ADDR + 0x1c) = 0xcccc0D01;
 
 /*set up the CS0-5 GPIO PIN*/
-	GIUS(0) = (GIUS(0)) & 0x001ffffe;
-	GPR(0) = (GPR(0)) & 0x001ffffe;
+	__raw_writel(__raw_readl(VA_GPIO_BASE + MXC_GIUS(0)) & 0x001ffffe, VA_GPIO_BASE + MXC_GIUS(0));
+	__raw_writel(__raw_readl(VA_GPIO_BASE + MXC_GPR(0)) & 0x001ffffe, VA_GPIO_BASE + MXC_GPR(0));
 
-	imx_gpio_mode(GPIO_PORTA|GPIO_GIUS|GPIO_OUT|GPIO_DR|18);
-	imx_gpio_mode(GPIO_PORTA|GPIO_GIUS|GPIO_IN|GPIO_AIN|GPIO_AOUT|GPIO_BOUT|19);
-	imx_gpio_mode(GPIO_PORTA|GPIO_GIUS|GPIO_OUT|GPIO_DR|20);
-
-	imx_gpio_mode(PC9_PF_UART1_CTS);
-	imx_gpio_mode(PC10_PF_UART1_RTS);
-	imx_gpio_mode(PC11_PF_UART1_TXD);
-	imx_gpio_mode(PC12_PF_UART1_RXD);
-
-	imx_gpio_mode(PB28_PF_UART2_CTS);
-	imx_gpio_mode(PB29_PF_UART2_RTS);
-	imx_gpio_mode(PB30_PF_UART2_TXD);
-	imx_gpio_mode(PB31_PF_UART2_RXD);
+	mxc_gpio_setup_multiple_pins(prs505_pins,
+		ARRAY_SIZE(prs505_pins), "prs505");
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 
 	pm_power_off = ebook_power_off;
 }
 
-static void __init
-mx1_map_io(void)
+static void __init prs505_timer_init(void)
 {
-	imx_map_io();
+	mx1_clocks_init(32768);
 }
+
+struct sys_timer prs505_timer = {
+	.init	= prs505_timer_init,
+};
+
 
 MACHINE_START(SONY_PRS505, "Sony PRS-505 (Motorola DragonBall MX1)")
 	/* Maintainer: Yauhen Kharuzhy */
@@ -441,8 +387,8 @@ MACHINE_START(SONY_PRS505, "Sony PRS-505 (Motorola DragonBall MX1)")
 	.io_pg_offst	= ((0xe0000000) >> 18) & 0xfffc,
 	.boot_params	= 0x08000100,
 	.map_io		= mx1_map_io,
-	.init_irq	= imx_init_irq,
-	.timer		= &imx_timer,
-	.init_machine	= mx1_init,
+	.init_irq	= mx1_init_irq,
+	.timer		= &prs505_timer,
+	.init_machine	= prs505_init,
 MACHINE_END
 
