@@ -1089,12 +1089,18 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	if (retval)
 		goto err_devattr_temp;
 
+	retval = device_create_file(info->dev, &dev_attr_autorefresh_interval);
+	if (retval)
+		goto err_devattr_autorefresh;
+
 	dev_info(&dev->dev,
 		"fb%d: Metronome frame buffer device, using %dK of video"
 		" memory\n", info->node, videomemorysize >> 10);
 
 	return 0;
 
+	device_remove_file(info->dev, &dev_attr_autorefresh_interval);
+err_devattr_autorefresh:
 	device_remove_file(info->dev, &dev_attr_temp);
 err_devattr_temp:
 	device_remove_file(info->dev, &dev_attr_manual_refresh_threshold);
@@ -1133,6 +1139,7 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 		if (par->board->power_ctl)
 			par->board->power_ctl(par, METRONOME_POWER_OFF);
 
+		device_remove_file(info->dev, &dev_attr_autorefresh_interval);
 		device_remove_file(info->dev, &dev_attr_temp);
 		device_remove_file(info->dev, &dev_attr_manual_refresh_threshold);
 		device_remove_file(info->dev, &dev_attr_defio_delay);
