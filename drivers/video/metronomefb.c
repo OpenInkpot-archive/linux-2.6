@@ -827,6 +827,40 @@ static ssize_t metronomefb_manual_refresh_thr_store(struct device *dev,
 	return ret;
 }
 
+static ssize_t metronomefb_autorefresh_interval_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+	struct metronomefb_par *par = info->par;
+
+	return sprintf(buf, "%u\n", par->partial_autorefresh_interval);
+}
+
+static ssize_t metronomefb_autorefresh_interval_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct fb_info *info = dev_get_drvdata(dev);
+	struct metronomefb_par *par = info->par;
+	char *after;
+	unsigned long val = simple_strtoul(buf, &after, 10);
+	size_t count = after - buf;
+	ssize_t ret = -EINVAL;
+
+	if (*after && isspace(*after))
+		count++;
+
+	if (val > 100)
+		return -EINVAL;
+
+
+	if (count == size) {
+		ret = count;
+		par->partial_autorefresh_interval = val;
+	}
+
+	return ret;
+}
+
 static ssize_t metronomefb_temp_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -869,6 +903,9 @@ DEVICE_ATTR(manual_refresh_threshold, 0644,
 		metronomefb_manual_refresh_thr_show, metronomefb_manual_refresh_thr_store);
 DEVICE_ATTR(temp, 0644,
 		metronomefb_temp_show, metronomefb_temp_store);
+DEVICE_ATTR(autorefresh_interval, 0644,
+		metronomefb_autorefresh_interval_show, metronomefb_autorefresh_interval_store);
+
 
 static int __devinit metronomefb_probe(struct platform_device *dev)
 {
@@ -965,7 +1002,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 
 	init_waitqueue_head(&par->waitq);
 	par->manual_refresh_threshold = 60;
-	par->partial_autorefresh_interval = 15;
+	par->partial_autorefresh_interval = 256;
 	mutex_init(&par->lock);
 
 	/* this table caches per page csum values. */
@@ -1051,12 +1088,18 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	if (retval)
 		goto err_devattr_temp;
 
+	retval = device_create_file(info->dev, &dev_attr_autorefresh_interval);
+	if (retval)
+		goto err_devattr_autorefresh;
+
 	dev_info(&dev->dev,
 		"fb%d: Metronome frame buffer device, using %dK of video"
 		" memory\n", info->node, videomemorysize >> 10);
 
 	return 0;
 
+	device_remove_file(info->dev, &dev_attr_autorefresh_interval);
+err_devattr_autorefresh:
 	device_remove_file(info->dev, &dev_attr_temp);
 err_devattr_temp:
 	device_remove_file(info->dev, &dev_attr_manual_refresh_threshold);
@@ -1095,6 +1138,7 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 		if (par->board->power_ctl)
 			par->board->power_ctl(par, METRONOME_POWER_OFF);
 
+		device_remove_file(info->dev, &dev_attr_autorefresh_interval);
 		device_remove_file(info->dev, &dev_attr_temp);
 		device_remove_file(info->dev, &dev_attr_manual_refresh_threshold);
 		device_remove_file(info->dev, &dev_attr_defio_delay);
