@@ -123,7 +123,10 @@ static int n516_bat_get_property(struct power_supply *b,
 		val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW:
-		val->intval = n516_bat_get_charge(b);
+		if (n516_bat_usb_connected() && !n516_bat_charging())
+			val->intval = 100;
+		else
+			val->intval = n516_bat_get_charge(b);
 		break;
 	default:
 		return -EINVAL;
