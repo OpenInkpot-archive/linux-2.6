@@ -1,3 +1,10 @@
+linux-2.6 (2.6.29-35) zelazny; urgency=low
+
+  * n516-lpc: Report 100% of battery charge when USB is connected but
+    charging is complete
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 20 Dec 2009 20:56:34 +0200
+
 linux-2.6 (2.6.29-34) zelazny; urgency=low
 
   * metronomefb: Add forgotten initialization of autorefresh interval
