@@ -123,10 +123,7 @@ static int n516_bat_get_property(struct power_supply *b,
 		val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW:
-		if (n516_bat_usb_connected() && !n516_bat_charging())
-			val->intval = 100;
-		else
-			val->intval = n516_bat_get_charge(b);
+		val->intval = n516_bat_get_charge(b);
 		break;
 	default:
 		return -EINVAL;
@@ -159,6 +156,9 @@ static irqreturn_t n516_bat_charge_irq(int irq, void *dev)
 	struct power_supply *psy = dev;
 
 	dev_dbg(psy->dev, "Battery charging IRQ\n");
+
+	if (n516_bat_usb_connected() && !n516_bat_charging())
+		lpc->battery_level = 6;
 
 	power_supply_changed(psy);
 
