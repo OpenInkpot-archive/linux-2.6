@@ -77,6 +77,7 @@ static const unsigned int keymap[][2] = {
 };
 
 static const unsigned int batt_charge[] = {0, 7, 20, 45, 65, 80, 100};
+#define MAX_BAT_LEVEL	6
 
 /* Insmod parameters */
 I2C_CLIENT_INSMOD_1(n516_lpc);
@@ -158,7 +159,7 @@ static irqreturn_t n516_bat_charge_irq(int irq, void *dev)
 	dev_dbg(psy->dev, "Battery charging IRQ\n");
 
 	if (n516_bat_usb_connected() && !n516_bat_charging())
-		lpc->battery_level = 6;
+		the_lpc->battery_level = MAX_BAT_LEVEL;
 
 	power_supply_changed(psy);
 
@@ -326,6 +327,9 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 		dev_err(&client->dev, "Unable to register N516 battery\n");
 		goto err_bat_reg;
 	}
+
+	if (n516_bat_usb_connected() && !n516_bat_charging())
+		the_lpc->battery_level = MAX_BAT_LEVEL;
 
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
 	ret = request_irq(IRQ_LPC_INT, n516_lpc_irq, 0, "lpc", chip);
