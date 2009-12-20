@@ -1,3 +1,9 @@
+linux-2.6 (2.6.29-36) zelazny; urgency=low
+
+  * n516-lpc: Better fix for bug #739
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 20 Dec 2009 21:05:37 +0200
+
 linux-2.6 (2.6.29-35) zelazny; urgency=low
 
   * n516-lpc: Report 100% of battery charge when USB is connected but
