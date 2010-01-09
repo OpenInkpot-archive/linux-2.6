@@ -374,12 +374,15 @@ static void eb600_udc_command(enum s3c2410_udc_cmd_e cmd)
 	s3c2410_gpio_cfgpin(S3C2410_GPG6, S3C2410_GPIO_OUTPUT);
 	switch(cmd) {
 		case S3C2410_UDC_P_DISABLE:
+			printk(KERN_ERR "UDC DISABLE\n");
 			s3c2410_gpio_setpin(S3C2410_GPG6, 0);
 			break;
 		case S3C2410_UDC_P_ENABLE:
+			printk(KERN_ERR "UDC ENABLE\n");
 			s3c2410_gpio_setpin(S3C2410_GPG6, 1);
 			break;
 		case S3C2410_UDC_P_RESET:
+			printk(KERN_ERR "UDC RESET\n");
 			s3c2410_gpio_setpin(S3C2410_GPG6, 0);
 			udelay(50);
 			s3c2410_gpio_setpin(S3C2410_GPG6, 1);
@@ -404,7 +407,7 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&eb600_led_green,
 	&eb600_apollo,
 	&eb600_keys,
-	&eb600_led_usb
+//	&eb600_led_usb
 };
 
 static void __init eb600_map_io(void)
