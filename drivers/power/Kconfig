@@ -198,4 +198,11 @@ config CHARGER_GPIO
 	  Say Y to include support for chargers indicating their status through
 	  a GPIO pin.
 
+config BATTERY_EB600
+	tristate "Netronix EB-600 battery and USB power supply"
+	depends on ARCH_EB600
+	help
+	  Say Y to enable support for the battery in Netronix EB-600.
+
+
 endif # POWER_SUPPLY

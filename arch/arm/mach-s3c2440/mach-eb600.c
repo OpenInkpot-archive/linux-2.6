@@ -140,20 +140,6 @@ static struct platform_device eb600_led_green = {
 	},
 };
 
-static struct s3c24xx_led_platdata eb600_pdata_led_usb = {
-	.gpio		= S3C2410_GPG6,
-	.flags		= 0,
-	.name		= "usb",
-};
-
-static struct platform_device eb600_led_usb = {
-	.name		= "s3c24xx_led",
-	.id		= 2,
-	.dev		= {
-		.platform_data = &eb600_pdata_led_usb,
-	},
-};
-
 /* NAND driver info */
 
 static struct mtd_partition eb600_nand_part[] = {
@@ -215,6 +201,13 @@ static struct s3c2410_platform_nand eb600_nand_info = {
 
 static struct platform_device eb600_keys = {
 	.name		= "eb600-keys",
+	.id		= -1,
+};
+
+/* Battery */
+
+static struct platform_device eb600_battery = {
+	.name		= "eb600-battery",
 	.id		= -1,
 };
 
@@ -374,15 +367,12 @@ static void eb600_udc_command(enum s3c2410_udc_cmd_e cmd)
 	s3c2410_gpio_cfgpin(S3C2410_GPG6, S3C2410_GPIO_OUTPUT);
 	switch(cmd) {
 		case S3C2410_UDC_P_DISABLE:
-			printk(KERN_ERR "UDC DISABLE\n");
 			s3c2410_gpio_setpin(S3C2410_GPG6, 0);
 			break;
 		case S3C2410_UDC_P_ENABLE:
-			printk(KERN_ERR "UDC ENABLE\n");
 			s3c2410_gpio_setpin(S3C2410_GPG6, 1);
 			break;
 		case S3C2410_UDC_P_RESET:
-			printk(KERN_ERR "UDC RESET\n");
 			s3c2410_gpio_setpin(S3C2410_GPG6, 0);
 			udelay(50);
 			s3c2410_gpio_setpin(S3C2410_GPG6, 1);
@@ -407,7 +397,7 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&eb600_led_green,
 	&eb600_apollo,
 	&eb600_keys,
-//	&eb600_led_usb
+	&eb600_battery
 };
 
 static void __init eb600_map_io(void)
