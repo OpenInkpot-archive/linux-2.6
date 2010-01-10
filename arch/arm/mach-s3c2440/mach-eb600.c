@@ -392,7 +392,6 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&s3c_device_sdi,
 	&s3c_device_i2c0,
 	&s3c_device_iis,
-	&s3c_device_adc,
 	&s3c_device_rtc,
 	&eb600_led_green,
 	&eb600_apollo,
