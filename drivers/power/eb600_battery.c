@@ -32,7 +32,7 @@ static void __iomem *adc_base;
 static struct clk* adc_clk;
 
 #define ADC_BATTERY_CH 0
-#define EB600_MAX_VOLT 3806
+#define EB600_MAX_VOLT 3727
 #define EB600_MIN_VOLT 3150
 #define EB600_5PERC_VOLT 3540
 
