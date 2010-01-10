@@ -68,8 +68,11 @@
 #include <plat/cpu.h>
 #include <plat/nand.h>
 #include <plat/mci.h>
+#include <plat/pm.h>
 
 #include <plat/common-smdk.h>
+
+#define EB600_GREEN_LED_PIN S3C2410_GPB8
 
 static struct map_desc eb600_iodesc[] __initdata = {
 	/* ISA IO Space map (memory space selected by A24) */
@@ -126,7 +129,7 @@ static struct s3c2410_uartcfg eb600_uartcfgs[] __initdata = {
 /* LEDS */
 
 static struct s3c24xx_led_platdata eb600_pdata_led_green = {
-	.gpio		= S3C2410_GPB8,
+	.gpio		= EB600_GREEN_LED_PIN,
 	.flags		= S3C24XX_LEDF_ACTLOW,
 	.name		= "green",
 	.def_trigger	= "nand-disk",
@@ -399,6 +402,27 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&eb600_battery
 };
 
+static void eb600_power_off(void)
+{
+	int pin_state = 1;
+	while (pin_state)
+	{
+		s3c2410_gpio_cfgpin(S3C2410_GPA14,S3C2410_GPIO_OUTPUT);
+		s3c2410_gpio_setpin(S3C2410_GPA14,0);
+		pin_state = s3c2410_gpio_getpin(S3C2410_GPA14);
+	}
+}
+
+static long eb600_panic_blink(long time)
+{
+	s3c2410_gpio_setpin(EB600_GREEN_LED_PIN, 1);
+	mdelay(200);
+	s3c2410_gpio_setpin(EB600_GREEN_LED_PIN, 0);
+	mdelay(200);
+
+	return 400;
+}
+
 static void __init eb600_map_io(void)
 {
 	s3c24xx_init_io(eb600_iodesc, ARRAY_SIZE(eb600_iodesc));
@@ -431,6 +455,10 @@ static void __init eb600_machine_init(void)
 	eb600_init_gpio();
 	
 	platform_add_devices(eb600_devices, ARRAY_SIZE(eb600_devices));
+	
+	pm_power_off = &eb600_power_off;
+	panic_blink = eb600_panic_blink;
+	s3c2410_pm_init();
 }
 
 MACHINE_START(EB600, "Netronix EB-600")
