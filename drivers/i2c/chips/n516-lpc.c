@@ -178,6 +178,7 @@ static void n516_lpc_read_keys(struct work_struct *work)
 	struct i2c_client *client = chip->i2c_client;
 	struct i2c_msg msg = {client->addr, client->flags | I2C_M_RD, 1, &raw_msg}; 
 	int ret, i;
+	int long_press;
 
 	__gpio_as_input(GPIO_LPC_INT);
 	ret = i2c_transfer(client->adapter, &msg, 1);
@@ -185,13 +186,25 @@ static void n516_lpc_read_keys(struct work_struct *work)
 		dev_dbg(&client->dev, "I2C error\n");
 	} else {
 		dev_dbg(&client->dev, "msg: 0x%02x\n", raw_msg);
-		for (i = 0; i < ARRAY_SIZE(keymap); i++)
+		long_press = 0;
+		if (raw_msg & 0x40) {
+			long_press = 1;
+			raw_msg &= ~0x40;
+		}
+		dev_dbg(&client->dev, "msg1: 0x%02x, long_press: 0x%02x\n", raw_msg, long_press);
+		for (i = 0; i < ARRAY_SIZE(keymap); i++) {
 			if (raw_msg == keymap[i][0]) {
+				if (long_press)
+					input_report_key(chip->input, KEY_LEFTALT, 1);
 				input_report_key(chip->input, keymap[i][1], 1);
 				input_sync(chip->input);
 				input_report_key(chip->input, keymap[i][1], 0);
+				if (long_press)
+					input_report_key(chip->input, KEY_LEFTALT, 0);
 				input_sync(chip->input);
+				break;
 			}
+		}
 		if ((raw_msg >= 0x81) && (raw_msg <= 0x87)) {
 			unsigned int old_level = chip->battery_level;
 
@@ -307,6 +320,8 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	for (i = 0; i < ARRAY_SIZE(keymap); i++)
 		__set_bit(keymap[i][1], input->keybit);
+
+	__set_bit(KEY_LEFTALT, input->keybit);
 
 	input->name = "n516-keys";
 	input->phys = "n516-keys/input0";
