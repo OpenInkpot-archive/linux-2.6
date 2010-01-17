@@ -96,6 +96,20 @@
 #define PRS505_NAND_CLE		(GPIO_PORTC | 16)
 #define PRS505_NAND_ALE		(GPIO_PORTC | 17)
 
+/*
+ * UARTs platform data
+ */
+
+static struct imxuart_platform_data uart_pdata[] = {
+	[0] = {
+		.flags = IMXUART_HAVE_RTSCTS,
+	},
+	[1] = {
+		.flags = 0,
+	},
+};
+
+
 static const int nand_gpios[] = {PRS505_NAND_CE0, PRS505_NAND_BUSY,
 	PRS505_NAND_CLE, PRS505_NAND_ALE};
 
@@ -273,11 +287,9 @@ static struct platform_device ebook_usb_s1r72v17_device = {
 };
 
 static struct platform_device *devices[] __initdata = {
-	&imx_uart2_device,
 	&ebook_usb_s1r72v17_device,
 	&prs505_device_nor,
 	&prs505_device_nand,
-	&imx_uart1_device,
 };
 
 static void ebook_power_off(void)
@@ -366,6 +378,9 @@ static void __init prs505_init(void)
 	mxc_gpio_setup_multiple_pins(prs505_pins,
 		ARRAY_SIZE(prs505_pins), "prs505");
 
+	/* UART */
+	mxc_register_device(&imx_uart2_device, &uart_pdata[1]);
+	mxc_register_device(&imx_uart1_device, &uart_pdata[0]);
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 
 	pm_power_off = ebook_power_off;
