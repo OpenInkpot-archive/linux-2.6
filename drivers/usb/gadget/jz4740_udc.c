@@ -2216,7 +2216,7 @@ static struct jz4740_udc udc_dev = {
 		.ep0 = &udc_dev.ep[0].ep,
 		.name = driver_name,
 		.dev = {
-			.bus_id = "gadget",
+			.init_name = "gadget",
 		},
 	},
 

@@ -452,6 +452,16 @@ static void cirrus_set_receive_mode (struct net_device *dev)
 /*
  * Architecture dependant code
  */
+static const struct net_device_ops net_ops = {
+	.ndo_open               = cirrus_start,
+	.ndo_stop               = cirrus_stop,
+	.ndo_tx_timeout         = cirrus_transmit_timeout,
+	.ndo_start_xmit         = cirrus_send_start,
+	.ndo_get_stats          = cirrus_get_stats,
+	.ndo_set_multicast_list = cirrus_set_receive_mode,
+	.ndo_set_mac_address    = cirrus_set_mac_address,
+};
+
 
 /*
  * Driver initialization routines
@@ -475,13 +485,7 @@ int __init cirrus_probe(void)
 
 	ether_setup (dev);
 
-	dev->open               = cirrus_start;
-	dev->stop               = cirrus_stop;
-	dev->hard_start_xmit    = cirrus_send_start;
-	dev->get_stats          = cirrus_get_stats;
-	dev->set_multicast_list = cirrus_set_receive_mode;
-	dev->set_mac_address	= cirrus_set_mac_address;
-	dev->tx_timeout         = cirrus_transmit_timeout;
+	dev->netdev_ops		= &net_ops;
 	dev->watchdog_timeo     = HZ;
 
         if (ethaddr_cmd==1)

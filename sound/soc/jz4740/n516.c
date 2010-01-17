@@ -70,7 +70,7 @@ static void n516_ext_control(struct snd_soc_codec *codec)
 static int n516_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->socdev->codec;
+	struct snd_soc_codec *codec = rtd->socdev->card->codec;
 
 	/* check the jack status at stream startup */
 	n516_ext_control(codec);
@@ -94,25 +94,25 @@ static int n516_hw_params(struct snd_pcm_substream *substream,
 	int ret = 0;
 
 	/* set codec DAI configuration */
-	ret = codec_dai->ops.set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
+	ret = codec_dai->ops->set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->ops.set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
+	ret = cpu_dai->ops->set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set the codec system clock for DAC and ADC */
-	ret = codec_dai->ops.set_sysclk(codec_dai, JZCODEC_SYSCLK, 111,
+	ret = codec_dai->ops->set_sysclk(codec_dai, JZCODEC_SYSCLK, 111,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set the I2S system clock as input (unused) */
-	ret = cpu_dai->ops.set_sysclk(cpu_dai, JZ4740_I2S_SYSCLK, 0,
+	ret = cpu_dai->ops->set_sysclk(cpu_dai, JZ4740_I2S_SYSCLK, 0,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
