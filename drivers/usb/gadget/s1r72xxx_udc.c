@@ -6,6 +6,11 @@
  * This file is licenced under the GPLv2
  */
 
+#ifdef CONFIG_MACH_SONY_PRS505
+#include <mach/iomux.h>
+#include <mach/gpio.h>
+#endif
+
 /******************************************
  * Declarations of function prototype
  ******************************************/
@@ -30,11 +35,11 @@ static int s1r72xxx_usbc_vbus_draw(struct usb_gadget *_gadget, unsigned mA);
 static int s1r72xxx_usbc_pullup(struct usb_gadget *_gadget, int value);
 static int s1r72xxx_usbc_ioctl(struct usb_gadget *, unsigned code,
 	unsigned long param);
-static int __init s1r72xxx_usbc_probe(struct device *dev);
-static int s1r72xxx_usbc_remove(struct device *dev);
-void s1r72xxx_usbc_shutdown(struct device *dev);
-static int s1r72xxx_usbc_suspend(struct device *dev, pm_message_t state);
-static int s1r72xxx_usbc_resume(struct device *dev);
+static int __devinit s1r72xxx_usbc_probe(struct platform_device *pdev);
+static int __devexit s1r72xxx_usbc_remove(struct platform_device *pdev);
+void s1r72xxx_usbc_shutdown(struct platform_device *pdev);
+static int s1r72xxx_usbc_suspend(struct platform_device *pdev, pm_message_t state);
+static int s1r72xxx_usbc_resume(struct platform_device *pdev);
 int usb_gadget_register_driver(struct usb_gadget_driver *driver);
 int usb_gadget_unregister_driver(struct usb_gadget_driver *driver);
 static irqreturn_t s1r72xxx_usbc_irq(int irq, void *_dev);
@@ -361,11 +366,12 @@ static struct usb_gadget_ops s1r72xxx_gadget_ops = {
 /** @struct s1r72xxx_usbcd_driver
  * @brief	driver common functions.
  */
-static struct device_driver s1r72xxx_usbcd_driver = {
-    .name    = driver_name,
-    .bus     = &platform_bus_type,
+static struct platform_driver s1r72xxx_usbcd_driver = {
+    .driver  = {
+	    .name    = driver_name,
+    },
     .probe   = s1r72xxx_usbc_probe,
-    .remove  = __exit_p(s1r72xxx_usbc_remove),
+    .remove  = __devexit_p(s1r72xxx_usbc_remove),
     .shutdown= s1r72xxx_usbc_shutdown,
     .suspend = s1r72xxx_usbc_suspend,
     .resume  = s1r72xxx_usbc_resume,
@@ -2082,10 +2088,10 @@ static int s1r72xxx_usbc_ioctl (struct usb_gadget *_gadget, unsigned code,
  *			in case of error, return error code.
  */
 /* ========================================================================= */
-static int __init s1r72xxx_usbc_probe(struct device *dev)
+static int __devinit s1r72xxx_usbc_probe(struct platform_device *pdev)
 {
 	S1R72XXX_USBC_DEV		*usbc_dev;	/* USB hardware informations */
-	struct platform_device*	pdev;		/* platform device structure */
+	struct device			*dev;
 	struct resource*		res;		/* platform device resource */
 	unsigned char			ep_counter;	/* endpoint counter */
 	int						retval;		/* returned value */
@@ -2096,12 +2102,12 @@ static int __init s1r72xxx_usbc_probe(struct device *dev)
 	 *  - dev != NULL.
 	 *  - in case of error, return -EINVAL.
 	 */
-	if ( dev == NULL )  {
+	if ( pdev == NULL )  {
 		DEBUG_MSG("%s, bad param\n", __FUNCTION__);
 		return -EINVAL;
 	}
-	pdev = to_platform_device(dev);
 
+	dev = &pdev->dev;
 	/**
 	 * - 2. Allocate memory for device infomation structure:
 	 *  - call kmalloc. where size is s1r72xxx_usbc_dev, flag is SLAB_KERNEL.
@@ -2129,7 +2135,7 @@ static int __init s1r72xxx_usbc_probe(struct device *dev)
 	usbc_dev->gadget.ep0			= &usbc_dev->usbc_ep[S1R72_GD_EP0].ep;
 	usbc_dev->gadget.name			= driver_name;
 	usbc_dev->gadget.is_dualspeed	= 1;
-	strcpy(usbc_dev->gadget.dev.bus_id, "gadget");
+	dev_set_name(&usbc_dev->gadget.dev, "gadget");
 	usbc_dev->gadget.dev.release	= s1r72xxx_usbc_release;
 
 	usbc_dev->remote_wakeup_prc		= S1R72_RT_WAKEUP_NONE;
@@ -2249,14 +2255,15 @@ static int __init s1r72xxx_usbc_probe(struct device *dev)
  *			in case of error, return error code.
  */
 /* ========================================================================= */
-static int s1r72xxx_usbc_remove(struct device *dev)
+static int __devexit s1r72xxx_usbc_remove(struct platform_device *pdev)
 {
 	S1R72XXX_USBC_DEV		*usbc_dev;	/* USB hardware informations */
-	struct platform_device*	pdev;		/* platform device structure */
+	struct device*			dev;		/* device structure */
 	struct resource*		res;		/* platform device resource */
 	unsigned long			flags;		/* spin lock flag */
 
 	usbc_dev = the_controller;
+	dev = &pdev->dev;
 
 	DEBUG_MSG("%s, enter\n", __FUNCTION__);
 	/**
@@ -2264,7 +2271,7 @@ static int s1r72xxx_usbc_remove(struct device *dev)
 	 *  - dev != NULL.
 	 *  - in case of error, return -EINVAL.
 	 */
-	if ( ( dev == NULL) || (dev->driver_data == NULL) ) {
+	if ( ( dev == NULL) || (dev_get_drvdata(dev) == NULL) ) {
 		DEBUG_MSG("%s, pointer error\n", __FUNCTION__);
 		return -EINVAL;
 	}
@@ -2346,7 +2353,7 @@ static int s1r72xxx_usbc_remove(struct device *dev)
  * @retval	none
  */
 /* ========================================================================= */
-void s1r72xxx_usbc_shutdown(struct device *dev)
+void s1r72xxx_usbc_shutdown(struct platform_device *pdev)
 {
 	S1R72XXX_USBC_DEV	*usbc_dev;		/* USB hardware informations */
 	unsigned long		flags;			/* spin lock flag */
@@ -2416,7 +2423,7 @@ void s1r72xxx_usbc_shutdown(struct device *dev)
  *			in case of error, return error code.
  */
 /* ========================================================================= */
-static int s1r72xxx_usbc_suspend(struct device *dev, pm_message_t state)
+static int s1r72xxx_usbc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	S1R72XXX_USBC_DEV	*usbc_dev;		/* USB hardware informations */
 	unsigned int		pm_change_ct;	/* PM_Control change wait */
@@ -2432,7 +2439,7 @@ static int s1r72xxx_usbc_suspend(struct device *dev, pm_message_t state)
 	 *  - dev != NULL.
 	 *  - in case of error, return -EINVAL.
 	 */
-	if ( dev == NULL) {
+	if ( pdev == NULL) {
 		DEBUG_MSG("%s, pointer error\n", __FUNCTION__);
 		return -EINVAL;
 	}
@@ -2518,7 +2525,7 @@ static int s1r72xxx_usbc_suspend(struct device *dev, pm_message_t state)
  *			in case of error, return error code.
  */
 /* ========================================================================= */
-static int s1r72xxx_usbc_resume(struct device *dev)
+static int s1r72xxx_usbc_resume(struct platform_device *pdev)
 {
 	S1R72XXX_USBC_DEV	*usbc_dev;		/* USB hardware informations */
 	unsigned long		flags;			/* spin lock flag */
@@ -2533,7 +2540,7 @@ static int s1r72xxx_usbc_resume(struct device *dev)
 	 *  - dev != NULL.
 	 *  - in case of error, return -EINVAL.
 	 */
-	if ( dev == NULL) {
+	if ( pdev == NULL) {
 		DEBUG_MSG("%s, pointer error\n", __FUNCTION__);
 		return -EINVAL;
 	}
@@ -2613,6 +2620,7 @@ static int s1r72xxx_usbc_resume(struct device *dev)
 }
 
 #ifdef CONFIG_MACH_SONY_PRS505
+# define __REG(x)     (*((volatile u32 *)IO_ADDRESS(x)))
 static void s1r72v_start_gpio_setting(void)
 {
 	unsigned long flags;
@@ -2620,17 +2628,20 @@ static void s1r72v_start_gpio_setting(void)
 
 	local_irq_save(flags);
 
-	__REG(IMX_EIM_BASE + 0x20) = 0x00000900;
-	__REG(IMX_EIM_BASE + 0x24) = 0x54540d01;
+	__REG(EIM_BASE_ADDR + 0x20) = 0x00000900;
+	__REG(EIM_BASE_ADDR + 0x24) = 0x54540d01;
 
-	imx_gpio_mode(GPIO_PORTC|GPIO_GIUS|GPIO_IN|GPIO_AIN|GPIO_AOUT|GPIO_BOUT|3);
-	imx_gpio_mode(GPIO_PORTB|GPIO_GIUS|GPIO_IN|GPIO_AIN|GPIO_AOUT|GPIO_BOUT|19);   //USB_VBUS
+//	imx_gpio_mode(GPIO_PORTC|GPIO_GIUS|GPIO_IN|GPIO_AIN|GPIO_AOUT|GPIO_BOUT|3);
+//	imx_gpio_mode(GPIO_PORTB|GPIO_GIUS|GPIO_IN|GPIO_AIN|GPIO_AOUT|GPIO_BOUT|19);   //USB_VBUS
+	gpio_direction_input(GPIO_PORTC | 3);
+	gpio_direction_input(GPIO_PORTB | 19);
 #ifdef CONFIG_EBOOK5_LED
 		imx_gpio_mode(GPIO_PORTB|GPIO_GIUS|GPIO_OUT | GPIO_DR |8);
 		usbtg_led(EBOOK5_LED_OFF);
 #endif /* CONFIG_EBOOK5_LED */
 
-	imx_gpio_mode(GPIO_PORTA|GPIO_GIUS|GPIO_OUT|GPIO_DR|GPIO_PUEN|6);  //usb charge
+//	imx_gpio_mode(GPIO_PORTA|GPIO_GIUS|GPIO_OUT|GPIO_DR|GPIO_PUEN|6);  //usb charge
+	gpio_direction_output(GPIO_PORTA | 6, 0);
 
 //	vbus = dragonball_gpio_get_bit(USBD_S1R72_GPIO_PORT, pin);
 
@@ -2657,28 +2668,28 @@ static void s1r72v_start_gpio_setting(void)
 /* ========================================================================= */
 static int __init USBC_INIT(void)
 {
-	struct device_driver *pdev;
+//	struct platform_driver *pdev;
 
 	DEBUG_MSG("%s, enter\n", __FUNCTION__);
 	/**
 	 * - 1. register a driver structure and return:
 	 *  - register a driver sturcture calling by driver_register() and return.
 	 */
-	printk("%s module init\n",s1r72xxx_usbcd_driver.name);
-	if((pdev = driver_find(s1r72xxx_usbcd_driver.name, s1r72xxx_usbcd_driver.bus))
-		!= NULL){
-
-		/**
-		 * - 1.1. put driver:
-		 */
-		put_driver(pdev);
-		return -EBUSY;
-	}
+	printk("%s module init\n",s1r72xxx_usbcd_driver.driver.name);
+//	if((pdev = driver_find(s1r72xxx_usbcd_driver.name, s1r72xxx_usbcd_driver.bus))
+//		!= NULL){
+//
+//		/**
+//		 * - 1.1. put driver:
+//		 */
+//		put_driver(pdev);
+//		return -EBUSY;
+//	}
 
 #ifdef CONFIG_MACH_SONY_PRS505
 	s1r72v_start_gpio_setting();
 #endif
-	return driver_register(&s1r72xxx_usbcd_driver);
+	return platform_driver_register(&s1r72xxx_usbcd_driver);
 }
 
 /* ========================================================================= */
@@ -2697,8 +2708,8 @@ static void __exit USBC_EXIT(void)
 	 *  - unregister a driver sturcture calling by driver_unregister()
 	 *    and return.
 	 */
-	printk("%s module exit\n",s1r72xxx_usbcd_driver.name);
-	driver_unregister(&s1r72xxx_usbcd_driver);
+	printk("%s module exit\n",s1r72xxx_usbcd_driver.driver.name);
+	platform_driver_unregister(&s1r72xxx_usbcd_driver);
 }
 
 /* ========================================================================= */
@@ -2717,6 +2728,12 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	int					retval;		/* returned value */
 
 	usbc_dev = the_controller;
+
+	if (!usbc_dev)
+		return -ENODEV;
+	if (usbc_dev->driver)
+		return -EBUSY;
+
 
 	/**
 	 * - 1. Check parameter:
@@ -2822,6 +2839,8 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 	usbc_dev = the_controller;
 	reg_value = S1R72_REG_ALL_CLR;
 
+	if (!usbc_dev)
+		return -ENODEV;
 	/**
 	 * - 1. Check parameter:
 	 *  - s1r72xxx_usbc_dev != NULL, driver != NULL.
