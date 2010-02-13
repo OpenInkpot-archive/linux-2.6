@@ -180,7 +180,6 @@ static void n516_lpc_read_keys(struct work_struct *work)
 	int ret, i;
 	int long_press;
 
-	__gpio_as_input(GPIO_LPC_INT);
 	ret = i2c_transfer(client->adapter, &msg, 1);
 	if (ret != 1) {
 		dev_dbg(&client->dev, "I2C error\n");
@@ -226,8 +225,10 @@ static irqreturn_t n516_lpc_irq(int irq, void *dev_id)
 	if (dev->power.status != DPM_ON)
 		return IRQ_HANDLED;
 
-	if (!work_pending(&chip->work))
+	if (!work_pending(&chip->work)) {
+		disable_irq_nosync(irq);
 		schedule_work(&chip->work);
+	}
 
 	return IRQ_HANDLED;
 }
