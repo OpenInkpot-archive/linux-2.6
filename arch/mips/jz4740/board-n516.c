@@ -292,10 +292,19 @@ static struct platform_device n516_rtc_dev = {
 	.id		= -1,
 };
 
-static struct platform_device n516_usb_power = {
-	.name		= "n516-usb-power",
-	.id		= -1,
+static struct platform_device *n516_devices[] __initdata = {
+	&jz4740_nand_device,
+	&n516_leds_device,
+	&jz4740_mmc_device,
+	&jz4740_i2s_device,
+	&jz4740_codec_device,
+	&jz4740_rtc_device,
+	&jz4740_usb_gdt_device,
+	&jz4740_i2c_device,
 };
+
+extern int jz_gpiolib_init(void);
+extern int jz_init_clocks(unsigned long extal);
 
 static int n516_setup_platform(void)
 {
