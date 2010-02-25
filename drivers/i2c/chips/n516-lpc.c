@@ -366,6 +366,9 @@ static int __devinit n516_lpc_probe(struct i2c_client *client, const struct i2c_
 	chip->i2c_client = client;
 	if ((batt_level > 0) && (batt_level < ARRAY_SIZE(batt_charge)))
 		chip->battery_level = batt_level;
+	else
+		chip->battery_level = 1;
+
 	INIT_WORK(&chip->work, n516_lpc_read_keys);
 	i2c_set_clientdata(client, chip);
 
