@@ -1,6 +1,3 @@
-
-#define DEBUG
-
 #include <linux/module.h>
 #include <linux/version.h>
 #include <linux/init.h>
@@ -22,6 +19,8 @@
 
 #include <asm/jzsoc.h>
 
+/* in ms */
+#define USB_STATUS_DELAY 50
 
 #define IRQ_LPC_INT	(IRQ_GPIO_0 + GPIO_LPC_INT)
 
@@ -32,6 +31,7 @@ struct n516_lpc_chip {
 	struct i2c_client	*i2c_client;
 	struct work_struct	work;
 	struct input_dev	*input;
+	struct timer_list	usb_timer;
 	unsigned int		battery_level;
 	unsigned int		suspending:1, can_sleep:1;
 };
@@ -82,7 +82,7 @@ static const unsigned int batt_charge[] = {0, 7, 20, 45, 65, 80, 100};
 /* Insmod parameters */
 I2C_CLIENT_INSMOD_1(n516_lpc);
 
-static inline int n516_bat_usb_connected(void)
+static inline int n516_usb_connected(void)
 {
 	return !__gpio_get_pin(GPIO_USB_DETECT);
 }
@@ -94,7 +94,7 @@ static inline int n516_bat_charging(void)
 
 static int n516_bat_get_status(struct power_supply *b)
 {
-	if (n516_bat_usb_connected()) {
+	if (n516_usb_connected()) {
 		if (n516_bat_charging())
 			return POWER_SUPPLY_STATUS_CHARGING;
 		else
@@ -137,6 +137,22 @@ static void n516_bat_power_changed(struct power_supply *p)
 	power_supply_changed(p);
 }
 
+static int n516_usb_pwr_get_property(struct power_supply *psy,
+		enum power_supply_property psp,
+		union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = n516_usb_connected();
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+
 static enum power_supply_property n516_bat_properties[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
@@ -152,13 +168,32 @@ static struct power_supply n516_battery = {
 	.external_power_changed = n516_bat_power_changed,
 };
 
+static char* n516_usb_power_supplied_to[] = {
+	"n516-battery",
+};
+
+static enum power_supply_property n516_usb_pwr_props[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+};
+
+static struct power_supply n516_usb_psy = {
+	.name		= "usb",
+	.type           = POWER_SUPPLY_TYPE_USB,
+	.supplied_to    = n516_usb_power_supplied_to,
+	.num_supplicants = ARRAY_SIZE(n516_usb_power_supplied_to),
+	.properties     = n516_usb_pwr_props,
+	.num_properties = ARRAY_SIZE(n516_usb_pwr_props),
+	.get_property   = n516_usb_pwr_get_property,
+
+};
+
 static irqreturn_t n516_bat_charge_irq(int irq, void *dev)
 {
 	struct power_supply *psy = dev;
 
 	dev_dbg(psy->dev, "Battery charging IRQ\n");
 
-	if (n516_bat_usb_connected() && !n516_bat_charging())
+	if (n516_usb_connected() && !n516_bat_charging())
 		the_lpc->battery_level = MAX_BAT_LEVEL;
 
 	power_supply_changed(psy);
@@ -167,6 +202,37 @@ static irqreturn_t n516_bat_charge_irq(int irq, void *dev)
 		__gpio_as_irq_rise_edge(GPIO_CHARG_STAT_N);
 	else
 		__gpio_as_irq_fall_edge(GPIO_CHARG_STAT_N);
+
+	return IRQ_HANDLED;
+}
+
+static void n516_usb_pwr_change_timer_func(unsigned long data)
+{
+	struct power_supply *psy = (struct power_supply *)data;
+
+	if (!n516_usb_connected())
+		set_irq_type(gpio_to_irq(GPIO_USB_DETECT),
+				IRQ_TYPE_EDGE_RISING);
+	else
+		set_irq_type(gpio_to_irq(GPIO_USB_DETECT),
+				IRQ_TYPE_EDGE_FALLING);
+
+	power_supply_changed(psy);
+
+	if (n516_usb_connected() && !n516_bat_charging() &&
+			(the_lpc->battery_level != MAX_BAT_LEVEL)) {
+		the_lpc->battery_level = MAX_BAT_LEVEL;
+		power_supply_changed(&n516_battery);
+	}
+}
+
+static irqreturn_t n516_usb_pwr_change_irq(int irq, void *dev)
+{
+	struct power_supply *psy = dev;
+
+	dev_dbg(psy->dev, "USB change IRQ\n");
+
+	mod_timer(&the_lpc->usb_timer, jiffies + msecs_to_jiffies(USB_STATUS_DELAY));
 
 	return IRQ_HANDLED;
 }
@@ -285,15 +351,12 @@ static struct notifier_block n516_lpc_notif_block = {
 	.notifier_call = n516_lpc_suspend_notifier,
 };
 
-
-static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int __devinit n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct n516_lpc_chip *chip;
 	struct input_dev *input;
 	int ret = 0;
 	int i;
-
-	printk("%s\n", __func__);
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -305,6 +368,24 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 		chip->battery_level = batt_level;
 	INIT_WORK(&chip->work, n516_lpc_read_keys);
 	i2c_set_clientdata(client, chip);
+
+	ret = gpio_request(GPIO_LPC_INT, "LPC interrupt request");
+	if (ret) {
+		dev_err(&client->dev, "Unable to reguest LPC INT GPIO\n");
+		goto err_gpio_req_lpcint;
+	}
+
+	ret = gpio_request(GPIO_CHARG_STAT_N, "LPC charging status");
+	if (ret) {
+		dev_err(&client->dev, "Unable to reguest CHARG STAT GPIO\n");
+		goto err_gpio_req_chargstat;
+	}
+
+	ret = gpio_request(GPIO_USB_DETECT, "USB VBUS detect");
+	if (ret) {
+		dev_err(&client->dev, "Unable to reguest USB VBUS detect GPIO\n");
+		goto err_gpio_req_usbdetect;
+	}
 
 	n516_lpc_set_normal_mode(chip);
 
@@ -344,7 +425,7 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 		goto err_bat_reg;
 	}
 
-	if (n516_bat_usb_connected() && !n516_bat_charging())
+	if (n516_usb_connected() && !n516_bat_charging())
 		the_lpc->battery_level = MAX_BAT_LEVEL;
 
 	__gpio_as_irq_fall_edge(GPIO_LPC_INT);
@@ -367,6 +448,36 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 		goto err_request_chrg_irq;
 	}
 
+	if (n516_bat_charging())
+		set_irq_type(gpio_to_irq(GPIO_CHARG_STAT_N),
+				IRQ_TYPE_EDGE_RISING);
+	else
+		set_irq_type(gpio_to_irq(GPIO_CHARG_STAT_N),
+				IRQ_TYPE_EDGE_FALLING);
+
+	setup_timer(&chip->usb_timer, n516_usb_pwr_change_timer_func, (unsigned long)&n516_usb_psy);
+
+	ret = power_supply_register(NULL, &n516_usb_psy);
+	if (ret) {
+		dev_err(&client->dev, "Unable to register USB power supply\n");
+		goto err_usb_psy_reg;
+	}
+
+	ret = request_irq(gpio_to_irq(GPIO_USB_DETECT),
+			n516_usb_pwr_change_irq, IRQF_SHARED | IRQF_TRIGGER_RISING,
+			"usb-power", &n516_usb_psy);
+	if (ret) {
+		dev_err(&client->dev, "Unable to claim USB detect IRQ\n");
+		goto err_request_usb_irq;
+	}
+
+	if (!n516_usb_connected())
+		set_irq_type(gpio_to_irq(GPIO_USB_DETECT),
+				IRQ_TYPE_EDGE_RISING);
+	else
+		set_irq_type(gpio_to_irq(GPIO_USB_DETECT),
+				IRQ_TYPE_EDGE_FALLING);
+
 	pm_power_off = n516_lpc_power_off;
 	ret = register_pm_notifier(&n516_lpc_notif_block);
 	if (ret) {
@@ -378,6 +489,10 @@ static int n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	unregister_pm_notifier(&n516_lpc_notif_block);
 err_reg_pm_notifier:
+	free_irq(gpio_to_irq(GPIO_USB_DETECT), &n516_usb_psy);
+err_request_usb_irq:
+	power_supply_unregister(&n516_usb_psy);
+err_usb_psy_reg:
 	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
 err_request_chrg_irq:
 	free_irq(IRQ_LPC_INT, chip);
@@ -388,24 +503,37 @@ err_bat_reg:
 err_input_register:
 	input_free_device(input);
 err_input_alloc:
+	gpio_free(GPIO_USB_DETECT);
+err_gpio_req_usbdetect:
+	gpio_free(GPIO_CHARG_STAT_N);
+err_gpio_req_chargstat:
+	gpio_free(GPIO_LPC_INT);
+err_gpio_req_lpcint:
 	i2c_set_clientdata(client, NULL);
 	kfree(chip);
 
 	return ret;
 }
 
-static int n516_lpc_remove(struct i2c_client *client)
+static int __devexit n516_lpc_remove(struct i2c_client *client)
 {
 	struct n516_lpc_chip *chip = i2c_get_clientdata(client);
 
 	unregister_pm_notifier(&n516_lpc_notif_block);
 	pm_power_off = NULL;
+	free_irq(gpio_to_irq(GPIO_USB_DETECT), &n516_usb_psy);
 	free_irq(gpio_to_irq(GPIO_CHARG_STAT_N), &n516_battery);
 	__gpio_as_input(GPIO_LPC_INT);
 	free_irq(IRQ_LPC_INT, chip);
 	flush_scheduled_work();
+	del_timer_sync(&the_lpc->usb_timer);
+	power_supply_unregister(&n516_usb_psy);
 	power_supply_unregister(&n516_battery);
 	input_unregister_device(chip->input);
+	gpio_free(GPIO_USB_DETECT);
+	gpio_free(GPIO_CHARG_STAT_N);
+	gpio_free(GPIO_LPC_INT);
+	i2c_set_clientdata(client, NULL);
 	kfree(chip);
 
 	return 0;
@@ -447,12 +575,12 @@ static struct i2c_driver n516_lpc_driver = {
 	.resume		= n516_lpc_resume,
 };
 
-static int n516_lpc_init(void)
+static int __init n516_lpc_init(void)
 {
 	return i2c_add_driver(&n516_lpc_driver);
 }
 
-static void n516_lpc_exit(void)
+static void __exit n516_lpc_exit(void)
 {
 	i2c_del_driver(&n516_lpc_driver);
 }
