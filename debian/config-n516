@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.29.6
-# Tue Oct 20 00:53:53 2009
+# Thu Feb 25 22:45:02 2010
 #
 CONFIG_MIPS=y
 
@@ -715,7 +715,7 @@ CONFIG_POWER_SUPPLY=y
 # CONFIG_PDA_POWER is not set
 # CONFIG_BATTERY_DS2760 is not set
 # CONFIG_BATTERY_BQ27x00 is not set
-CONFIG_N516_USB_POWER=y
+# CONFIG_N516_USB_POWER is not set
 CONFIG_HWMON=m
 # CONFIG_HWMON_VID is not set
 # CONFIG_SENSORS_AD7414 is not set
