@@ -120,6 +120,7 @@ struct jzfb {
 	void __iomem *base;
 	struct resource *mem;
 	struct jz4740_fb_platform_data *pdata;
+	unsigned int used_data_pins;
 
 	size_t vidmem_size;
 	void *vidmem;
