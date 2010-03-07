@@ -17,7 +17,7 @@ struct metromem_cmd {
 	u16 opcode;
 	u16 args[((64-2)/2)];
 	u16 csum;
-};
+} __attribute__((packed));
 
 /* struct used by metronome. board specific stuff comes from *board */
 struct metronomefb_par {
@@ -62,11 +62,6 @@ struct metronome_board {
 	int (*setup_fb)(struct metronomefb_par *);
 	int (*setup_io)(struct metronomefb_par *);
 	int (*get_panel_type)(void);
-	unsigned char *metromem;
-	int fw;
-	int fh;
-	int wfm_size;
-	struct fb_info *host_fbinfo; /* the host LCD controller's fbi */
 };
 
 #endif
