@@ -191,9 +191,4 @@ config BATTERY_LBOOKV3
 	help
 	  Say Y to enable support for the battery in HanLin/lBook eReader V3.
 
-config N516_USB_POWER
-	tristate "N516 USB power supply driver"
-	help
-	  Say Y hee to enable support for USB power supply on N516 bookreader.
-
 endif # POWER_SUPPLY
