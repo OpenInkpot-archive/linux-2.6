@@ -27,11 +27,11 @@
 #include <asm/reboot.h>
 #include <asm/sizes.h>
 
-#include <asm/jzsoc.h>
-#include <asm/mach-jz4740/gpio-pins.h>
-#include <asm/jz47xx-leds.h>
-#include <asm/mach-jz4740/jz4740-nand.h>
-#include <asm/mach-jz4740/pm.h>
+#include <linux/power_supply.h>
+#include <linux/power/gpio-charger.h>
+
+#include <asm/mach-jz4740/board-n516.h>
+#include <asm/mach-jz4740/platform.h>
 
 /*
 extern void (*jz_timer_callback)(void);
@@ -292,6 +292,26 @@ static struct platform_device n516_rtc_dev = {
 	.id		= -1,
 };
 
+static char *n516_batteries[] = {
+	"n516_battery",
+};
+
+static struct gpio_charger_platform_data n516_charger_pdata = {
+	.name = "usb",
+	.type = POWER_SUPPLY_TYPE_USB,
+	.gpio = GPIO_USB_DETECT,
+	.gpio_active_low = 1,
+	.batteries = n516_batteries,
+	.num_batteries = ARRAY_SIZE(n516_batteries),
+};
+
+static struct platform_device n516_charger_device = {
+	.name = "gpio-charger",
+	.dev = {
+		.platform_data = &n516_charger_pdata,
+	},
+};
+
 static struct platform_device *n516_devices[] __initdata = {
 	&jz4740_nand_device,
 	&n516_leds_device,
@@ -301,6 +321,7 @@ static struct platform_device *n516_devices[] __initdata = {
 	&jz4740_rtc_device,
 	&jz4740_usb_gdt_device,
 	&jz4740_i2c_device,
+	&n516_charger_device,
 };
 
 extern int jz_gpiolib_init(void);
