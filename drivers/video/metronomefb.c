@@ -127,7 +127,7 @@ static struct epd_frame epd_frame_table[] = {
 	},
 };
 
-static struct fb_fix_screeninfo metronomefb_fix __devinitdata = {
+static const struct fb_fix_screeninfo metronomefb_fix __devinitconst = {
 	.id =		"metronomefb",
 	.type =		FB_TYPE_PACKED_PIXELS,
 	.visual =	FB_VISUAL_STATIC_PSEUDOCOLOR,
@@ -138,7 +138,7 @@ static struct fb_fix_screeninfo metronomefb_fix __devinitdata = {
 	.accel =	FB_ACCEL_NONE,
 };
 
-static struct fb_var_screeninfo metronomefb_var __devinitdata = {
+static const struct fb_var_screeninfo metronomefb_var __devinitconst = {
 	.xres		= DPY_W,
 	.yres		= DPY_H,
 	.xres_virtual	= DPY_W,
@@ -976,13 +976,13 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	info->screen_base = (char __force __iomem *)videomemory;
 	info->fbops = &metronomefb_ops;
 
-	metronomefb_fix.line_length = fw;
-	metronomefb_var.xres = fw;
-	metronomefb_var.yres = fh;
-	metronomefb_var.xres_virtual = fw;
-	metronomefb_var.yres_virtual = fh;
 	info->var = metronomefb_var;
+	info->var.xres = fw;
+	info->var.yres = fh;
+	info->var.xres_virtual = fw;
+	info->var.yres_virtual = fh;
 	info->fix = metronomefb_fix;
+	info->fix.line_length = fw;
 	info->fix.smem_len = fw * fh; /* Real size of image area */
 	par = info->par;
 	par->info = info;
@@ -994,7 +994,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	if (!par->fxbuckets)
 		goto err_vfree;
 
-	par->fybuckets = kmalloc(fh * sizeof(*par->fxbuckets), GFP_KERNEL);
+	par->fybuckets = kmalloc(fh * sizeof(*par->fybuckets), GFP_KERNEL);
 	if (!par->fybuckets)
 		goto err_fxbuckets;
 
