@@ -41,10 +41,6 @@
 
 #include <asm/unaligned.h>
 
-/* Display specific information */
-#define DPY_W 832
-#define DPY_H 622
-
 #define WF_MODE_INIT	0 /* Initialization */
 #define WF_MODE_MU	1 /* Monochrome update */
 #define WF_MODE_GU	2 /* Grayscale update */
@@ -134,15 +130,10 @@ static const struct fb_fix_screeninfo metronomefb_fix __devinitconst = {
 	.xpanstep =	0,
 	.ypanstep =	0,
 	.ywrapstep =	0,
-	.line_length =	DPY_W,
 	.accel =	FB_ACCEL_NONE,
 };
 
 static const struct fb_var_screeninfo metronomefb_var __devinitconst = {
-	.xres		= DPY_W,
-	.yres		= DPY_H,
-	.xres_virtual	= DPY_W,
-	.yres_virtual	= DPY_H,
 	.bits_per_pixel	= 8,
 	.grayscale	= 1,
 	.nonstd		= 1,
