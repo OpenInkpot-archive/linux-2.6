@@ -353,7 +353,6 @@ static int metronome_display_cmd(struct metronomefb_par *par)
 	int i;
 	u16 cs;
 	u16 opcode;
-	static u8 borderval;
 	int res;
 
 	res = wait_for_rdy(par);
@@ -669,8 +668,6 @@ static unsigned int metronomefb_get_change_count(struct metronomefb_par *par)
 
 static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 {
-	static int is_first_update = 1;
-	static int partial_updates_count = 0;
 	unsigned int fbsize = par->info->fix.smem_len;
 	uint16_t cksum;
 	int m;
@@ -684,10 +681,10 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 
 	*par->metromem_img_csum = __cpu_to_le16(cksum);
 
-	if (clear_all || is_first_update ||
-		(partial_updates_count == par->partial_autorefresh_interval)) {
+	if (clear_all || par->is_first_update ||
+		(par->partial_updates_count == par->partial_autorefresh_interval)) {
 		m = WF_MODE_GC;
-		partial_updates_count = 0;
+		par->partial_updates_count = 0;
 	} else {
 		int change_count = metronomefb_get_change_count(par);
 		if (change_count < fbsize / 100 * par->manual_refresh_threshold)
@@ -698,7 +695,7 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 		dev_dbg(&par->pdev->dev, "change_count = %u, treshold = %u%% (%u pixels)\n",
 				change_count, par->manual_refresh_threshold,
 				fbsize / 100 * par->manual_refresh_threshold);
-		++partial_updates_count;
+		++par->partial_updates_count;
 	}
 
 	if (m != par->current_wf_mode)
@@ -727,7 +724,7 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 		metronome_bootup(par);
 	}
 
-	is_first_update = 0;
+	par->is_first_update = 0;
 }
 
 /* this is called back from the deferred io workqueue */
@@ -1118,6 +1115,8 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	init_waitqueue_head(&par->waitq);
 	par->manual_refresh_threshold = 60;
 	par->partial_autorefresh_interval = 256;
+	par->partial_updates_count = 0;
+	par->is_first_update = 1;
 	mutex_init(&par->lock);
 
 	/* this table caches per page csum values. */

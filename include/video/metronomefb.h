@@ -43,6 +43,10 @@ struct metronomefb_par {
 	const struct epd_frame *epd_frame;
 	u32 *fxbuckets;
 	u32 *fybuckets;
+
+	unsigned int partial_updates_count;
+	unsigned is_first_update:1;
+
 	struct mutex lock;
 };
 
