@@ -44,6 +44,8 @@ struct metronomefb_par {
 	u32 *fxbuckets;
 	u32 *fybuckets;
 
+	int rotation;
+
 	unsigned int partial_updates_count;
 	unsigned is_first_update:1;
 
@@ -68,6 +70,7 @@ struct metronome_board {
 	int (*setup_fb)(struct metronomefb_par *);
 	int (*setup_io)(struct metronomefb_par *);
 	int (*get_panel_type)(void);
+	int panel_rotation;
 };
 
 #endif

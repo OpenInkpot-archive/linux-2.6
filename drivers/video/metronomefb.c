@@ -529,7 +529,7 @@ static uint16_t metronomefb_update_img_buffer_rotated(struct metronomefb_par *pa
 	uint32_t diff;
 	uint32_t tmp;
 
-	switch (par->info->var.rotate) {
+	switch (par->rotation) {
 	case FB_ROTATE_CW:
 		xstep = -fh;
 		ystep = fw * fh + 1;
@@ -556,10 +556,6 @@ static uint16_t metronomefb_update_img_buffer_rotated(struct metronomefb_par *pa
 	i = 0;
 	for (y = 0; y < fh; y++) {
 		for(x = 0; x < fw_buf; x++, i++) {
-			if (j < 0 || j >= fw * fh) {
-				printk("moo: %d %d %d %d %d\n", j, x, y, fw_buf, fh);
-				return 0;
-			}
 			tmp = (buf[j] << 5);
 			j += xstep;
 			tmp |= (buf[j] << 13);
@@ -674,7 +670,7 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 
 	wait_for_rdy(par);
 
-	if (par->info->var.rotate == 0)
+	if (par->rotation == 0)
 		cksum = metronomefb_update_img_buffer_normal(par);
 	else
 		cksum = metronomefb_update_img_buffer_rotated(par);
@@ -702,12 +698,10 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 		load_waveform((u8 *) par->firmware->data, par->firmware->size,
 				m, par->current_wf_temp, par);
 
-	for(;;) {
-		if (likely(!check_err(par))) {
-			metronome_display_cmd(par);
-			break;
-		}
-
+again:
+	metronome_display_cmd(par);
+	wait_for_rdy(par);
+	if (unlikely(check_err(par))) {
 		par->board->set_stdby(par, 0);
 		printk("Resetting Metronome\n");
 		par->board->set_rst(par, 0);
@@ -722,6 +716,8 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 		if (par->board->power_ctl)
 			par->board->power_ctl(par, METRONOME_POWER_ON);
 		metronome_bootup(par);
+
+		goto again;
 	}
 
 	par->is_first_update = 0;
@@ -828,8 +824,18 @@ static int metronome_check_var(struct fb_var_screeninfo *var, struct fb_info *in
 {
 	struct metronomefb_par *par = info->par;
 
-	if (par->epd_frame->fw == var->xres && par->epd_frame->fh == var->yres)
-		return 0;
+	switch (par->rotation) {
+	case FB_ROTATE_CW:
+	case FB_ROTATE_CCW:
+		if (par->epd_frame->fw == var->yres && par->epd_frame->fh == var->xres)
+			return 0;
+		break;
+	case FB_ROTATE_UD:
+	default:
+		if (par->epd_frame->fw == var->xres && par->epd_frame->fh == var->yres)
+			return 0;
+		break;
+	}
 
 	return -EINVAL;
 }
@@ -838,14 +844,16 @@ static int metronomefb_set_par(struct fb_info *info)
 {
 	struct metronomefb_par *par = info->par;
 
-	switch (info->var.rotate) {
+	par->rotation = (par->board->panel_rotation + info->var.rotate) % 4;
+
+	switch (par->rotation) {
 	case FB_ROTATE_CW:
 	case FB_ROTATE_CCW:
-		info->fix.line_length = info->var.yres;
+		info->fix.line_length = par->epd_frame->fh;
 		break;
 	case FB_ROTATE_UD:
 	default:
-		info->fix.line_length = info->var.xres;
+		info->fix.line_length = par->epd_frame->fw;
 		break;
 	}
 
@@ -1091,18 +1099,33 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	info->fbops = &metronomefb_ops;
 
 	info->var = metronomefb_var;
-	info->var.xres = fw;
-	info->var.yres = fh;
-	info->var.xres_virtual = fw;
-	info->var.yres_virtual = fh;
 	info->fix = metronomefb_fix;
-	info->fix.line_length = fw;
+	switch (board->panel_rotation) {
+	case FB_ROTATE_CW:
+	case FB_ROTATE_CCW:
+		info->var.xres = fh;
+		info->var.yres = fw;
+		info->var.xres_virtual = fh;
+		info->var.yres_virtual = fw;
+		info->fix.line_length = fh;
+		break;
+	case FB_ROTATE_UD:
+	default:
+		info->var.xres = fw;
+		info->var.yres = fh;
+		info->var.xres_virtual = fw;
+		info->var.yres_virtual = fh;
+		info->fix.line_length = fw;
+		break;
+	}
 	info->fix.smem_len = fw * fh; /* Real size of image area */
 	par = info->par;
 	par->info = info;
 	par->board = board;
 	par->epd_frame = &epd_frame_table[epd_dt_index];
 	par->pdev = dev;
+
+	par->rotation = board->panel_rotation;
 
 	par->fxbuckets = kmalloc((fw / 4 + 1) * sizeof(*par->fxbuckets), GFP_KERNEL);
 	if (!par->fxbuckets)

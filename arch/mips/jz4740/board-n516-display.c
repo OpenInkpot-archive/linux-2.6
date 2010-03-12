@@ -304,6 +304,7 @@ static struct metronome_board n516_board = {
 	.met_wait_event_intr	= n516_wait_event_intr,
 	.get_panel_type		= n516_get_panel_type,
 	.cleanup		= n516_cleanup,
+	.panel_rotation = FB_ROTATE_CW,
 };
 
 static int __init n516_init(void)
