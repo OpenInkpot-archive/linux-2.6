@@ -698,12 +698,14 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 		load_waveform((u8 *) par->firmware->data, par->firmware->size,
 				m, par->current_wf_temp, par);
 
-again:
-	metronome_display_cmd(par);
-	wait_for_rdy(par);
-	if (unlikely(check_err(par))) {
+	for (;;) {
+		if (likely(!check_err(par))) {
+			metronome_display_cmd(par);
+			break;
+		}
+
 		par->board->set_stdby(par, 0);
-		printk("Resetting Metronome\n");
+		dev_warn(&par->pdev->dev, "Resetting Metronome\n");
 		par->board->set_rst(par, 0);
 		mdelay(1);
 		if (par->board->power_ctl)
@@ -716,8 +718,6 @@ again:
 		if (par->board->power_ctl)
 			par->board->power_ctl(par, METRONOME_POWER_ON);
 		metronome_bootup(par);
-
-		goto again;
 	}
 
 	par->is_first_update = 0;
