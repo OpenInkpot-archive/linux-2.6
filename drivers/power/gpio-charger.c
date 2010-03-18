@@ -114,6 +114,7 @@ static int __devinit gpio_charger_probe(struct platform_device *pdev)
 				dev_warn(&pdev->dev, "Failed to request online gpio irq: %d\n", ret);
 				gpio_charger->irq = -1;
 			}
+			device_init_wakeup(&pdev->dev, 1);
 		}
 	}
 
@@ -157,9 +158,39 @@ static int __devexit gpio_charger_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#if CONFIG_PM
+static int gpio_charger_suspend(struct platform_device *pdev, pm_message_t msg)
+{
+	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
+
+	if (device_may_wakeup(&pdev->dev))
+		enable_irq_wake(gpio_charger->irq);
+
+	return 0;
+}
+
+static int gpio_charger_resume(struct platform_device *pdev)
+{
+	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
+
+	if (device_may_wakeup(&pdev->dev))
+		disable_irq_wake(gpio_charger->irq);
+
+	return 0;
+}
+
+#else
+#define n516_lpc_suspend NULL
+#define n516_lpc_resume NULL
+#endif
+
+
+
 static struct platform_driver  gpio_charger_driver = {
 	.probe = gpio_charger_probe,
 	.remove = __devexit_p(gpio_charger_remove),
+	.suspend = gpio_charger_suspend,
+	.resume = gpio_charger_resume,
 	.driver = {
 		.name = "gpio-charger",
 		.owner = THIS_MODULE,
