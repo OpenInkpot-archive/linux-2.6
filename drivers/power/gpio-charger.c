@@ -31,6 +31,8 @@ struct gpio_charger {
 	int irq;
 
 	struct power_supply charger;
+
+	unsigned suspend_state:1;
 };
 
 static irqreturn_t gpio_charger_irq(int irq, void *devid)
@@ -159,40 +161,51 @@ static int __devexit gpio_charger_remove(struct platform_device *pdev)
 }
 
 #if CONFIG_PM
-static int gpio_charger_suspend(struct platform_device *pdev, pm_message_t msg)
-{
-	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
 
-	if (device_may_wakeup(&pdev->dev))
+static int gpio_charger_suspend(struct device *dev)
+{
+	struct gpio_charger *gpio_charger = dev_get_drvdata(dev);
+
+	if (gpio_charger->irq >= 0 && device_may_wakeup(dev))
 		enable_irq_wake(gpio_charger->irq);
 
+	gpio_charger->suspend_state = gpio_get_value(gpio_charger->pdata->gpio);
+
 	return 0;
 }
 
-static int gpio_charger_resume(struct platform_device *pdev)
+static int gpio_charger_resume(struct device *dev)
 {
-	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
+	struct gpio_charger *gpio_charger = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(&pdev->dev))
+	if (gpio_charger->irq >= 0 && device_may_wakeup(dev))
 		disable_irq_wake(gpio_charger->irq);
 
+	if (gpio_charger->suspend_state != gpio_get_value(gpio_charger->pdata->gpio))
+		power_supply_changed(&gpio_charger->charger);
+
 	return 0;
 }
 
-#else
-#define n516_lpc_suspend NULL
-#define n516_lpc_resume NULL
-#endif
-
-
-
-static struct platform_driver  gpio_charger_driver = {
-	.probe = gpio_charger_probe,
-	.remove = __devexit_p(gpio_charger_remove),
+static const struct dev_pm_ops n516_pm_ops = {
 	.suspend = gpio_charger_suspend,
 	.resume = gpio_charger_resume,
+	.freeze = gpio_charger_suspend,
+	.thaw = gpio_charger_resume,
+};
+
+#define N516_LPC_PM_OPS (&n516_pm_ops)
+
+#else
+#define N516_LPC_PM_OPS NULL
+#endif
+
+static struct platform_driver gpio_charger_driver = {
+	.probe = gpio_charger_probe,
+	.remove = __devexit_p(gpio_charger_remove),
 	.driver = {
 		.name = "gpio-charger",
+		.pm = N516_LPC_PM_OPS,
 		.owner = THIS_MODULE,
 	},
 };
