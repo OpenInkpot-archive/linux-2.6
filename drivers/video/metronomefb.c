@@ -831,6 +831,8 @@ static int metronome_check_var(struct fb_var_screeninfo *var, struct fb_info *in
 {
 	struct metronomefb_par *par = info->par;
 
+	var->grayscale = 1;
+
 	switch (par->rotation) {
 	case FB_ROTATE_CW:
 	case FB_ROTATE_CCW:
