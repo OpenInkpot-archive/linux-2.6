@@ -197,5 +197,11 @@ config BATTERY_EB600
 	help
 	  Say Y to enable support for the battery in Netronix EB-600.
 
+config CHARGER_GPIO
+	tristate "GPIO charger"
+	depends on GPIOLIB
+	help
+	  Say Y to include support for chargers indicating their status through
+	  a GPIO pin.
 
 endif # POWER_SUPPLY
