@@ -452,6 +452,14 @@ config PCH_PHUB
 	  To compile this driver as a module, choose M here: the module will
 	  be called pch_phub.
 
+config N516_LPC
+	tristate "N516 keys & power controller"
+	depends on I2C
+	depends on INPUT
+	depends on POWER_SUPPLY
+	help
+	  N516 keyboard & power controller driver
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
