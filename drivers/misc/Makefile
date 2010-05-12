@@ -43,3 +43,4 @@ obj-$(CONFIG_PCH_PHUB)		+= pch_phub.o
 obj-y				+= ti-st/
 obj-$(CONFIG_AB8500_PWM)	+= ab8500-pwm.o
 obj-$(CONFIG_N516_LPC)		+= n516-lpc.o
+obj-$(CONFIG_N526_LPC)		+= n526-lpc.o
