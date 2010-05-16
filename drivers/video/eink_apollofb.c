@@ -43,8 +43,6 @@
 #define DPY_W 600
 #define DPY_H 800
 
-#define is_portrait(var) (!(var.rotate % 180))
-
 struct apollofb_options {
 	unsigned int manual_refresh_thr;
 	unsigned int use_sleep_mode:1;
@@ -170,7 +168,7 @@ static void apollo_set_normal_mode(struct apollofb_par *par)
 
 	apollo_send_command(par, APOLLO_NORMAL_MODE);
 	apollo_send_command(par, APOLLO_ORIENTATION);
-	apollo_send_data(par, ((par->info->var.rotate + 90) % 360) / 90);
+	apollo_send_data(par, (par->info->var.rotate + 1) % 4);
 
 	par->current_mode = APOLLO_STATUS_MODE_NORMAL;
 }
@@ -194,8 +192,7 @@ static void apollofb_apollo_update_part(struct apollofb_par *par,
 {
 	int i, j, k;
 	struct fb_info *info = par->info;
-	unsigned int width = is_portrait(info->var) ? info->var.xres :
-							info->var.yres;
+	unsigned int width = info->var.xres;
 	unsigned int bpp = info->var.green.length;
 	unsigned int pixels_in_byte = 8 / bpp;
 	unsigned char *buf = (unsigned char __force *)info->screen_base;
@@ -260,10 +257,8 @@ static void apollofb_dpy_deferred_io(struct fb_info *info,
 {
 
 	struct apollofb_par *par = info->par;
-	unsigned int width = is_portrait(info->var) ? info->var.xres :
-							info->var.yres;
-	unsigned int height = is_portrait(info->var) ? info->var.yres :
-							info->var.xres;
+	unsigned int width = info->var.xres;
+	unsigned int height = info->var.yres;
 	unsigned long int start_page = -1, end_page = -1;
 	unsigned int y1 = 0, y2 = 0;
 	struct page *cur;
@@ -327,12 +322,8 @@ static void apollofb_deferred_work(struct work_struct *work)
 	struct apollofb_par *par = container_of(work, struct apollofb_par,
 			deferred_work.work);
 	struct fb_info *info = par->info;
-	unsigned int width = is_portrait(info->var) ? info->var.xres :
-							info->var.yres;
-	unsigned int height = is_portrait(info->var) ? info->var.yres :
-							info->var.xres;
 
-	apollofb_apollo_update_part(par, 0, 0, width - 1, height - 1, 1);
+	apollofb_apollo_update_part(par, 0, 0, info->var.xres - 1, info->var.yres - 1, 1);
 }
 
 static void apollofb_fillrect(struct fb_info *info,
@@ -380,15 +371,13 @@ static ssize_t apollofb_write(struct fb_info *info, const char __user *buf,
 	unsigned long p;
 	int err = -EINVAL;
 	struct apollofb_par *par;
-	unsigned int xres;
 	unsigned int fbmemlength;
 
 	dev_dbg(info->dev, "%s started\n", __FUNCTION__);
 
 	p = *ppos;
 	par = info->par;
-	xres = info->var.xres;
-	fbmemlength = (xres * info->var.yres)/8 * info->var.bits_per_pixel;
+	fbmemlength = (info->var.xres * info->var.yres)/8 * info->var.bits_per_pixel;
 
 	if (p > fbmemlength)
 		return -ENOSPC;
@@ -456,13 +445,21 @@ static int apollofb_check_var(struct fb_var_screeninfo *var,
 		break;
 	}
 
-	var->xres = DPY_W;
-	var->xres_virtual = DPY_W;
-	var->yres = DPY_H;
-	var->yres_virtual = DPY_H;
-
-	if (var->rotate % 90)
-		var->rotate -= var->rotate % 90;
+	switch(var->rotate) {
+		case FB_ROTATE_CW:
+		case FB_ROTATE_CCW:
+			var->xres = DPY_H;
+			var->xres_virtual = DPY_H;
+			var->yres = DPY_W;
+			var->yres_virtual = DPY_W;
+			break;
+		case FB_ROTATE_UD:
+		default:
+			var->xres = DPY_W;
+			var->xres_virtual = DPY_W;
+			var->yres = DPY_H;
+			var->yres_virtual = DPY_H;
+	}
 
 	return 0;
 }
@@ -484,9 +481,11 @@ static int apollofb_set_par(struct fb_info *info)
 		break;
 	}
 
+	info->fix.line_length = info->var.xres;
+
 	mutex_lock(&par->lock);
 	apollo_send_command(par, APOLLO_ORIENTATION);
-	apollo_send_data(par, ((info->var.rotate + 90) % 360) / 90);
+	apollo_send_data(par, (info->var.rotate + 1) % 4);
 	mutex_unlock(&par->lock);
 
 	return 0;
