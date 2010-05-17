@@ -830,10 +830,12 @@ static ssize_t metronomefb_write(struct fb_info *info, const char __user *buf,
 static int metronome_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
 	struct metronomefb_par *par = info->par;
+	int rotation;
 
 	var->grayscale = 1;
 
-	switch (par->rotation) {
+	rotation = (par->board->panel_rotation + var->rotate) % 4;
+	switch (rotation) {
 	case FB_ROTATE_CW:
 	case FB_ROTATE_CCW:
 		if (par->epd_frame->fw == var->yres && par->epd_frame->fh == var->xres)
