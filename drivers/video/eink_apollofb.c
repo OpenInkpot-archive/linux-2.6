@@ -43,8 +43,6 @@
 #define DPY_W 600
 #define DPY_H 800
 
-#define is_portrait(var) (!(var.rotate % 180))
-
 struct apollofb_options {
 	unsigned int manual_refresh_thr;
 	unsigned int use_sleep_mode:1;
@@ -170,7 +168,7 @@ static void apollo_set_normal_mode(struct apollofb_par *par)
 
 	apollo_send_command(par, APOLLO_NORMAL_MODE);
 	apollo_send_command(par, APOLLO_ORIENTATION);
-	apollo_send_data(par, ((par->info->var.rotate + 90) % 360) / 90);
+	apollo_send_data(par, (par->info->var.rotate + 1) % 4);
 
 	par->current_mode = APOLLO_STATUS_MODE_NORMAL;
 }
@@ -447,19 +445,20 @@ static int apollofb_check_var(struct fb_var_screeninfo *var,
 		break;
 	}
 
-	if (var->rotate % 90)
-		var->rotate -= var->rotate % 90;
-
-	if(var->rotate % 180) {
-		var->xres = DPY_H;
-		var->xres_virtual = DPY_H;
-		var->yres = DPY_W;
-		var->yres_virtual = DPY_W;
-	} else {
-		var->xres = DPY_W;
-		var->xres_virtual = DPY_W;
-		var->yres = DPY_H;
-		var->yres_virtual = DPY_H;
+	switch(var->rotate) {
+		case FB_ROTATE_CW:
+		case FB_ROTATE_CCW:
+			var->xres = DPY_H;
+			var->xres_virtual = DPY_H;
+			var->yres = DPY_W;
+			var->yres_virtual = DPY_W;
+			break;
+		case FB_ROTATE_UD:
+		default:
+			var->xres = DPY_W;
+			var->xres_virtual = DPY_W;
+			var->yres = DPY_H;
+			var->yres_virtual = DPY_H;
 	}
 
 	return 0;
@@ -486,7 +485,7 @@ static int apollofb_set_par(struct fb_info *info)
 
 	mutex_lock(&par->lock);
 	apollo_send_command(par, APOLLO_ORIENTATION);
-	apollo_send_data(par, ((info->var.rotate + 90) % 360) / 90);
+	apollo_send_data(par, (info->var.rotate + 1) % 4);
 	mutex_unlock(&par->lock);
 
 	return 0;
