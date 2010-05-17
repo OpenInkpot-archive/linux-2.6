@@ -1,3 +1,9 @@
+linux-2.6 (2.6.29-39) zelazny; urgency=low
+
+  * apollofb: fix rotation
+
+ -- Alexander Kerner <lunohod@openinkpot.org>  Mon, 17 May 2010 15:49:51 +0200
+
 linux-2.6 (2.6.29-38) zelazny; urgency=low
 
   * n516-lpc: Merge USB power driver with this driver
