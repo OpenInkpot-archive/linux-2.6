@@ -1127,6 +1127,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		info->fix.line_length = fw;
 		break;
 	}
+
 	info->fix.smem_len = fw * fh; /* Real size of image area */
 	par = info->par;
 	par->info = info;
@@ -1151,18 +1152,13 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	par->is_first_update = 1;
 	mutex_init(&par->lock);
 
-	/* this table caches per page csum values. */
-	par->csum_table = vmalloc(videomemorysize/PAGE_SIZE);
-	if (!par->csum_table)
-		goto err_fybuckets;
-
 	/* the physical framebuffer that we use is setup by
 	 * the platform device driver. It will provide us
 	 * with cmd, wfm and image memory in a contiguous area. */
 	retval = board->setup_fb(par);
 	if (retval) {
 		dev_err(&dev->dev, "Failed to setup fb\n");
-		goto err_csum_table;
+		goto err_fybuckets;
 	}
 
 	/* after this point we should have a framebuffer */
@@ -1170,7 +1166,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		(!par->metromem_dma)) {
 		dev_err(&dev->dev, "fb access failure\n");
 		retval = -EINVAL;
-		goto err_csum_table;
+		goto err_fybuckets;
 	}
 
 	info->fix.smem_start = par->metromem_dma;
@@ -1181,19 +1177,25 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	retval = request_firmware(&fw_entry, "metronome.wbf", &dev->dev);
 	if (retval < 0) {
 		dev_err(&dev->dev, "Failed to get waveform\n");
-		goto err_csum_table;
+		goto err_fybuckets;
 	}
 
 	retval = load_waveform((u8 *) fw_entry->data, fw_entry->size, WF_MODE_GC, temp,
 				par);
 	if (retval < 0) {
 		dev_err(&dev->dev, "Failed processing waveform\n");
-		goto err_csum_table;
+		goto err_fybuckets;
 	}
 	par->firmware = fw_entry;
 
+	retval = board->setup_io(par);
+	if (retval) {
+		dev_err(&dev->dev, "metronomefb: setup_io() failed\n");
+		goto err_fybuckets;
+	}
+
 	if (board->setup_irq(info))
-		goto err_csum_table;
+		goto err_fybuckets;
 
 	retval = metronome_init_regs(par);
 	if (retval < 0)
@@ -1257,8 +1259,6 @@ err_cmap:
 	fb_dealloc_cmap(&info->cmap);
 err_free_irq:
 	board->cleanup(par);
-err_csum_table:
-	vfree(par->csum_table);
 err_fybuckets:
 	kfree(par->fybuckets);
 err_fxbuckets:
@@ -1292,7 +1292,6 @@ static int __devexit metronomefb_remove(struct platform_device *dev)
 		fb_deferred_io_cleanup(info);
 		fb_dealloc_cmap(&info->cmap);
 		par->board->cleanup(par);
-		vfree(par->csum_table);
 		kfree(par->fybuckets);
 		kfree(par->fxbuckets);
 		vfree((void __force *)info->screen_base);

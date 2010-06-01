@@ -27,7 +27,6 @@ struct metronomefb_par {
 	unsigned char *metromem_wfm;
 	unsigned char *metromem_img;
 	u16 *metromem_img_csum;
-	u16 *csum_table;
 	dma_addr_t metromem_dma;
 	const struct firmware *firmware;
 	struct fb_info *info;
