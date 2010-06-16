@@ -2193,7 +2193,7 @@ static struct jz4740_udc udc_dev = {
 	.gadget = {
 		.ops = &jz4740_udc_ops,
 		.ep0 = &udc_dev.ep[0].ep,
-		.name = "jz-udc",
+		.name = "ingenic_hsusb",
 		.dev = {
 			.init_name = "gadget",
 		},
