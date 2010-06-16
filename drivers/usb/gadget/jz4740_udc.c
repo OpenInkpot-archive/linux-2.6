@@ -2049,7 +2049,8 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 	if ((intr_usb & USB_INTR_RESUME) &&
 	    (usb_readb(dev, JZ_REG_UDC_INTRUSBE) & USB_INTR_RESUME)) {
 		DEBUG("USB resume\n");
-		dev->driver->resume(&dev->gadget); /* We have suspend(), so we must have resume() too. */
+		if (dev->driver && dev->driver->resume)
+			dev->driver->resume(&dev->gadget);
 	}
 
 	/* Check for system interrupts */
@@ -2102,9 +2103,8 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 	if ((intr_usb & USB_INTR_SUSPEND) &&
 	    (usb_readb(dev, JZ_REG_UDC_INTRUSBE) & USB_INTR_SUSPEND)) {
 		DEBUG("USB suspend\n");
-		dev->driver->suspend(&dev->gadget);
-		/* Host unloaded from us, can do something, such as flushing
-		 the NAND block cache etc. */
+		if (dev->driver && dev->driver->suspend)
+			dev->driver->suspend(&dev->gadget);
 	}
 
     jz_udc_set_index(dev, index);
