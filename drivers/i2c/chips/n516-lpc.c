@@ -1,3 +1,5 @@
+#define DEBUG
+
 #include <linux/module.h>
 #include <linux/version.h>
 #include <linux/init.h>
@@ -214,13 +216,15 @@ static irqreturn_t n516_lpc_irq_thread(int irq, void *devid)
 	if (client->dev.power.status >= DPM_OFF)
 		return IRQ_HANDLED;
 
+	dev_dbg(&client->dev, "%s: ENTER\n", __FUNCTION__);
+
 	ret = i2c_transfer(client->adapter, &msg, 1);
 	if (ret != 1) {
 		dev_dbg(&client->dev, "I2C error: %d\n", ret);
 		return IRQ_HANDLED;
 	}
 
-	dev_dbg(&client->dev, "msg: 0x%02x\n", raw_msg);
+	dev_info(&client->dev, "msg: 0x%02x\n", raw_msg);
 
 	/* Ack wakeup event */
 	if ((raw_msg & ~0x40) < ARRAY_SIZE(n516_lpc_keymap))
@@ -349,17 +353,18 @@ static int __devinit n516_lpc_probe(struct i2c_client *client, const struct i2c_
 	}
 
 	ret = request_threaded_irq(gpio_to_irq(GPIO_LPC_INT), NULL,
-					n516_lpc_irq_thread,
-					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-					"lpc", chip);
+			n516_lpc_irq_thread,
+			IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+			"lpc", chip);
 	if (ret) {
 		dev_err(&client->dev, "request_irq failed: %d\n", ret);
 		goto err_request_lpc_irq;
 	}
 
-	ret = request_irq(gpio_to_irq(GPIO_CHARG_STAT_N), n516_bat_charge_irq,
-				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
-				"battery charging", &n516_battery);
+	ret = request_threaded_irq(gpio_to_irq(GPIO_CHARG_STAT_N), NULL,
+			n516_bat_charge_irq,
+			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+			"battery charging", &n516_battery);
 	if (ret) {
 		dev_err(&client->dev, "Unable to claim battery charging IRQ\n");
 		goto err_request_chrg_irq;
@@ -373,6 +378,7 @@ static int __devinit n516_lpc_probe(struct i2c_client *client, const struct i2c_
 	}
 
 	device_init_wakeup(&client->dev, 1);
+	dev_info(&client->dev, "N516 keyboard & PM controller driver\n");
 
 	return 0;
 
