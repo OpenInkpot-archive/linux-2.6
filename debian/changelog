@@ -1,3 +1,9 @@
+linux-2.6 (2.6.32-16~bradbury.1) bradbury; urgency=low
+
+  * i2c-jz47xx: Increase delay after setting DRF flag for reliability
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 18 Jun 2010 21:51:53 +0300
+
 linux-2.6 (2.6.32-15~bradbury.1) bradbury; urgency=low
 
   * bradbury branch
