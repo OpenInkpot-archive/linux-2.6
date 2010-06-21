@@ -1,4 +1,16 @@
-#define DEBUG
+/*
+ * linux/drivers/i2c/chips/n516-lpc.c
+ *
+ * JZ4740 n516 board keyboard & power controller driver
+ *
+ * Copyright (c) 2009-2010, Yauhen Kharuzhy <jekhor@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
 
 #include <linux/module.h>
 #include <linux/version.h>
@@ -180,9 +192,11 @@ static void n516_key_event(struct n516_lpc_chip *chip, unsigned char keycode)
 		long_press = true;
 	}
 
-	dev_dbg(&client->dev, "keycode: 0x%02x, long_press: 0x%02x\n", keycode, (unsigned int)long_press);
+	dev_dbg(&client->dev, "keycode: 0x%02x, long_press: 0x%02x\n",
+			keycode, (unsigned int)long_press);
 
-	if (keycode >= ARRAY_SIZE(n516_lpc_keymap) || n516_lpc_keymap[keycode] == 0)
+	if (keycode >= ARRAY_SIZE(n516_lpc_keymap)
+			|| n516_lpc_keymap[keycode] == 0)
 		return;
 
 	if (long_press)
@@ -197,7 +211,8 @@ static void n516_key_event(struct n516_lpc_chip *chip, unsigned char keycode)
 	input_sync(chip->input);
 }
 
-static void n516_battery_event(struct n516_lpc_chip *chip, unsigned char battery_level)
+static void n516_battery_event(struct n516_lpc_chip *chip,
+		unsigned char battery_level)
 {
 	if (battery_level != chip->battery_level) {
 		chip->battery_level = battery_level;
@@ -211,7 +226,8 @@ static irqreturn_t n516_lpc_irq_thread(int irq, void *devid)
 	int ret;
 	unsigned char raw_msg;
 	struct i2c_client *client = chip->i2c_client;
-	struct i2c_msg msg = {client->addr, client->flags | I2C_M_RD, 1, &raw_msg};
+	struct i2c_msg msg = {client->addr, client->flags | I2C_M_RD,
+		1, &raw_msg};
 
 	if (client->dev.power.status >= DPM_OFF)
 		return IRQ_HANDLED;
@@ -224,7 +240,7 @@ static irqreturn_t n516_lpc_irq_thread(int irq, void *devid)
 		return IRQ_HANDLED;
 	}
 
-	dev_info(&client->dev, "msg: 0x%02x\n", raw_msg);
+	dev_dbg(&client->dev, "msg: 0x%02x\n", raw_msg);
 
 	/* Ack wakeup event */
 	if ((raw_msg & ~0x40) < ARRAY_SIZE(n516_lpc_keymap))
@@ -253,7 +269,8 @@ static void n516_lpc_power_off(void)
 		i2c_transfer(client->adapter, &msg, 1);
 }
 
-static int n516_lpc_detect(struct i2c_client *client, int kind, struct i2c_board_info *info)
+static int n516_lpc_detect(struct i2c_client *client, int kind,
+		struct i2c_board_info *info)
 {
 	return 0;
 }
@@ -268,7 +285,6 @@ static int n516_lpc_suspend_notifier(struct notifier_block *nb,
 		 * and userspace during suspend process */
 		disable_irq(GPIO_LPC_INT);
 		the_lpc->can_sleep = 1;
-		wmb();
 		the_lpc->suspending = 1;
 		break;
 	case PM_POST_SUSPEND:
@@ -286,7 +302,8 @@ static struct notifier_block n516_lpc_notif_block = {
 	.notifier_call = n516_lpc_suspend_notifier,
 };
 
-static int __devinit n516_lpc_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int __devinit n516_lpc_probe(struct i2c_client *client,
+		const struct i2c_device_id *id)
 {
 	struct n516_lpc_chip *chip;
 	struct input_dev *input;
