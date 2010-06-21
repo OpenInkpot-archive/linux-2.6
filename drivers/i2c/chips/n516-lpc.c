@@ -264,12 +264,17 @@ static int n516_lpc_suspend_notifier(struct notifier_block *nb,
 {
 	switch(event) {
 	case PM_SUSPEND_PREPARE:
-		the_lpc->suspending = 1;
+		/* Disable IRQ because input event can stuck between kernel
+		 * and userspace during suspend process */
+		disable_irq(GPIO_LPC_INT);
 		the_lpc->can_sleep = 1;
+		wmb();
+		the_lpc->suspending = 1;
 		break;
 	case PM_POST_SUSPEND:
 		the_lpc->suspending = 0;
 		the_lpc->can_sleep = 1;
+		enable_irq(GPIO_LPC_INT);
 		break;
 	default:
 		return NOTIFY_DONE;
