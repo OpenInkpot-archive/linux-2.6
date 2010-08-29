@@ -549,7 +549,7 @@ static struct clk rtc_clk = {
 		.con_id = n, \
 		.clk = &c, \
 	},
-static struct clk_lookup lookups[] __initdata = {
+static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "dma", dma_clk)
 	_REGISTER_CLOCK("mx1-camera.0", NULL, csi_clk)
 	_REGISTER_CLOCK(NULL, "mma", mma_clk)
