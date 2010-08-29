@@ -363,9 +363,9 @@ static int imxfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 				lcd_clk / pcr);
 	}
 
-	dev_dbg(&info->dev,
-		"Pixclock: requested: %u Hz, real: %lu Hz (%lu Hz / %lu)\n",
-		var->pixclock, lcd_clk / pcr, pcr);
+	dev_dbg(info->dev,
+		"Pixclock: requested: %u Hz, real: %lu Hz (%lu Hz / %u)\n",
+		var->pixclock, lcd_clk / pcr, lcd_clk, pcr);
 
 	pcr--;
 
