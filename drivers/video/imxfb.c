@@ -744,7 +744,7 @@ static int __init imxfb_init_fbinfo(struct platform_device *pdev)
 	return 0;
 }
 
-static int __init imxfb_probe(struct platform_device *pdev)
+static int __devinit imxfb_probe(struct platform_device *pdev)
 {
 	struct imxfb_info *fbi;
 	struct fb_info *info;
@@ -923,12 +923,14 @@ void  imxfb_shutdown(struct platform_device * dev)
 {
 	struct fb_info *info = platform_get_drvdata(dev);
 	struct imxfb_info *fbi = info->par;
+
 	imxfb_disable_controller(fbi);
 }
 
 static struct platform_driver imxfb_driver = {
 	.suspend	= imxfb_suspend,
 	.resume		= imxfb_resume,
+	.probe		= imxfb_probe,
 	.remove		= __devexit_p(imxfb_remove),
 	.shutdown	= imxfb_shutdown,
 	.driver		= {
@@ -964,7 +966,7 @@ int __init imxfb_init(void)
 	if (ret < 0)
 		return ret;
 
-	return platform_driver_probe(&imxfb_driver, imxfb_probe);
+	return platform_driver_register(&imxfb_driver);
 }
 
 static void __exit imxfb_cleanup(void)
