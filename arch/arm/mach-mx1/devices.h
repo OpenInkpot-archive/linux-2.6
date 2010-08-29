@@ -5,3 +5,4 @@ extern struct platform_device imx_uart2_device;
 extern struct platform_device imx_rtc_device;
 extern struct platform_device imx_wdt_device;
 extern struct platform_device imx_usb_device;
+extern struct platform_device imx_fb_device;

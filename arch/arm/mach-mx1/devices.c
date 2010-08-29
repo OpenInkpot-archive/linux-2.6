@@ -211,6 +211,38 @@ struct platform_device imx_usb_device = {
 	.resource	= imx_usb_resources,
 };
 
+/*
+ * lcdc:
+ * - i.MX1: the basic controller
+ * - i.MX21: to be checked
+ * - i.MX27: like i.MX1, with slightly variations
+ */
+static struct resource imx_fb[] = {
+	{
+		.start = LCDC_BASE_ADDR,
+		.end   = LCDC_BASE_ADDR + 0xFFF,
+		.flags = IORESOURCE_MEM,
+	}, {
+		.start = LCDC_INT,
+		.end   = LCDC_INT,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+
+/* mxc lcd driver */
+struct platform_device imx_fb_device = {
+	.name = "imx-fb",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(imx_fb),
+	.resource = imx_fb,
+	.dev = {
+		.coherent_dma_mask = 0xFFFFFFFF,
+	},
+};
+
+EXPORT_SYMBOL_GPL(imx_fb_device);
+
+
 /* GPIO port description */
 static struct mxc_gpio_port imx_gpio_ports[] = {
 	{
