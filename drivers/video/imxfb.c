@@ -326,8 +326,7 @@ static int imxfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	struct imxfb_rgb *rgb;
 	const struct imx_fb_videomode *imxfb_mode;
 	unsigned long lcd_clk;
-	unsigned long long tmp;
-	u32 pcr = 0;
+	u32 pcr;
 
 	if (var->xres < MIN_XRES)
 		var->xres = MIN_XRES;
@@ -356,20 +355,19 @@ static int imxfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 
 	lcd_clk = clk_get_rate(fbi->clk);
 
-	tmp = var->pixclock * (unsigned long long)lcd_clk;
+	pcr = (unsigned int)(lcd_clk / var->pixclock);
 
-	do_div(tmp, 1000000);
-
-	if (do_div(tmp, 1000000) > 500000)
-		tmp++;
-
-	pcr = (unsigned int)tmp;
-
-	if (--pcr > 0x3F) {
-		pcr = 0x3F;
+	if (pcr > 0x40) {
+		pcr = 0x40;
 		printk(KERN_WARNING "Must limit pixel clock to %luHz\n",
 				lcd_clk / pcr);
 	}
+
+	dev_dbg(&info->dev,
+		"Pixclock: requested: %u Hz, real: %lu Hz (%lu Hz / %lu)\n",
+		var->pixclock, lcd_clk / pcr, pcr);
+
+	pcr--;
 
 	switch (var->bits_per_pixel) {
 	case 32:
