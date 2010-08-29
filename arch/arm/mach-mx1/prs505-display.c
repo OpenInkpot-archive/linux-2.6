@@ -11,8 +11,6 @@
  *
  */
 
-#define DEBUG
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -24,31 +22,57 @@
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
+#include <linux/console.h>
 
 #include <mach/imxfb.h>
 #include <mach/irqs.h>
+#include <mach/iomux.h>
+
 #include <video/metronomefb.h>
 
-#include "generic.h"
+#include "devices.h"
 
-static struct platform_device *prs505_display_device;
-static struct metronome_board prs505_board;
+static struct platform_device *prs505_device;
 
-struct imxfb_mach_info prs505_fb_info = {
-	.pixclock	= 40189,
-	.xres		= 832,
-	.yres		= 622 / 2,
-	.bpp		= 16,
-	.hsync_len	= 28,
-	.left_margin	= 34,
-	.right_margin	= 34,
-	.vsync_len	= 25,
-	.upper_margin	= 0,
-	.lower_margin	= 2,
-	.sync		= FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	.pcr		= PCR_TFT | PCR_BPIX_16 | PCR_CLKPOL | PCR_SCLKIDLE |
-				PCR_SCLK_SEL | PCR_PCD(2),
-	.dmacr		= DMACR_HM(3) | DMACR_TM(10), 
+struct prs505_metronome_info {
+	uint8_t *metromem;
+	size_t wfm_size;
+	struct fb_info *host_fbinfo; /* the host LCD controller's fbi */
+	unsigned int fw;
+	unsigned int fh;
+	unsigned int gap;
+};
+
+static struct work_struct prs505_init_work;
+static struct completion prs505_init_completed;
+static struct prs505_metronome_info prs505_metronome_info;
+
+struct imx_fb_videomode prs505_fb_modes[] = {
+	{
+		.mode = {
+			.name		= "Metronome-800x600 dual",
+			.refresh	= 50,
+			.xres		= 864,
+			.yres		= 312,
+			.pixclock	= 16000000,
+			.hsync_len	= 10,
+			.left_margin	= 13,
+			.right_margin	= 9,
+			.vsync_len	= 15,
+			.upper_margin	= 15,
+			.lower_margin	= 15,
+			.sync		= FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		},
+		.bpp		= 16,
+		.pcr		= PCR_TFT | PCR_CLKPOL | PCR_SCLKIDLE |
+				PCR_SCLK_SEL,
+	},
+};
+
+struct imx_fb_platform_data prs505_fb_data = {
+	.mode		= prs505_fb_modes,
+	.num_modes	= ARRAY_SIZE(prs505_fb_modes),
+	.dmacr		= DMACR_HM(3) | DMACR_TM(10),
 };
 
 #define STDBY_GPIO_PIN		(GPIO_PORTD | 10)
@@ -59,8 +83,7 @@ struct imxfb_mach_info prs505_fb_info = {
 #define PWR_VCORE_GPIO_PIN	(GPIO_PORTA | 4)
 
 static int gpios[] = {  STDBY_GPIO_PIN , RST_GPIO_PIN,
-			RDY_GPIO_PIN, ERR_GPIO_PIN, PWR_VCORE_GPIO_PIN,
-			PWR_VIO_GPIO_PIN };
+			RDY_GPIO_PIN, ERR_GPIO_PIN };
 
 static char *gpio_names[] = { "STDBY" , "RST", "RDY", "ERR",
 	"VCORE", "VIO" };
@@ -73,7 +96,7 @@ static int prs505_init_gpio_regs(struct metronomefb_par *par)
 	for (i = 0; i < ARRAY_SIZE(gpios); i++) {
 		err = gpio_request(gpios[i], gpio_names[i]);
 		if (err) {
-			dev_err(&prs505_display_device->dev, "failed requesting "
+			dev_err(&prs505_device->dev, "failed requesting "
 				"gpio %s, err=%d\n", gpio_names[i], err);
 			goto err_req_gpio;
 		}
@@ -85,8 +108,8 @@ static int prs505_init_gpio_regs(struct metronomefb_par *par)
 	gpio_direction_input(RDY_GPIO_PIN);
 	gpio_direction_input(ERR_GPIO_PIN);
 
-	gpio_direction_output(PWR_VCORE_GPIO_PIN, 1);
-	gpio_direction_output(PWR_VIO_GPIO_PIN, 1);
+	gpio_set_value(PWR_VCORE_GPIO_PIN, 1);
+	gpio_set_value(PWR_VIO_GPIO_PIN, 1);
 
 	mdelay(10);
 
@@ -109,32 +132,74 @@ static void prs505_cleanup(struct metronomefb_par *par)
 		gpio_free(gpios[i]);
 }
 
+static void prs505_enable_hostfb(bool enable)
+{
+	int blank;
+
+	acquire_console_sem();
+
+	blank = enable ? FB_BLANK_UNBLANK : FB_BLANK_POWERDOWN;
+	fb_blank(prs505_metronome_info.host_fbinfo, blank);
+
+	release_console_sem();
+}
+
+static void prs505_init_worker(struct work_struct *work)
+{
+	int ret;
+
+	dev_dbg(&prs505_device->dev, "ENTER %s\n", __FUNCTION__);
+	/* Disable host fb until we need it */
+	prs505_enable_hostfb(0);
+
+	/* try to refcount host drv since we are the consumer after this */
+	if (!try_module_get(prs505_metronome_info.host_fbinfo->fbops->owner)) {
+		dev_err(&prs505_device->dev, "Failed to get module\n");
+		return;
+	}
+
+	/* this _add binds metronomefb to prs505. metronomefb refcounts prs505 */
+	ret = platform_device_add(prs505_device);
+
+	if (ret) {
+		platform_device_put(prs505_device);
+		dev_err(&prs505_device->dev,
+				"platform_device_add() has failed\n");
+		return;
+	}
+
+	/* request our platform independent driver */
+	request_module("metronomefb");
+	complete(&prs505_init_completed);
+	dev_dbg(&prs505_device->dev, "EXIT %s\n", __FUNCTION__);
+}
+
+
 static int prs505_share_video_mem(struct fb_info *info)
 {
+	dev_dbg(&prs505_device->dev, "ENTER %s\n", __func__);
 	/* rough check if this is our desired fb and not something else */
-	if ((info->var.xres != prs505_fb_info.xres)
-		|| (info->var.yres != prs505_fb_info.yres))
+	if ((info->var.xres != prs505_fb_modes[0].mode.xres)
+		|| (info->var.yres != prs505_fb_modes[0].mode.yres))
 		return 0;
 
 	/* we've now been notified that we have our new fb */
-	prs505_board.metromem = info->screen_base;
-	prs505_board.host_fbinfo = info;
+	prs505_metronome_info.metromem = info->screen_base;
+	prs505_metronome_info.host_fbinfo = info;
 
-	/* try to refcount host drv since we are the consumer after this */
-	if (!try_module_get(info->fbops->owner))
-		return -ENODEV;
+	schedule_work(&prs505_init_work);
 
 	return 0;
 }
 
 static int prs505_unshare_video_mem(struct fb_info *info)
 {
-	dev_dbg(&prs505_display_device->dev, "ENTER %s\n", __func__);
+	dev_dbg(&prs505_device->dev, "ENTER %s\n", __func__);
 
-	if (info != prs505_board.host_fbinfo)
+	if (info != prs505_metronome_info.host_fbinfo)
 		return 0;
 
-	module_put(prs505_board.host_fbinfo->fbops->owner);
+	module_put(prs505_metronome_info.host_fbinfo->fbops->owner);
 	return 0;
 }
 
@@ -144,12 +209,14 @@ static int prs505_fb_notifier_callback(struct notifier_block *self,
 	struct fb_event *evdata = data;
 	struct fb_info *info = evdata->info;
 
-//	dev_dbg(&prs505_display_device->dev, "ENTER %s\n", __func__);
-
-	if (event == FB_EVENT_FB_REGISTERED)
+	switch (event) {
+	case FB_EVENT_FB_REGISTERED:
 		return prs505_share_video_mem(info);
-	else if (event == FB_EVENT_FB_UNREGISTERED)
+	case FB_EVENT_FB_UNREGISTERED:
 		return prs505_unshare_video_mem(info);
+	default:
+		break;
+	}
 
 	return 0;
 }
@@ -160,51 +227,49 @@ static struct notifier_block prs505_fb_notif = {
 
 /* this gets called as part of our init. these steps must be done now so
  * that we can use set_pxa_fb_info */
-static int __init prs505_presetup_fb(void)
+static void __init prs505_presetup_fb(void)
 {
-	int fw;
-	int fh;
-	int padding_size;
-	int totalsize;
-	int ret;
-
 	/* the frame buffer is divided as follows:
 	command | CRC | padding
 	16kb waveform data | CRC | padding
 	image data | CRC
 	*/
 
-	fw = prs505_fb_info.xres;
-	fh = prs505_fb_info.yres;
+	/* Double-width framefuffer:
+	 *
+	 * Metronome virtual framebuffer:
+	 * 400px   64px  400px
+	 * line1 | GAP | line2
+	 * line3 | GAP | line4
+	 * ...
+	 *
+	 *
+	 * Framebuffer layout:
+	 * 400px  64px  400px
+	 * CMD	| GAP | WF		| 1
+	 * WF	| GAP | WF		| 2
+	 * ...
+	 * WF	| GAP | WF + padding	| 11
+	 * IMG	| GAP | IMG		| 12
+	 * ...
+	 * IMG	| GAP | IMG		| 311
+	 * CRC	| GAP | padding		| 312
+	 *
+	 */
+
+	prs505_metronome_info.fw = 800;
+	prs505_metronome_info.fh = 600;
+	prs505_metronome_info.gap = 128;
+
 
 	/* waveform must be 16k + 2 for checksum */
-	prs505_board.wfm_size = roundup(16*1024 + 2, fw);
+	/* We have double-width framebuffer, so calculate WFM size as
+	 * 10 double-lines * 2 bytes per pixel + one half-line
+	 */
+	prs505_metronome_info.wfm_size = 10 * 864 * 2 + 800;
 
-	padding_size = PAGE_SIZE + (4 * fw);
-
-	/* total is 1 cmd , 1 wfm, padding and image */
-	totalsize = fw + prs505_board.wfm_size + padding_size + (fw*fh);
-
-	/* save this off because we're manipulating fw after this and
-	 * we'll need it when we're ready to setup the framebuffer */
-	prs505_board.fw = fw;
-	prs505_board.fh = fh;
-
-	/* the reason we do this adjustment is because we want to acquire
-	 * more framebuffer memory without imposing custom awareness on the
-	 * underlying pxafb driver */
-	prs505_fb_info.yres = DIV_ROUND_UP(totalsize, fw);
-
-	/* we divide since we told the LCD controller we're 16bpp */
-	prs505_fb_info.xres /= 2;
-
-	set_imx_fb_info(&prs505_fb_info);
-
-	ret = platform_device_register(&imxfb_device);
-	if (ret)
-		dev_err(&prs505_display_device->dev, "Failed to register imxfb platform device\n");
-
-	return ret;
+	imx_fb_device.dev.platform_data = &prs505_fb_data;
+	platform_device_register(&imx_fb_device);
 }
 
 /* this gets called by metronomefb as part of its init, in our case, we
@@ -212,19 +277,21 @@ static int __init prs505_presetup_fb(void)
  * can just setup the fb access pointers */
 static int prs505_setup_fb(struct metronomefb_par *par)
 {
-	int fw;
-	int fh;
-
-	fw = prs505_board.fw;
-	fh = prs505_board.fh;
-
 	/* metromem was set up by the notifier in share_video_mem so now
 	 * we can use its value to calculate the other entries */
-	par->metromem_cmd = (struct metromem_cmd *) prs505_board.metromem;
-	par->metromem_wfm = prs505_board.metromem + fw;
-	par->metromem_img = par->metromem_wfm + prs505_board.wfm_size;
-	par->metromem_img_csum = (u16 *) (par->metromem_img + (fw * fh));
-	par->metromem_dma = prs505_board.host_fbinfo->fix.smem_start;
+	par->metromem_cmd = (struct metromem_cmd *) prs505_metronome_info.metromem;
+
+	par->metromem_wfm = prs505_metronome_info.metromem +
+		prs505_metronome_info.fw + prs505_metronome_info.gap;
+	par->metromem_wfm_csum = ((u16 *)(par->metromem_cmd)) + 18592 / 2;
+
+	par->metromem_img = par->metromem_wfm + prs505_metronome_info.wfm_size;
+
+	par->metromem_img_csum = (u16 *) (par->metromem_img +
+		((prs505_metronome_info.fw * 2 + prs505_metronome_info.gap) *
+		prs505_metronome_info.fh / 2));
+
+	par->metromem_dma = prs505_metronome_info.host_fbinfo->fix.smem_start;
 
 	return 0;
 }
@@ -234,13 +301,42 @@ static int prs505_get_panel_type(void)
 	return 6;
 }
 
+static int prs505_get_rdy(struct metronomefb_par *par)
+{
+	return gpio_get_value(RDY_GPIO_PIN);
+}
+
+static int prs505_get_err(struct metronomefb_par *par)
+{
+	return gpio_get_value(ERR_GPIO_PIN);
+}
+
 static irqreturn_t prs505_handle_irq(int irq, void *dev_id)
 {
 	struct metronomefb_par *par = dev_id;
 
-	wake_up_interruptible(&par->waitq);
-	printk("metronome IRQ\n");
+	wake_up_all(&par->waitq);
+	dev_dbg(&prs505_device->dev, "IRQ, ERR=%d\n", prs505_get_err(par));
+
 	return IRQ_HANDLED;
+}
+
+static void prs505_power_ctl(struct metronomefb_par *par, int cmd)
+{
+	dev_dbg(&prs505_device->dev, "ENTER %s, cmd=%d\n", __FUNCTION__, cmd);
+
+	switch (cmd) {
+	case METRONOME_POWER_OFF:
+		fb_blank(prs505_metronome_info.host_fbinfo, FB_BLANK_NORMAL);
+		gpio_set_value(PWR_VCORE_GPIO_PIN, 0);
+		gpio_set_value(PWR_VIO_GPIO_PIN, 0);
+		break;
+	case METRONOME_POWER_ON:
+		gpio_set_value(PWR_VCORE_GPIO_PIN, 1);
+		gpio_set_value(PWR_VIO_GPIO_PIN, 1);
+		fb_blank(prs505_metronome_info.host_fbinfo, FB_BLANK_UNBLANK);
+		break;
+	}
 }
 
 static int prs505_setup_irq(struct fb_info *info)
@@ -248,101 +344,156 @@ static int prs505_setup_irq(struct fb_info *info)
 	int ret;
 
 	ret = request_irq(gpio_to_irq(RDY_GPIO_PIN), prs505_handle_irq,
-				IRQF_DISABLED | IRQF_TRIGGER_RISING,
+				IRQF_TRIGGER_RISING,
 				"PRS505-display", info->par);
 	if (ret)
-		dev_err(&prs505_display_device->dev, "request_irq failed: %d\n", ret);
+		dev_err(&prs505_device->dev, "request_irq failed: %d\n", ret);
 
 	return ret;
 }
 
 static void prs505_set_rst(struct metronomefb_par *par, int state)
 {
-	printk("%s: will set RST to %d, RDY = %d\n", __FUNCTION__, state, gpio_get_value(RDY_GPIO_PIN));
-	if (state && gpio_get_value(RDY_GPIO_PIN))
-		dev_err(&prs505_display_device->dev, "RDY != 0 before set_rst\n");
-	gpio_set_value(RST_GPIO_PIN, state);
+	dev_dbg(&prs505_device->dev, "ENTER %s, RDY=%d\n",
+		__FUNCTION__, prs505_get_rdy(par));
+
+	gpio_set_value(RST_GPIO_PIN, !!state);
 }
 
 static void prs505_set_stdby(struct metronomefb_par *par, int state)
 {
-	printk("%s: will set STDBY to %d, RDY = %d\n", __FUNCTION__, state, gpio_get_value(RDY_GPIO_PIN));
-	gpio_set_value(STDBY_GPIO_PIN, state);
+	dev_dbg(&prs505_device->dev, "ENTER %s, RDY=%d\n",
+			__FUNCTION__, prs505_get_rdy(par));
+
+	gpio_set_value(STDBY_GPIO_PIN, !!state);
 }
 
 static int prs505_wait_event(struct metronomefb_par *par)
 {
-	int ret;
-	ret = wait_event_timeout(par->waitq, gpio_get_value(RDY_GPIO_PIN), HZ);
-	dev_dbg(&prs505_display_device->dev, "%s: ret = %d\n", __FUNCTION__, ret);
-	return ret ? 0 : -EIO;
+	unsigned long timeout = jiffies + HZ / 20;
+
+	dev_dbg(&prs505_device->dev, "ENTER1 %s, RDY=%d\n",
+			__FUNCTION__, prs505_get_rdy(par));
+	while (prs505_get_rdy(par) && time_before(jiffies, timeout))
+		schedule();
+
+	dev_dbg(&prs505_device->dev, "ENTER2 %s, RDY=%d\n",
+			__FUNCTION__, prs505_get_rdy(par));
+	return wait_event_timeout(par->waitq,
+			prs505_get_rdy(par), HZ * 2) ? 0 : -EIO;
 }
 
 static int prs505_wait_event_intr(struct metronomefb_par *par)
 {
+	unsigned long timeout = jiffies + HZ / 20;
+
+	dev_dbg(&prs505_device->dev, "ENTER1 %s, RDY=%d\n",
+			__FUNCTION__, prs505_get_rdy(par));
+	while (prs505_get_rdy(par) && time_before(jiffies, timeout))
+		schedule();
+
+	dev_dbg(&prs505_device->dev, "ENTER2 %s, RDY=%d\n",
+			__FUNCTION__, prs505_get_rdy(par));
 	return wait_event_interruptible_timeout(par->waitq,
-			gpio_get_value(RDY_GPIO_PIN), HZ) ? 0 : -EIO;
+			prs505_get_rdy(par), HZ * 2) ? 0 : -EIO;
 }
 
 static struct metronome_board prs505_board = {
 	.owner			= THIS_MODULE,
+	.power_ctl		= prs505_power_ctl,
 	.setup_irq		= prs505_setup_irq,
 	.setup_io		= prs505_init_gpio_regs,
 	.setup_fb		= prs505_setup_fb,
 	.set_rst		= prs505_set_rst,
 	.set_stdby		= prs505_set_stdby,
+	.get_err		= prs505_get_err,
+	.get_rdy		= prs505_get_rdy,
 	.met_wait_event		= prs505_wait_event,
 	.met_wait_event_intr	= prs505_wait_event_intr,
 	.get_panel_type		= prs505_get_panel_type,
 	.cleanup		= prs505_cleanup,
+	.panel_rotation		= FB_ROTATE_CW,
+	/* values for next fields were picked from original PRS-505 kernel sources */
+	.double_width_data	= {
+		.ddw		= 399,
+		.dhw		= 23,
+		.dbw		= 19,
+		.dew		= 19,
+	},
+	.pwr_timings		= { 322, 322, 100 },
 };
 
 static int __init prs505_init(void)
 {
 	int ret;
 
+	/* Keep the metronome off, until its driver is loaded */
+	ret = gpio_request(PWR_VIO_GPIO_PIN, "Metronome VIO");
+	if (ret) {
+		printk(KERN_ERR "prs505-display: Cannot request GPIO\n");
+		goto err_gpio_metronome_pwr_vio;
+	}
+
+	ret = gpio_request(PWR_VCORE_GPIO_PIN, "Metronome VCORE");
+	if (ret) {
+		printk(KERN_ERR "prs505-display: Cannot request GPIO\n");
+		goto err_gpio_metronome_pwr_vcore;
+	}
+
+	gpio_direction_output(PWR_VCORE_GPIO_PIN, 0);
+	gpio_direction_output(PWR_VIO_GPIO_PIN, 0);
+
+	INIT_WORK(&prs505_init_work, prs505_init_worker);
+	init_completion(&prs505_init_completed);
+
 	/* before anything else, we request notification for any fb
 	 * creation events */
 	fb_register_client(&prs505_fb_notif);
 
-	prs505_presetup_fb();
-
-	if (!prs505_board.host_fbinfo) {
-		printk(KERN_ERR "prs505_board.host_fbinfo is NULL. Probably you don't have the imxfb driver enabled\n");
-		platform_device_unregister(&imxfb_device);
-		return -ENODEV;
-	}
-	/* request our platform independent driver */
-	request_module("metronomefb");
-
-	prs505_display_device = platform_device_alloc("metronomefb", -1);
-	if (!prs505_display_device) {
-		platform_device_unregister(&imxfb_device);
-		return -ENOMEM;
+	prs505_device = platform_device_alloc("metronomefb", -1);
+	if (!prs505_device) {
+		ret = -ENOMEM;
+		goto err_pdev_alloc;
 	}
 
 	/* the prs505_board that will be seen by metronomefb is a copy */
-	platform_device_add_data(prs505_display_device, &prs505_board,
+	platform_device_add_data(prs505_device, &prs505_board,
 					sizeof(prs505_board));
 
-	/* this _add binds metronomefb to prs505. metronomefb refcounts prs505 */
-	ret = platform_device_add(prs505_display_device);
+	prs505_presetup_fb();
 
-	if (ret) {
-		platform_device_put(prs505_display_device);
-		fb_unregister_client(&prs505_fb_notif);
-		platform_device_unregister(&imxfb_device);
-		return ret;
+	ret = wait_for_completion_timeout(&prs505_init_completed, HZ * 5);
+	if (ret < 0) {
+		dev_err(&prs505_device->dev, "Initialization was interrupted\n");
+		goto err_wait_for_completion;
+	} else {
+		if (ret == 0) {
+			dev_err(&prs505_device->dev, "Initialization timed out\n");
+			ret = -ETIMEDOUT;
+			goto err_wait_for_completion;
+		}
 	}
 
+
 	return 0;
+
+err_wait_for_completion:
+	platform_device_put(prs505_device);
+err_pdev_alloc:
+	gpio_free(PWR_VCORE_GPIO_PIN);
+err_gpio_metronome_pwr_vcore:
+	gpio_free(PWR_VIO_GPIO_PIN);
+err_gpio_metronome_pwr_vio:
+
+	return ret;
 }
 
 static void __exit prs505_exit(void)
 {
-		platform_device_put(prs505_display_device);
-		fb_unregister_client(&prs505_fb_notif);
-		platform_device_unregister(&imxfb_device);
+	gpio_set_value(PWR_VCORE_GPIO_PIN, 0);
+	gpio_set_value(PWR_VIO_GPIO_PIN, 0);
+	fb_unregister_client(&prs505_fb_notif);
+	platform_device_unregister(prs505_device);
 }
 
 
