@@ -392,6 +392,9 @@ static int imxfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		break;
 	}
 
+	if (imxfb_mode->pcr & PCR_TFT)
+		pcr |= PCR_COLOR;
+
 	/* add sync polarities */
 	pcr |= imxfb_mode->pcr & ~(0x3f | (7 << 25));
 
