@@ -21,13 +21,22 @@ struct metromem_cmd {
 
 struct epd_frame;
 
+struct metronomefb_dw_data {
+	unsigned short ddw;
+	unsigned short dhw;
+	unsigned short dbw;
+	unsigned short dew;
+};
+
 /* struct used by metronome. board specific stuff comes from *board */
 struct metronomefb_par {
 	struct metromem_cmd *metromem_cmd;
 	unsigned char *metromem_wfm;
 	unsigned char *metromem_img;
+	u16 *metromem_wfm_csum;
 	u16 *metromem_img_csum;
 	dma_addr_t metromem_dma;
+	unsigned int gap;
 	const struct firmware *firmware;
 	struct fb_info *info;
 	struct metronome_board *board;
@@ -70,6 +79,8 @@ struct metronome_board {
 	int (*setup_io)(struct metronomefb_par *);
 	int (*get_panel_type)(void);
 	int panel_rotation;
+	struct metronomefb_dw_data double_width_data;
+	unsigned short pwr_timings[3];
 };
 
 #endif

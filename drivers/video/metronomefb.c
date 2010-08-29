@@ -61,20 +61,19 @@ struct epd_frame {
 	int fw; /* frame width */
 	int fh; /* frame height */
 	u16 config[4];
-	int wfm_size;
 };
 
 static const struct epd_frame epd_frame_table[] = {
 	{
-		.fw = 832,
-		.fh = 622,
+		.fw = 800,
+		.fh = 600,
 		.config = {
-			15 /* sdlew */
+			4 /* sdlew */
 			| 2 << 8 /* sdosz */
 			| 0 << 11 /* sdor */
 			| 0 << 12 /* sdces */
 			| 0 << 15, /* sdcer */
-			42 /* gdspl */
+			47 /* gdspl */
 			| 1 << 8 /* gdr1 */
 			| 1 << 9 /* sdshr */
 			| 0 << 15, /* gdspp */
@@ -84,7 +83,6 @@ static const struct epd_frame epd_frame_table[] = {
 			| 0 << 11 /* dsi */
 			| 0 << 12, /* dsic */
 		},
-		.wfm_size = 47001,
 	},
 	{
 		.fw = 1088,
@@ -95,7 +93,6 @@ static const struct epd_frame epd_frame_table[] = {
 			0x0088,
 			0x02ff,
 		},
-		.wfm_size = 46770,
 	},
 	{
 		.fw = 1200,
@@ -106,7 +103,6 @@ static const struct epd_frame epd_frame_table[] = {
 			0x0012,
 			0x0280,
 		},
-		.wfm_size = 46770,
 	},
 	{
 		.fw = 800,
@@ -127,7 +123,6 @@ static const struct epd_frame epd_frame_table[] = {
 			| 0 << 11 /* dsi */
 			| 0 << 12, /* dsic */
 		},
-		.wfm_size = 46901,
 	},
 };
 
@@ -183,7 +178,7 @@ static u8 calc_cksum(int start, int end, u8 *mem)
 	return tmp;
 }
 
-static u16 calc_img_cksum(u16 *start, int length)
+static u16 calc_cmd_cksum(u16 *start, int length)
 {
 	u16 tmp = 0;
 
@@ -200,7 +195,7 @@ static int load_waveform(u8 *mem, size_t size, int m, int t,
 	int tta;
 	int wmta;
 	int trn = 0;
-	int i;
+	int i, mem_idx_real;
 	unsigned char v;
 	u8 cksum;
 	int cksum_idx;
@@ -210,8 +205,8 @@ static int load_waveform(u8 *mem, size_t size, int m, int t,
 	u8 *metromem = par->metromem_wfm;
 	struct device *dev = &par->pdev->dev;
 	u8 mc, trc;
-	u16 *p;
-	u16 img_cksum;
+	unsigned int dw_line_len = par->epd_frame->fw * 2 + par->gap;
+	u16 cs_tmp = 0, cs;
 
 	dev_dbg(dev, "Loading waveforms, mode %d, temperature %d\n", m, t);
 
@@ -296,13 +291,28 @@ static int load_waveform(u8 *mem, size_t size, int m, int t,
 	owfm_idx = wfm_idx;
 	if (wfm_idx > size)
 		return -EINVAL;
+
+	mem_idx_real = par->epd_frame->fw;
+	cs = 0;
 	while (wfm_idx < size) {
 		unsigned char rl;
 		v = mem[wfm_idx++];
 		if (v == wfm_hdr->swtb) {
 			while (((v = mem[wfm_idx++]) != wfm_hdr->swtb) &&
-				wfm_idx < size)
+				wfm_idx < size) {
 				metromem[mem_idx++] = v;
+				if (mem_idx_real % 2 == 0)
+					cs_tmp = v;
+				else
+					cs += cs_tmp | (v << 8);
+
+				mem_idx_real++;
+				if (par->gap) {
+					if (mem_idx_real % (par->epd_frame->fw * 2) ==
+							par->epd_frame->fw)
+						mem_idx += par->gap;
+				}
+			}
 
 			continue;
 		}
@@ -311,25 +321,34 @@ static int load_waveform(u8 *mem, size_t size, int m, int t,
 			break;
 
 		rl = mem[wfm_idx++];
-		for (i = 0; i <= rl; i++)
+		for (i = 0; i <= rl; i++) {
 			metromem[mem_idx++] = v;
+			if (mem_idx_real % 2 == 0)
+				cs_tmp = v;
+			else
+				cs += cs_tmp | (v << 8);
+
+			mem_idx_real++;
+			if (par->gap) {
+				if (mem_idx_real % (par->epd_frame->fw * 2) ==
+						par->epd_frame->fw)
+					mem_idx += par->gap;
+			}
+		}
 	}
 
 	cksum_idx = wfm_idx;
 	if (cksum_idx > size)
 		return -EINVAL;
-	dev_dbg(dev, "mem_idx = %u\n", mem_idx);
 	cksum = calc_cksum(owfm_idx, cksum_idx, mem);
 	if (cksum != mem[cksum_idx]) {
 		dev_err(dev, "Error: bad waveform data cksum"
 				" %x != %x\n", cksum, mem[cksum_idx]);
 		return -EINVAL;
 	}
-	par->frame_count = (mem_idx/64);
+	par->frame_count = (mem_idx_real - par->epd_frame->fw) / 64;
 
-	p = (u16 *)par->metromem_wfm;
-	img_cksum = calc_img_cksum(p, 16384 / 2);
-	p[16384 / 2] = __cpu_to_le16(img_cksum);
+	*par->metromem_wfm_csum = cs;
 
 	par->current_wf_mode = m;
 	par->current_wf_temp = t;
@@ -407,12 +426,23 @@ static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 	par->metromem_cmd->opcode = 0x1234; /* pwr up pseudo cmd */
 	cs = par->metromem_cmd->opcode;
 
-	/* set pwr1,2,3 to 1024 */
 	for (i = 0; i < 3; i++) {
-//		par->metromem_cmd->args[i] = 1024;
-		par->metromem_cmd->args[i] = 100;
+		if (par->board->pwr_timings[i])
+			par->metromem_cmd->args[i] = par->board->pwr_timings[i];
+		else
+			par->metromem_cmd->args[i] = 100; /* reasonable default for fast powerup */
+
 		cs += par->metromem_cmd->args[i];
 	}
+	par->metromem_cmd->args[3] = (par->board->double_width_data.dhw << 10) |
+		par->board->double_width_data.ddw;
+	cs += par->metromem_cmd->args[3];
+
+	par->metromem_cmd->args[4] = (par->board->double_width_data.dew << 8) |
+		par->board->double_width_data.dbw;
+	cs += par->metromem_cmd->args[4];
+
+	i += 2;
 
 	/* the rest are 0 */
 	memset((u8 *) (par->metromem_cmd->args + i), 0, (32-i)*2);
@@ -443,7 +473,7 @@ static int __devinit metronome_config_cmd(struct metronomefb_par *par)
 	memset((u8 *) (par->metromem_cmd->args + 4), 0, (32-4)*2);
 
 	par->metromem_cmd->csum = 0xCC10;
-	par->metromem_cmd->csum += calc_img_cksum(par->metromem_cmd->args, 4);
+	par->metromem_cmd->csum += calc_cmd_cksum(par->metromem_cmd->args, 4);
 	par->metromem_cmd->opcode = 0xCC10; /* config cmd */
 
 	return par->board->met_wait_event(par);
@@ -557,6 +587,9 @@ static uint16_t metronomefb_update_img_buffer_rotated(struct metronomefb_par *pa
 
 	i = 0;
 	for (y = 0; y < fh; y++) {
+		if (par->gap && (y % 2))
+			i += par->gap / sizeof(*img);
+
 		for(x = 0; x < fw_buf; x++, i++) {
 			tmp = (buf[j] << 5);
 			j += xstep;
@@ -587,7 +620,7 @@ static uint16_t metronomefb_update_img_buffer_rotated(struct metronomefb_par *pa
 
 static uint16_t metronomefb_update_img_buffer_normal(struct metronomefb_par *par)
 {
-	int x, y, i;
+	int x, y, i, j;
 	uint16_t cksum = 0;
 	uint32_t *buf = (uint32_t __force *)par->info->screen_base;
 	uint32_t *img = (uint32_t *)(par->metromem_img);
@@ -603,18 +636,22 @@ static uint16_t metronomefb_update_img_buffer_normal(struct metronomefb_par *par
 	memset(fybuckets, 0, fh * sizeof(*fybuckets));
 
 	i = 0;
+	j = 0;
 	for (y = 0; y < fh; y++) {
-		for(x = 0; x < fw_buf; x++, i++) {
+		if ((par->gap) && (y % 2))
+			j += par->gap / sizeof(*img);
+
+		for(x = 0; x < fw_buf; x++, i++, j++) {
 			tmp = (buf[i] << 5) & 0xe0e0e0e0;
-			img[i] &= 0xf0f0f0f0;
-			diff = img[i] ^ tmp;
+			img[j] &= 0xf0f0f0f0;
+			diff = img[j] ^ tmp;
 
 			fxbuckets[x] |= diff;
 			fybuckets[y] |= diff;
 
-			img[i] = (img[i] >> 4) | tmp;
-			cksum += img[i] & 0x0000ffff;
-			cksum += (img[i] >> 16);
+			img[j] = (img[j] >> 4) | tmp;
+			cksum += img[j] & 0x0000ffff;
+			cksum += (img[j] >> 16);
 		}
 	}
 
@@ -1089,8 +1126,17 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 		break;
 	}
 
+	par = info->par;
+
 	fw = epd_frame_table[epd_dt_index].fw;
 	fh = epd_frame_table[epd_dt_index].fh;
+
+	if (board->double_width_data.ddw)
+		par->gap = (board->double_width_data.dhw +
+			board->double_width_data.dbw +
+			board->double_width_data.dew + 3) * 2;
+	else
+		par->gap = 0;
 
 	/* we need to add a spare page because our csum caching scheme walks
 	 * to the end of the page */
@@ -1126,7 +1172,6 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	}
 
 	info->fix.smem_len = fw * fh; /* Real size of image area */
-	par = info->par;
 	par->info = info;
 	par->board = board;
 	par->epd_frame = &epd_frame_table[epd_dt_index];
