@@ -250,6 +250,7 @@ static int n516_setup_fb(struct metronomefb_par *par)
 	 * we can use its value to calculate the other entries */
 	par->metromem_cmd = (struct metromem_cmd *) n516_metronome_info.metromem;
 	par->metromem_wfm = n516_metronome_info.metromem + n516_metronome_info.fw;
+	par->metromem_wfm_csum = (u16 *)(par->metromem_wfm + 16384);
 	par->metromem_img = par->metromem_wfm + n516_metronome_info.wfm_size;
 	par->metromem_img_csum = (u16 *) (par->metromem_img +
 			(n516_metronome_info.fw * n516_metronome_info.fh));
