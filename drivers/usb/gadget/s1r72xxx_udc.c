@@ -2641,7 +2641,7 @@ static void s1r72v_start_gpio_setting(void)
 #endif /* CONFIG_EBOOK5_LED */
 
 //	imx_gpio_mode(GPIO_PORTA|GPIO_GIUS|GPIO_OUT|GPIO_DR|GPIO_PUEN|6);  //usb charge
-	gpio_direction_output(GPIO_PORTA | 6, 0);
+//	gpio_direction_output(GPIO_PORTA | 6, 0);
 
 //	vbus = dragonball_gpio_get_bit(USBD_S1R72_GPIO_PORT, pin);
 
