@@ -197,6 +197,16 @@ config MMC_SDHCI_ESDHC_IMX
 
 	  If unsure, say N.
 
+config MMC_SDHCI_R5C807_PRS505
+	bool "SDHCI support on the Sony PRS-505"
+	depends on MACH_SONY_PRS505
+	depends on MMC_SDHCI_PLTFM
+	select MMC_SDHCI_IO_ACCESSORS
+	help
+	  This selects the SDHCI support for Sony PRS-505 e-book reader.
+
+	  If unsure, say N.
+
 config MMC_SDHCI_S3C
 	tristate "SDHCI support on Samsung S3C SoC"
 	depends on MMC_SDHCI && PLAT_SAMSUNG
