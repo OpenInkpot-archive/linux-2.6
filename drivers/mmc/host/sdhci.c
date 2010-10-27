@@ -261,6 +261,11 @@ static void sdhci_read_block_pio(struct sdhci_host *host)
 
 	local_irq_save(flags);
 
+	if ((host->quirks & SDHCI_QUIRK_BROKEN_BLOCK_PIO_READ) && (blksize == 512)) {
+		scratch = sdhci_readw(host, SDHCI_BUFFER + 2);
+		chunk = 2;
+	}
+
 	while (blksize) {
 		if (!sg_miter_next(&host->sg_miter))
 			BUG();
@@ -286,6 +291,9 @@ static void sdhci_read_block_pio(struct sdhci_host *host)
 			len--;
 		}
 	}
+
+	if ((host->quirks & SDHCI_QUIRK_BROKEN_BLOCK_PIO_READ) && (chunk == 2))
+		scratch = sdhci_readw(host, SDHCI_BUFFER + 2);
 
 	sg_miter_stop(&host->sg_miter);
 
