@@ -14,5 +14,6 @@
 #include <linux/sdhci-pltfm.h>
 
 extern struct sdhci_pltfm_data sdhci_cns3xxx_pdata;
+extern struct sdhci_pltfm_data sdhci_r5c807_prs505_pdata;
 
 #endif /* _DRIVERS_MMC_SDHCI_PLTFM_H */
