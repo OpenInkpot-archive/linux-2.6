@@ -12,6 +12,8 @@
 #include <linux/mtd/physmap.h>
 #include <linux/mtd/nand.h>
 #include <linux/sched.h>
+#include <linux/delay.h>
+#include <linux/clk.h>
 #include <asm/system.h>
 #include <mach/hardware.h>
 #include <asm/irq.h>
@@ -29,6 +31,7 @@
 #include <mach/iomux.h>
 #include <mach/imx-uart.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 
 #include "devices.h"
 #include "crm_regs.h"
@@ -95,6 +98,13 @@
 #define PRS505_NAND_BUSY	(GPIO_PORTC | 15)
 #define PRS505_NAND_CLE		(GPIO_PORTC | 16)
 #define PRS505_NAND_ALE		(GPIO_PORTC | 17)
+
+#define PRS505_GPIO_USB_CHRG	(GPIO_PORTA | 6)
+#define PRS505_GPIO_PCR5C	(GPIO_PORTA | 12)
+#define PRS505_GPIO_SRR5C	(GPIO_PORTA | 10)
+#define PRS505_GPIO_PCR5CCLK	(GPIO_PORTB | GPIO_GPIO | GPIO_OUT | 9)
+#define PRS505_GPIO_PCSDCARD	(GPIO_PORTB | GPIO_GPIO | GPIO_OUT | 29)
+#define PRS505_GPIO_PCMSCARD	(GPIO_PORTB | GPIO_GPIO | GPIO_OUT | 28)
 
 /*
  * UARTs platform data
@@ -216,6 +226,25 @@ static struct resource ebook_usb_s1r72v17_resources[] = {
 	},
 };
 
+static struct resource prs505_r5c807_sdhci_resources[] = {
+	[0] = {
+		.start	= 0x14e00100,
+		.end	= 0x14e001ff,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= (IRQ_GPIOA(11)),
+		.end	= (IRQ_GPIOA(11)),
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device prs505_sdhci = {
+	.name		= "sdhci-r5c807-prs505",
+	.resource	= prs505_r5c807_sdhci_resources,
+	.num_resources	= ARRAY_SIZE(prs505_r5c807_sdhci_resources),
+};
+
 static struct resource prs505_nor_resource[] = {
 	[0] = {
 		.start = PRS505_FLASH_PHYS,
@@ -290,6 +319,7 @@ static struct platform_device *devices[] __initdata = {
 	&ebook_usb_s1r72v17_device,
 	&prs505_device_nor,
 	&prs505_device_nand,
+	&prs505_sdhci,
 };
 
 static void ebook_power_off(void)
@@ -346,19 +376,19 @@ static void ebook_power_off(void)
 }
 
 static int prs505_pins[] = {
+	PA22_PF_CS4,
+	PA23_PF_CS5,
 	PC9_PF_UART1_CTS,
 	PC10_PF_UART1_RTS,
 	PC11_PF_UART1_TXD,
 	PC12_PF_UART1_RXD,
-	PB28_PF_UART2_CTS,
-	PB29_PF_UART2_RTS,
 	PB30_PF_UART2_TXD,
 	PB31_PF_UART2_RXD,
-	GPIO_PORTA|GPIO_OUT| 18,
-	GPIO_PORTA|GPIO_IN|| 19,
-	GPIO_PORTA|GPIO_OUT| 20,
+	GPIO_PORTA | GPIO_GPIO | GPIO_OUT | 18,
+	GPIO_PORTA | GPIO_GPIO | GPIO_IN  | 19,
+	GPIO_PORTA | GPIO_GPIO | GPIO_OUT | 20,
 #ifdef CONFIG_LEDS
-	GPIO_PORTA|GPIO_OUT| 2,
+	GPIO_PORTA | GPIO_GPIO | GPIO_OUT | 2,
 #endif
 	PD30_PF_LD15,
 	PD29_PF_LD14,
@@ -382,21 +412,67 @@ static int prs505_pins[] = {
 	PD12_PF_ACD_OE,
 };
 
-static void __init prs505_init(void)
+static void __init prs505_gpio_setup(void)
 {
-	__raw_writel(0x003F1437, CCM_MPCTL0);
-	__raw_writel(0x123638ad, CCM_SPCTL0);
-
-/*MMC SD card CS*/
-	__REG(EIM_BASE_ADDR + 0x18) = 0x00001800;
-	__REG(EIM_BASE_ADDR + 0x1c) = 0xcccc0D01;
-
-/*set up the CS0-5 GPIO PIN*/
-	__raw_writel(__raw_readl(VA_GPIO_BASE + MXC_GIUS(0)) & 0x001ffffe, VA_GPIO_BASE + MXC_GIUS(0));
-	__raw_writel(__raw_readl(VA_GPIO_BASE + MXC_GPR(0)) & 0x001ffffe, VA_GPIO_BASE + MXC_GPR(0));
+	int ret;
 
 	mxc_gpio_setup_multiple_pins(prs505_pins,
 		ARRAY_SIZE(prs505_pins), "prs505");
+
+	ret = gpio_request(PRS505_GPIO_USB_CHRG, "USB_CHRG");
+	if (ret)
+		printk(KERN_INFO "Failed to request USB_CHRG GPIO\n");
+	else
+		gpio_direction_output(PRS505_GPIO_USB_CHRG, 1);
+}
+
+static void __init prs505_sdhci_init(void)
+{
+	void __iomem *base;
+	struct clk *usb_clk;
+
+	usb_clk = clk_get_sys("imx_udc.0", NULL);
+	clk_enable(usb_clk);
+
+	gpio_request(PRS505_GPIO_PCR5CCLK, "PCR5CCLK");
+	gpio_direction_output(PRS505_GPIO_PCR5CCLK, 0);
+
+	gpio_request(PRS505_GPIO_PCSDCARD, "PCSDCARD");
+	mxc_gpio_mode(PRS505_GPIO_PCSDCARD);
+	gpio_direction_output(PRS505_GPIO_PCSDCARD, 1);
+
+	gpio_request(PRS505_GPIO_PCR5C, "PCR5C");
+	gpio_direction_output(PRS505_GPIO_PCR5C, 1);
+
+	gpio_request(PRS505_GPIO_SRR5C, "SRR5C");
+	gpio_direction_output(PRS505_GPIO_SRR5C, 0);
+	mdelay(10);
+	gpio_set_value(PRS505_GPIO_SRR5C, 1);
+
+	set_irq_type(IRQ_GPIOA(11), IRQF_TRIGGER_LOW);
+
+	base = ioremap(IMX_CS3_PHYS, IMX_CS3_SIZE);
+	if (!base) {
+		printk(KERN_ERR "Failed to remap CS3\n");
+		return;
+	}
+
+	writew(0x4444, base + 0x00e00000 + 0xF0);
+	writew(0xc400, base + 0x00e00000 + 0xEE);
+	writew(0x1008, base + 0x00e00000 + 0xF2);
+	writew(0x0280, base + 0x00e00000 + 0xFA);
+
+	iounmap(base);
+}
+
+static void __init prs505_init(void)
+{
+
+	__REG(EIM_BASE_ADDR + 0x18) = 0x0000E000;
+	__REG(EIM_BASE_ADDR + 0x1c) = 0x66660D01;
+
+	prs505_gpio_setup();
+	prs505_sdhci_init();
 
 	/* UART */
 	mxc_register_device(&imx_uart2_device, &uart_pdata[1]);
