@@ -1080,7 +1080,8 @@ static int __devexit apollofb_remove(struct platform_device *dev)
 #ifdef CONFIG_PM
 static int apollofb_suspend(struct platform_device *pdev, pm_message_t message)
 {
-	struct apollofb_par *par = platform_get_drvdata(pdev);
+	struct fb_info *info = platform_get_drvdata(pdev);
+	struct apollofb_par *par = info->par;
 
 	mutex_lock(&par->lock);
 	apollo_send_command(par, APOLLO_STANDBY_MODE);
@@ -1092,7 +1093,8 @@ static int apollofb_suspend(struct platform_device *pdev, pm_message_t message)
 
 static int apollofb_resume(struct platform_device *pdev)
 {
-	struct apollofb_par *par = platform_get_drvdata(pdev);
+	struct fb_info *info = platform_get_drvdata(pdev);
+	struct apollofb_par *par = info->par;
 
 	mutex_lock(&par->lock);
 	apollo_wakeup(par);
