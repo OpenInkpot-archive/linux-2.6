@@ -2145,6 +2145,7 @@ static int __devinit s1r72xxx_usbc_probe(struct platform_device *pdev)
 	usbc_dev->previous_usbcd_state = S1R72_GD_DONT_CHG;
 	INIT_LIST_HEAD(&usbc_dev->gadget.ep_list);
 	INIT_LIST_HEAD(&usbc_dev->gadget.ep0->ep_list);
+	spin_lock_init(&usbc_dev->lock);
 	for ( ep_counter = 0 ; ep_counter < S1R72_MAX_ENDPOINT ; ep_counter++) {
 		if ( ep_counter != S1R72_GD_EP0 ) {
 			list_add_tail(	&usbc_dev->usbc_ep[ep_counter].ep.ep_list,
@@ -2232,7 +2233,7 @@ static int __devinit s1r72xxx_usbc_probe(struct platform_device *pdev)
 	if (retval != 0) {
 		DEBUG_MSG("%s: can't get irq %i, err %d\n",
 			driver_name, (int)res->start, retval);
-		s1r72xxx_usbc_remove(dev);
+		s1r72xxx_usbc_remove(pdev);
 		return -EBUSY;
 	}
 	create_proc_file();
