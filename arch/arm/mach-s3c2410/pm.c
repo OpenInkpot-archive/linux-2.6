@@ -145,11 +145,11 @@ static void s3c2410_pm_prepare(void)
 */
 		s3c2410_gpio_cfgpin(S3C2410_GPH(4), S3C2410_GPIO_OUTPUT);
 		s3c2410_gpio_setpin(S3C2410_GPH(4), 1);
-		s3c2410_gpio_pullup(S3C2410_GPH(4), 0);
+		s3c_gpio_setpull(S3C2410_GPH(4), S3C_GPIO_PULL_UP);
 
 		s3c2410_gpio_cfgpin(S3C2410_GPH(5), S3C2410_GPIO_OUTPUT);
 		s3c2410_gpio_setpin(S3C2410_GPH(5), 1);
-		s3c2410_gpio_pullup(S3C2410_GPH(5), 0);
+		s3c_gpio_setpull(S3C2410_GPH(5), S3C_GPIO_PULL_UP);
 	}
 }
 

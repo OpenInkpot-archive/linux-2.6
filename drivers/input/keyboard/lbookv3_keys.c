@@ -309,10 +309,10 @@ static int __init lbookv3_keys_init(void)
 	lbookv3_keys_isr(0, input);
 
 	for (i = S3C2410_GPF(0); i <= S3C2410_GPF(2); i++) {
-		int irq = s3c2410_gpio_getirq(i);
+		int irq = gpio_to_irq(i);
 
 		s3c2410_gpio_cfgpin(i, S3C2410_GPIO_SFN2);
-		s3c2410_gpio_pullup(i, 1);
+		s3c_gpio_setpull(i, S3C_GPIO_PULL_NONE);
 
 		set_irq_type(irq, IRQ_TYPE_EDGE_BOTH);
 		error = request_irq(irq, lbookv3_keys_isr, IRQF_SAMPLE_RANDOM,
@@ -336,7 +336,7 @@ static int __init lbookv3_keys_init(void)
 	enable_irq_wake(IRQ_EINT6);
 
 	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF6_EINT6);
-	s3c2410_gpio_pullup(S3C2410_GPF(6), 1);
+	s3c_gpio_setpull(S3C2410_GPF(6), S3C_GPIO_PULL_NONE);
 
 	return 0;
 
@@ -344,7 +344,7 @@ static int __init lbookv3_keys_init(void)
 fail_reg_irqs:
 fail_reg_eint6:
 	for (i = i - 1; i >= S3C2410_GPF(0); i--)
-		free_irq(s3c2410_gpio_getirq(i), input);
+		free_irq(gpio_to_irq(i), input);
 
 	device_remove_file(&input->dev, &dev_attr_poll_interval);
 err_add_poll_interval:
@@ -362,7 +362,7 @@ static void __exit lbookv3_keys_exit(void)
 	free_irq(IRQ_EINT6, input);
 
 	for (i = S3C2410_GPF(0); i <= S3C2410_GPF(2); i++) {
-		int irq = s3c2410_gpio_getirq(i);
+		int irq = gpio_to_irq(i);
 
 		disable_irq_wake(irq);
 		free_irq(irq, input);

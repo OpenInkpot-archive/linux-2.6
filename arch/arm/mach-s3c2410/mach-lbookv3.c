@@ -35,6 +35,7 @@
 #include <linux/list.h>
 #include <linux/timer.h>
 #include <linux/init.h>
+#include <linux/sysdev.h>
 #include <linux/serial_core.h>
 #include <linux/platform_device.h>
 
@@ -268,7 +269,7 @@ static void lbookv3_mmc_set_power(unsigned char power_mode, unsigned short vdd)
 		case MMC_POWER_OFF:
 		default:
 			s3c2410_gpio_cfgpin(S3C2410_GPB(6), S3C2410_GPIO_OUTPUT);
-			s3c2410_gpio_pullup(S3C2410_GPB(6), 1);
+			s3c_gpio_setpull(S3C2410_GPB(6), S3C_GPIO_PULL_NONE);
 			s3c2410_gpio_setpin(S3C2410_GPB(6), 0);
 	}
 }
@@ -447,7 +448,7 @@ static struct platform_device *lbookv3_devices[] __initdata = {
 	&s3c_device_wdt,
 	&s3c_device_iis,
 	&s3c_device_usbgadget,
-	&s3c_device_usb,
+	&s3c_device_ohci,
 	&s3c_device_nand,
 	&s3c_device_rtc,
 	&s3c_device_adc,
@@ -479,7 +480,7 @@ static void lbookv3_power_off(void)
 	s3c2410_gpio_setpin(S3C2410_GPB(5), 0);
 }
 
-static long lbookv3_panic_blink(long time)
+static long lbookv3_panic_blink(int state)
 {
 	s3c2410_gpio_setpin(S3C2410_GPC(5), 1);
 	mdelay(200);
@@ -547,10 +548,10 @@ static void __init lbookv3_init_gpio(void)
 	s3c2410_gpio_cfgpin(S3C2410_GPG(14), S3C2410_GPG14_YMON);
 	s3c2410_gpio_cfgpin(S3C2410_GPG(15), S3C2410_GPG15_nYPON);
 
-	s3c2410_gpio_pullup(S3C2410_GPG(12), 0);
-	s3c2410_gpio_pullup(S3C2410_GPG(13), 1);
-	s3c2410_gpio_pullup(S3C2410_GPG(14), 0);
-	s3c2410_gpio_pullup(S3C2410_GPG(15), 1);
+	s3c_gpio_setpull(S3C2410_GPG(12), S3C_GPIO_PULL_UP);
+	s3c_gpio_setpull(S3C2410_GPG(13), S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpull(S3C2410_GPG(14), S3C_GPIO_PULL_UP);
+	s3c_gpio_setpull(S3C2410_GPG(15), S3C_GPIO_PULL_NONE);
 
 	enable_irq_wake(gpio_to_irq(S3C2410_GPF(5)));
 }
