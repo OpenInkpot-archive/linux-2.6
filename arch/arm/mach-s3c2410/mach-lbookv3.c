@@ -263,14 +263,14 @@ static void lbookv3_mmc_set_power(unsigned char power_mode, unsigned short vdd)
 	switch(power_mode) {
 		case MMC_POWER_UP:
 		case MMC_POWER_ON:
-			s3c2410_gpio_cfgpin(S3C2410_GPB(6), S3C2410_GPIO_OUTPUT);
-			s3c2410_gpio_setpin(S3C2410_GPB(6), 1);
+			s3c_gpio_cfgpin(S3C2410_GPB(6), S3C2410_GPIO_OUTPUT);
+			gpio_set_value(S3C2410_GPB(6), 1);
 			break;
 		case MMC_POWER_OFF:
 		default:
-			s3c2410_gpio_cfgpin(S3C2410_GPB(6), S3C2410_GPIO_OUTPUT);
+			s3c_gpio_cfgpin(S3C2410_GPB(6), S3C2410_GPIO_OUTPUT);
 			s3c_gpio_setpull(S3C2410_GPB(6), S3C_GPIO_PULL_NONE);
-			s3c2410_gpio_setpin(S3C2410_GPB(6), 0);
+			gpio_set_value(S3C2410_GPB(6), 0);
 	}
 }
 
@@ -286,10 +286,10 @@ static void lbookv3_udc_command(enum s3c2410_udc_cmd_e cmd)
 {
 	switch(cmd) {
 		case S3C2410_UDC_P_DISABLE:
-			s3c2410_gpio_setpin(S3C2410_GPC(12), 0);
+			gpio_set_value(S3C2410_GPC(12), 0);
 			break;
 		case S3C2410_UDC_P_ENABLE:
-			s3c2410_gpio_setpin(S3C2410_GPC(12), 1);
+			gpio_set_value(S3C2410_GPC(12), 1);
 			break;
 		case S3C2410_UDC_P_RESET:
 			break;
@@ -312,22 +312,22 @@ static int apollo_get_ctl_pin(unsigned int pin)
 static void apollo_set_gpa_14_15(int val)
 {
 	if (val != 1) {
-		s3c2410_gpio_cfgpin(S3C2410_GPA(15), S3C2410_GPIO_OUTPUT);
-		s3c2410_gpio_setpin(S3C2410_GPA(15), 0);
-		s3c2410_gpio_cfgpin(S3C2410_GPA(14), 0);
-		s3c2410_gpio_setpin(S3C2410_GPA(14), 1);
+		s3c_gpio_cfgpin(S3C2410_GPA(15), S3C2410_GPIO_OUTPUT);
+		gpio_set_value(S3C2410_GPA(15), 0);
+		s3c_gpio_cfgpin(S3C2410_GPA(14), 0);
+		gpio_set_value(S3C2410_GPA(14), 1);
 
 	} else {
-		s3c2410_gpio_cfgpin(S3C2410_GPA(15), S3C2410_GPIO_OUTPUT);
-		s3c2410_gpio_setpin(S3C2410_GPA(15), 1);
-		s3c2410_gpio_cfgpin(S3C2410_GPA(14), S3C2410_GPIO_OUTPUT);
-		s3c2410_gpio_setpin(S3C2410_GPA(14), 0);
+		s3c_gpio_cfgpin(S3C2410_GPA(15), S3C2410_GPIO_OUTPUT);
+		gpio_set_value(S3C2410_GPA(15), 1);
+		s3c_gpio_cfgpin(S3C2410_GPA(14), S3C2410_GPIO_OUTPUT);
+		gpio_set_value(S3C2410_GPA(14), 0);
 	}
 }
 
 static void apollo_set_ctl_pin(unsigned int pin, unsigned char val)
 {
-	s3c2410_gpio_setpin(apollo_pins[pin], val);
+	gpio_set_value(apollo_pins[pin], val);
 }
 
 
@@ -350,30 +350,30 @@ static unsigned char apollo_read_value(void)
 static int apollo_setuphw(void)
 {
 	apollo_set_gpa_14_15(0);
-	s3c2410_gpio_cfgpin(S3C2410_GPD(10), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPD(13), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPD(12), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPD(11), S3C2410_GPIO_INPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPD(14), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPD(15), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPE(1), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPD(10), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPD(13), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPD(12), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPD(11), S3C2410_GPIO_INPUT);
+	s3c_gpio_cfgpin(S3C2410_GPD(14), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPD(15), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPE(1), S3C2410_GPIO_OUTPUT);
 
-	s3c2410_gpio_setpin(S3C2410_GPD(10), 0);
-	s3c2410_gpio_setpin(S3C2410_GPD(13), 1);
-	s3c2410_gpio_setpin(S3C2410_GPD(12), 0);
-	s3c2410_gpio_setpin(S3C2410_GPD(14), 0);
-	s3c2410_gpio_setpin(S3C2410_GPD(15), 1);
-	s3c2410_gpio_setpin(S3C2410_GPE(1), 0);
+	gpio_set_value(S3C2410_GPD(10), 0);
+	gpio_set_value(S3C2410_GPD(13), 1);
+	gpio_set_value(S3C2410_GPD(12), 0);
+	gpio_set_value(S3C2410_GPD(14), 0);
+	gpio_set_value(S3C2410_GPD(15), 1);
+	gpio_set_value(S3C2410_GPE(1), 0);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPD(2), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(S3C2410_GPD(2), 1);
+	s3c_gpio_cfgpin(S3C2410_GPD(2), S3C2410_GPIO_OUTPUT);
+	gpio_set_value(S3C2410_GPD(2), 1);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPC(13), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(S3C2410_GPC(13), 1);
+	s3c_gpio_cfgpin(S3C2410_GPC(13), S3C2410_GPIO_OUTPUT);
+	gpio_set_value(S3C2410_GPC(13), 1);
 
-	s3c2410_gpio_setpin(S3C2410_GPD(15), 0);
+	gpio_set_value(S3C2410_GPD(15), 0);
 	udelay(20);
-	s3c2410_gpio_setpin(S3C2410_GPD(15), 1);
+	gpio_set_value(S3C2410_GPD(15), 1);
 	udelay(20);
 
 	apollo_set_ctl_pin(H_CD, 0);
@@ -383,12 +383,12 @@ static int apollo_setuphw(void)
 static void apollo_initialize(void)
 {
 	apollo_set_ctl_pin(H_RW, 0);
-	s3c2410_gpio_setpin(S3C2410_GPA(14), 1);
-	s3c2410_gpio_setpin(S3C2410_GPA(15), 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPE(1), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(S3C2410_GPE(1), 0);
-	s3c2410_gpio_cfgpin(S3C2410_GPC(13), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(S3C2410_GPC(13), 1);
+	gpio_set_value(S3C2410_GPA(14), 1);
+	gpio_set_value(S3C2410_GPA(15), 0);
+	s3c_gpio_cfgpin(S3C2410_GPE(1), S3C2410_GPIO_OUTPUT);
+	gpio_set_value(S3C2410_GPE(1), 0);
+	s3c_gpio_cfgpin(S3C2410_GPC(13), S3C2410_GPIO_OUTPUT);
+	gpio_set_value(S3C2410_GPC(13), 1);
 }
 
 static int apollo_init(void)
@@ -436,7 +436,7 @@ static unsigned long lbookv3_spi0_cs_pins[2] = {S3C2410_GPD(8), S3C2410_GPD(9)};
 
 static void lbookv3_spi0_set_cs(struct s3c2410_spi_info *spi, int cs, int pol)
 {
-	s3c2410_gpio_setpin(lbookv3_spi0_cs_pins[cs], pol);
+	gpio_set_value(lbookv3_spi0_cs_pins[cs], pol);
 }
 
 static struct s3c2410_spi_info lbookv3_spi_info = {
@@ -475,78 +475,83 @@ struct spi_board_info lbookv3_mp3_info = {
 static void lbookv3_power_off(void)
 {
 	/* Voodoo from original kernel */
-	s3c2410_gpio_setpin(S3C2410_GPB(8), 0);
+	gpio_set_value(S3C2410_GPB(8), 0);
 	udelay(1000);
-	s3c2410_gpio_setpin(S3C2410_GPB(5), 0);
+	gpio_set_value(S3C2410_GPB(5), 0);
 }
 
 static long lbookv3_panic_blink(int state)
 {
-	s3c2410_gpio_setpin(S3C2410_GPC(5), 1);
+	gpio_set_value(S3C2410_GPC(5), 1);
 	mdelay(200);
-	s3c2410_gpio_setpin(S3C2410_GPC(5), 0);
+	gpio_set_value(S3C2410_GPC(5), 0);
 	mdelay(200);
 
 	return 400;
 }
 
+void dbg_led_on(void)
+{
+	gpio_set_value(S3C2410_GPC(6), 1);
+}
+
 static void __init lbookv3_init_gpio(void)
 {
 	/* LEDs */
-	s3c2410_gpio_cfgpin(S3C2410_GPC(5), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPC(6), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(S3C2410_GPC(5), 0);
-	s3c2410_gpio_setpin(S3C2410_GPC(6), 0);
+	s3c_gpio_cfgpin(S3C2410_GPC(5), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPC(6), S3C2410_GPIO_OUTPUT);
+	gpio_set_value(S3C2410_GPC(5), 0);
+	gpio_set_value(S3C2410_GPC(6), 0);
 
 	/* Voodoo from original kernel */
-	s3c2410_gpio_cfgpin(S3C2410_GPB(0), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPB(1), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPB(5), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPB(6), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPB(7), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPB(8), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPB(9), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPC(12), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPC(13), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(0), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(1), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(5), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(6), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(7), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(8), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(9), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPC(12), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPC(13), S3C2410_GPIO_OUTPUT);
 
-	s3c2410_gpio_setpin(S3C2410_GPB(0), 0);
-	s3c2410_gpio_setpin(S3C2410_GPB(1), 0);
-	s3c2410_gpio_setpin(S3C2410_GPB(5), 1);
-	s3c2410_gpio_setpin(S3C2410_GPB(6), 1);
-	s3c2410_gpio_setpin(S3C2410_GPB(7), 0);
-	s3c2410_gpio_setpin(S3C2410_GPB(8), 1);
-	s3c2410_gpio_setpin(S3C2410_GPB(9), 0);
-	s3c2410_gpio_setpin(S3C2410_GPC(13), 0);
-	s3c2410_gpio_setpin(S3C2410_GPC(12), 0);
+	gpio_set_value(S3C2410_GPB(0), 0);
+	gpio_set_value(S3C2410_GPB(1), 0);
+	gpio_set_value(S3C2410_GPB(5), 1);
+	gpio_set_value(S3C2410_GPB(6), 1);
+	gpio_set_value(S3C2410_GPB(7), 0);
+	gpio_set_value(S3C2410_GPB(8), 1);
+	gpio_set_value(S3C2410_GPB(9), 0);
+	gpio_set_value(S3C2410_GPC(13), 0);
+	gpio_set_value(S3C2410_GPC(12), 0);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF(4), S3C2410_GPF4_EINT4);
+	s3c_gpio_cfgpin(S3C2410_GPF(4), S3C2410_GPF4_EINT4);
 
 	/* SIM card  interface */
-/*	s3c2410_gpio_cfgpin(S3C2410_GPB(8), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPB(9), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPC(1), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPC(2), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPH(8), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPH(9), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPH(10), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(S3C2410_GPB(8), 1);
-	s3c2410_gpio_setpin(S3C2410_GPB(9), 0);
-	s3c2410_gpio_setpin(S3C2410_GPC(2), 0);
-	s3c2410_gpio_setpin(S3C2410_GPC(1), 0);
-	s3c2410_gpio_setpin(S3C2410_GPH(10), 0);
+/*	s3c_gpio_cfgpin(S3C2410_GPB(8), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPB(9), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPC(1), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPC(2), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPH(8), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPH(9), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPH(10), S3C2410_GPIO_OUTPUT);
+	gpio_set_value(S3C2410_GPB(8), 1);
+	gpio_set_value(S3C2410_GPB(9), 0);
+	gpio_set_value(S3C2410_GPC(2), 0);
+	gpio_set_value(S3C2410_GPC(1), 0);
+	gpio_set_value(S3C2410_GPH(10), 0);
 */
 
 	/* MP3 decoder interface */
-/*	s3c2410_gpio_cfgpin(S3C2410_GPC(11), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPD(9), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(S3C2410_GPC(10), S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(S3C2410_GPC(11), 0);
+/*	s3c_gpio_cfgpin(S3C2410_GPC(11), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPD(9), S3C2410_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(S3C2410_GPC(10), S3C2410_GPIO_OUTPUT);
+	gpio_set_value(S3C2410_GPC(11), 0);
 */
 
-	s3c2410_gpio_cfgpin(S3C2410_GPG(12), S3C2410_GPG12_XMON);
-	s3c2410_gpio_cfgpin(S3C2410_GPG(13), S3C2410_GPG13_nXPON);
-	s3c2410_gpio_cfgpin(S3C2410_GPG(14), S3C2410_GPG14_YMON);
-	s3c2410_gpio_cfgpin(S3C2410_GPG(15), S3C2410_GPG15_nYPON);
+	s3c_gpio_cfgpin(S3C2410_GPG(12), S3C2410_GPG12_XMON);
+	s3c_gpio_cfgpin(S3C2410_GPG(13), S3C2410_GPG13_nXPON);
+	s3c_gpio_cfgpin(S3C2410_GPG(14), S3C2410_GPG14_YMON);
+	s3c_gpio_cfgpin(S3C2410_GPG(15), S3C2410_GPG15_nYPON);
 
 	s3c_gpio_setpull(S3C2410_GPG(12), S3C_GPIO_PULL_UP);
 	s3c_gpio_setpull(S3C2410_GPG(13), S3C_GPIO_PULL_NONE);
