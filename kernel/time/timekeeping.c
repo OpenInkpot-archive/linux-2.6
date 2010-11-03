@@ -20,6 +20,7 @@
 #include <linux/time.h>
 #include <linux/tick.h>
 #include <linux/stop_machine.h>
+#include <linux/rtc.h>
 
 /* Structure holding internal timekeeping values. */
 struct timekeeper {
@@ -333,7 +334,7 @@ int do_settimeofday(struct timespec *tv)
 	write_sequnlock_irqrestore(&xtime_lock, flags);
 
 #ifdef CONFIG_RTC_SYSTOHC
-	rtc_systohc(sec);
+	rtc_systohc(tv->tv_sec);
 #endif
 	/* signal hrtimers about time change */
 	clock_was_set();
