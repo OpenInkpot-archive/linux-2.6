@@ -57,7 +57,7 @@ static struct timer_list power_timer;
 
 static inline void set_col(int col, int to)
 {
-	s3c2410_gpio_setpin(column_pins[col], to);
+	gpio_set_value(column_pins[col], to);
 }
 
 static void set_columns_to(int to)
@@ -65,8 +65,8 @@ static void set_columns_to(int to)
 	int j;
 
 	for (j = 0; j < ARRAY_SIZE(column_pins); j++) {
-		while ((!!s3c2410_gpio_getpin(column_pins[j]) != to))
-			s3c2410_gpio_setpin(column_pins[j], to);
+		while ((!!gpio_get_value(column_pins[j]) != to))
+			gpio_set_value(column_pins[j], to);
 	}
 }
 
@@ -78,7 +78,7 @@ static int wait_for_rows_high(void)
 		int is_low = 0;
 
 		for (i = 0; i < ARRAY_SIZE(row_pins); i++)
-			if (!s3c2410_gpio_getpin(row_pins[i]))
+			if (!gpio_get_value(row_pins[i]))
 				is_low = 1;
 		if (!is_low)
 			break;
@@ -92,7 +92,7 @@ static void cfg_rows_to(unsigned int to)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(row_pins); i++)
-		s3c2410_gpio_cfgpin(row_pins[i], to);
+		s3c_gpio_cfgpin(row_pins[i], to);
 }
 
 
@@ -119,7 +119,7 @@ static void lbookv3_keys_kb_timer(unsigned long data)
 		udelay(30);
 
 		for (row = 0; row < ARRAY_SIZE(row_pins); row++) {
-			if (!s3c2410_gpio_getpin(row_pins[row])) {
+			if (!gpio_get_value(row_pins[row])) {
 				if (!keypad_state[row][col]) {
 					keypad_state[row][col] = jiffies + longpress_time;
 				} else {
@@ -167,7 +167,7 @@ static void lbookv3_keys_power_timer(unsigned long data)
 	static int prev_state = 0;
 	int pressed;
 
-	pressed = !s3c2410_gpio_getpin(S3C2410_GPF(6));
+	pressed = !gpio_get_value(S3C2410_GPF(6));
 
 	if (pressed) {
 
@@ -188,15 +188,15 @@ static void lbookv3_keys_power_timer(unsigned long data)
 	}
 	prev_state = pressed;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF6_EINT6);
+	s3c_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF6_EINT6);
 }
 
 static irqreturn_t lbookv3_powerkey_isr(int irq, void *dev_id)
 {
-	if (s3c2410_gpio_getpin(S3C2410_GPF(6)))
+	if (gpio_get_value(S3C2410_GPF(6)))
 		return IRQ_HANDLED;
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPIO_INPUT);
+	s3c_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPIO_INPUT);
 
 	power_longpress_timeout = jiffies + longpress_time;
 	power_timer.expires = jiffies + poll_interval;
@@ -249,19 +249,40 @@ DEVICE_ATTR(poll_interval, 0644, lbookv3_keys_poll_interval_show,
 DEVICE_ATTR(longpress_time, 0644, lbookv3_keys_longpress_time_show,
 		lbookv3_keys_longpress_time_store);
 
+static int __init lbookv3_keys_gpio_init(void)
+{
+	int i, j, ret;
+
+	for (i = 0; i < ARRAY_SIZE(column_pins); i++) {
+		ret = gpio_request(column_pins[i], "lbookv3_keys");
+		if (ret)
+			goto fail;
+
+		s3c_gpio_cfgpin(column_pins[i], S3C2410_GPIO_OUTPUT);
+		gpio_set_value(column_pins[i], 0);
+	}
+
+	return 0;
+
+fail:
+	for (j = 0; j < i; j++)
+		gpio_free(column_pins[j]);
+
+	return ret;
+}
+
 static struct input_dev *input;
 static int __init lbookv3_keys_init(void)
 {
 	int i, j, error;
 
-	for (i = 0; i < ARRAY_SIZE(column_pins); i++) {
-		s3c2410_gpio_cfgpin(column_pins[i], S3C2410_GPIO_OUTPUT);
-		s3c2410_gpio_setpin(column_pins[i], 0);
-	}
+	error = lbookv3_keys_gpio_init();
+	if (error)
+		return error;
 
 	input = input_allocate_device();
 	if (!input)
-		return -ENOMEM;
+		goto err_input_alloc;
 
 	input->evbit[0] = BIT(EV_KEY);
 
@@ -278,6 +299,8 @@ static int __init lbookv3_keys_init(void)
 	memset(keypad_state, 0, sizeof(keypad_state));
 
 	for (i = 0; i < ARRAY_SIZE(row_pins); i++) {
+		gpio_request(row_pins[i], "lbookv3_keys");
+
 		for (j = 0; j < 7; j++) {
 			if (keypad_codes[i][j] != KEY_RESERVED)
 				input_set_capability(input, EV_KEY,
@@ -311,7 +334,7 @@ static int __init lbookv3_keys_init(void)
 	for (i = S3C2410_GPF(0); i <= S3C2410_GPF(2); i++) {
 		int irq = gpio_to_irq(i);
 
-		s3c2410_gpio_cfgpin(i, S3C2410_GPIO_SFN2);
+		s3c_gpio_cfgpin(i, S3C2410_GPIO_SFN2);
 		s3c_gpio_setpull(i, S3C_GPIO_PULL_NONE);
 
 		set_irq_type(irq, IRQ_TYPE_EDGE_BOTH);
@@ -335,7 +358,7 @@ static int __init lbookv3_keys_init(void)
 	}
 	enable_irq_wake(IRQ_EINT6);
 
-	s3c2410_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF6_EINT6);
+	s3c_gpio_cfgpin(S3C2410_GPF(6), S3C2410_GPF6_EINT6);
 	s3c_gpio_setpull(S3C2410_GPF(6), S3C_GPIO_PULL_NONE);
 
 	return 0;
@@ -350,6 +373,10 @@ fail_reg_eint6:
 err_add_poll_interval:
 	device_remove_file(&input->dev, &dev_attr_longpress_time);
 err_add_longpress_time:
+	input_free_device(input);
+err_input_alloc:
+	for (i = 0; i < ARRAY_SIZE(column_pins); i++)
+		gpio_free(column_pins[i]);
 
 	return error;
 }
