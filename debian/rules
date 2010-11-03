@@ -1,0 +1,106 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+# export DH_VERBOSE=1
+
+DEB_HOST_ARCH ?= $(dpkg-architecture -qDEB_HOST_ARCH)
+
+LINUX_VERSION = 2.6.32
+
+ifeq (armel,$(DEB_HOST_ARCH))
+  flavours := v3 v3ext nfsroot-v3 nfsroot-prs505
+  kernel_arch := arm
+else
+ ifeq (mipsel,$(DEB_HOST_ARCH))
+   flavours := n516
+   kernel_arch := mips
+ else
+  ifeq (i386,$(DEB_HOST_ARCH))
+   flavours :=
+   kernel_arch := x86
+  else
+   ifeq (amd64,$(DEB_HOST_ARCH))
+    flavours :=
+    kernel_arch := x86
+   else
+    $(error Unknown architecture $(DEB_HOST_ARCH))
+   endif
+  endif
+ endif
+endif
+
+.NOTPARALLEL:
+
+export DH_OPTIONS
+
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+	NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+	MAKEFLAGS += -j$(NUMJOBS)
+endif
+
+include /usr/share/dpatch/dpatch.make
+
+build: build-arch build-indep
+
+build-arch: build-arch-stamp
+build-arch-stamp:
+	for FLAVOUR in $(flavours); do \
+		mkdir -p build-$$FLAVOUR && \
+		cp $(CURDIR)/debian/config-$$FLAVOUR $(CURDIR)/.config && \
+		if [ "$$FLAVOUR" == "n516" ]; then image=uImage; else image=zImage; fi && \
+		$(MAKE) EXTRAVERSION=-$$FLAVOUR ARCH=$(kernel_arch) CROSS_COMPILE=$(DEB_HOST_GNU_TYPE)- INSTALL_MOD_PATH=build-$$FLAVOUR/ oldconfig && \
+		$(MAKE) EXTRAVERSION=-$$FLAVOUR ARCH=$(kernel_arch) CROSS_COMPILE=$(DEB_HOST_GNU_TYPE)- INSTALL_MOD_PATH=build-$$FLAVOUR/ $$image modules && \
+		$(MAKE) EXTRAVERSION=-$$FLAVOUR ARCH=$(kernel_arch) CROSS_COMPILE=$(DEB_HOST_GNU_TYPE)- INSTALL_MOD_PATH=build-$$FLAVOUR/ modules_install && \
+		cp $(CURDIR)/arch/$(kernel_arch)/boot/$$image $(CURDIR)/.config $(CURDIR)/System.map $(CURDIR)/build-$$FLAVOUR/; \
+	done
+	touch $@
+
+build-indep:
+
+clean: clean-patched unpatch
+clean-patched: patch-stamp
+	dh_testdir
+	dh_testroot
+	rm -rf build-*
+	$(MAKE) ARCH=$(kernel_arch) distclean
+	dh_clean 
+
+install:
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs -s
+	for FLAVOUR in $(flavours); do \
+		mkdir -p $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot; \
+		if [ "$$FLAVOUR" == "n516" ]; then image=uImage; else image=zImage; fi && \
+		install -m 0644 $(CURDIR)/build-$$FLAVOUR/$$image $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot/vmlinuz-$(LINUX_VERSION)-$$FLAVOUR; \
+		install -m 0644 $(CURDIR)/build-$$FLAVOUR/System.map $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot/System.map-$(LINUX_VERSION)-$$FLAVOUR; \
+		install -m 0644 $(CURDIR)/build-$$FLAVOUR/.config $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot/config-$(LINUX_VERSION)-$$FLAVOUR; \
+		mkdir -p $(CURDIR)/debian/linux-modules-$(LINUX_VERSION)-$$FLAVOUR/; \
+		cp -r $(CURDIR)/build-$$FLAVOUR/lib $(CURDIR)/debian/linux-modules-$(LINUX_VERSION)-$$FLAVOUR/; \
+	done
+	dh_install -s
+
+binary-common:
+
+binary-indep:
+
+binary-arch: build install
+	dh_testdir -s
+	dh_testroot -s
+	dh_link -s
+	dh_strip -s
+	dh_compress -s
+	dh_fixperms -s
+	dh_makeshlibs -s
+	dh_installdeb -s
+	dh_shlibdeps -s
+	dh_gencontrol -s
+	dh_md5sums -s
+	dh_builddeb -s
+ifeq (,$(flavours))
+	touch debian/files # some archs don't produce kernels
+endif
+
+binary: binary-arch binary-indep
+.PHONY: build clean binary-indep binary-arch binary install install-indep install-arch configure

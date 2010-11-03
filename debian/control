@@ -1,0 +1,62 @@
+Source: linux-2.6
+Section: core
+Priority: optional
+Maintainer: Yauhen Kharuzhy <jekhor@gmail.com>
+Uploaders: Mikhail Gusarov <dottedmag@dottedmag.net>
+Build-Depends: debhelper (>= 7), dpatch, module-init-tools
+XCS-Cross-Host-Build-Depends: debhelper (>= 7), dpatch, module-init-tools, uboot-mkimage
+Standards-Version: 3.8.0
+
+Package: linux-image-2.6.32-v3
+Architecture: armel
+Description: Linux kernel image for Hanlin eReader V3
+ Hanlin/lBook eReader V3 linux kernel image.
+
+Package: linux-modules-2.6.32-v3
+Architecture: armel
+Description: Linux kernel modules for Hanlin eReader V3
+ Hanlin/lBook eReader V3 linux kernel modules.
+
+Package: linux-image-2.6.32-v3ext
+Architecture: armel
+Description: Linux kernel image for Hanlin eReader V3ext
+ Hanlin/lBook eReader V3ext linux kernel image.
+
+Package: linux-modules-2.6.32-v3ext
+Architecture: armel
+Description: Linux kernel modules for Hanlin eReader V3ext
+ Hanlin/lBook eReader V3ext linux kernel modules.
+
+Package: linux-image-2.6.32-nfsroot-v3
+Architecture: armel
+Description: Linux kernel image for Hanlin eReader V3
+ Hanlin/lBook eReader V3 linux kernel image.
+ Nfsroot version.
+
+Package: linux-modules-2.6.32-nfsroot-v3
+Architecture: armel
+Description: Linux kernel modules for Hanlin eReader V3
+ Hanlin/lBook eReader V3 linux kernel modules.
+ Nfsroot version.
+
+Package: linux-image-2.6.32-nfsroot-prs505
+Architecture: armel
+Description: Linux kernel image for Sony PRS-505
+ Sony PRS-505 linux kernel image.
+ Nfsroot version.
+
+Package: linux-modules-2.6.32-nfsroot-prs505
+Architecture: armel
+Description: Linux kernel modules for Sony PRS-505
+ Sony PRS-505 linux kernel modules.
+ Nfsroot version.
+
+Package: linux-image-2.6.32-n516
+Architecture: mipsel
+Description: Linux kernel image for Hanvon N516
+ Hanvon N516 linux kernel image.
+
+Package: linux-modules-2.6.32-n516
+Architecture: mipsel
+Description: Linux kernel modules for Hanvon N516
+ Hanvon N516 linux kernel modules.

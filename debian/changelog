@@ -1,0 +1,763 @@
+linux-2.6 (2.6.32-17) zelazny; urgency=low
+
+  * n516-lpc: Code cleanup. Debug is disabled now.
+  * n516-lpc: Disable IRQ at suspend again. It should fix #469
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 21 Jun 2010 13:32:04 +0300
+
+linux-2.6 (2.6.32-16) zelazny; urgency=low
+
+  * i2c-jz47xx: Increase delay after setting DRF flag for reliability
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 18 Jun 2010 21:56:24 +0300
+
+linux-2.6 (2.6.32-15) zelazny; urgency=low
+
+  * n516-lpc: Use threaded IRQ handler instead hardirq for battery
+    charge status update. Some cosmetic changes
+  * jz4740_udc: Check for gadget driver methods before calling them.
+    Sholud fix #948
+  * jz4740_udc: Change name of controller driver accordinly with
+    drivers/usb/gadget/gadget_chips.h
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Wed, 16 Jun 2010 12:14:27 +0300
+
+linux-2.6 (2.6.32-14) zelazny; urgency=low
+
+  * Autosuspend [ARM, MIPS]: Disable IRQs at next timer time
+    calculation. Fix #909
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 11 Jun 2010 11:22:28 +0300
+
+linux-2.6 (2.6.32-13) zelazny; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * metronomefb: Remove unused csum_table array
+  * JZ4740: Add new N516v2 board
+
+  [ Wu Zhangjin ]
+  * MIPS: Tracing: Add static function tracer support for MIPS
+  * MIPS: Tracing: Enable HAVE_FUNCTION_TRACE_MCOUNT_TEST for MIPS
+
+  [ Yauhen Kharuzhy ]
+  * N516: Disable secondary UART in kernel config
+  * Update changelog
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 04 Jun 2010 12:32:14 +0300
+
+linux-2.6 (2.6.32-12) zelazny; urgency=low
+
+  * metronomefb: fix rotation
+  * apollofb: fix rotation
+
+ -- Alexander Kerner <lunohod@openinkpot.org>  Mon, 17 May 2010 15:54:47 +0200
+
+linux-2.6 (2.6.32-11) zelazny; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * n516-display: Fix potential lockups at initialization
+
+  [ Lars-Peter Clausen ]
+  * rtc-jz4740: Init spinlock
+
+  [ Yauhen Kharuzhy ]
+  * i2c-jz4740: Fix NACK & STOP conditions generation
+
+  [ Lars-Peter Clausen ]
+  * Use a seperate lock class for gpio irq desk locks to avoid lockdep
+    false
+  * Fix set_irq_wake call on parent irq.
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 07 May 2010 11:20:42 +0300
+
+linux-2.6 (2.6.32-10) zelazny; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Upload
+  
+   [ Lars-Peter Clausen ]
+  * n516-display: Offload inital hostfb blank into workqueue (OI#854)
+  * sound-soc-n516: Fix turning on the speaker when the headphones are removed.
+  
+  [ Maxim Levitsky ]
+  * MMC: fix hang if card was removed during suspend and unsafe resume was enabled
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Thu, 08 Apr 2010 00:44:08 +0700
+
+linux-2.6 (2.6.32-9) zelazny; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Upload
+  
+  [ Lars-Peter Clausen ]
+  * jzcodec: Only support 16bit for now.
+  * rtc-jz4740: Fix driver config symbol name in Makefile
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Tue, 30 Mar 2010 05:07:34 +0700
+
+linux-2.6 (2.6.32-8) zelazny; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Upload
+  
+  [ Yauhen Kharuzhy ]
+  * jz4740_udc: Fix recursive spinlocks (partially fixes: #853)
+  * IRQ PM: Don't suspend wakeup interrupts
+  
+  [ Lars-Peter Clausen ]
+  * jz_mmc: Serveral timeout related changes
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Mon, 29 Mar 2010 04:09:42 +0700
+
+linux-2.6 (2.6.32-7) zelazny; urgency=low
+
+  * metronomefb: Preserve var->grayscale = 1
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 21 Mar 2010 13:33:22 +0200
+
+linux-2.6 (2.6.32-6) zelazny; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Improve default refresh threshold and make it a macro
+
+  [ Lars-Peter Clausen ]
+  * gpio-charger: Check charger status on resume
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sat, 20 Mar 2010 11:16:15 +0200
+
+linux-2.6 (2.6.32-5) zelazny; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Disable tracing in V3 kernels in order to bring them back to 1Mb of size.
+  * Refresh V3/PRS-505 configs
+  * Remove postinst scripts which weren't touched since 2.6.27
+  * Remove useless n516-config file from top of tree
+  
+  [ Yauhen Kharuzhy ]
+  * gpio-charger: Setup IRQ as wakeup IRQ
+  * jz_mmc: Setup card detect IRQ as wakeup IRQ
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Fri, 19 Mar 2010 19:56:53 +0600
+
+linux-2.6 (2.6.32-4) zelazny; urgency=low
+
+  [ Lars-Peter Clausen ]
+  * jz4740-irq: Fix irq handler if no irq is pending.
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 18 Mar 2010 00:16:19 +0200
+
+linux-2.6 (2.6.32-3) zelazny; urgency=low
+
+  [ Lars-Peter Clausen ]
+  * jzcodec: Fix supported formats. Should fix #841
+
+  [ Mikhail Gusarov ]
+  * Update changelog
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Mon, 15 Mar 2010 01:10:28 +0600
+
+linux-2.6 (2.6.32-2) zelazny; urgency=low
+
+  [ Lars-Peter Clausen ]
+  * board-n516-display: Don't skip the first gpio when requesting the
+    gpios
+  * board-n516-display: Don't accquire the console semaphore when
+    blanking the hostfb
+
+  [ Yauhen Kharuzhy ]
+  * N516: Fix battery power supply name in GPIO charger platform data
+  * lm75: Remove forgotten debug
+  * N516: Fix memory corruption and "Resetting Metronome" messages
+  * metronomefb: Ressurection of asynchronous display update
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 14 Mar 2010 15:55:10 +0200
+
+linux-2.6 (2.6.32-1) zelazny; urgency=low
+
+  * New upstream version 2.6.32
+  * Migrate to Qi's jz4740 architecture support code
+  * Rotation in the metronomefb
+  * Fixed bugs #739, #771, #737
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sat, 13 Mar 2010 12:04:16 +0200
+
+linux-2.6 (2.6.29-38) zelazny; urgency=low
+
+  * n516-lpc: Merge USB power driver with this driver
+  * N516: Remove n516-usb-power platform device
+  * N516: Disable n516-usb-power driver
+  * n516-lpc: Report 7% instead 0% on start without LPC messages
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 25 Feb 2010 22:49:43 +0200
+
+linux-2.6 (2.6.29-37) zelazny; urgency=low
+
+  * n516-lpc: Add long key presses
+  * n516-lpc: Check battery charger status on driver start
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 20 Dec 2009 21:14:33 +0200
+
+linux-2.6 (2.6.29-36) zelazny; urgency=low
+
+  * n516-lpc: Better fix for bug #739
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 20 Dec 2009 21:05:37 +0200
+
+linux-2.6 (2.6.29-35) zelazny; urgency=low
+
+  * n516-lpc: Report 100% of battery charge when USB is connected but
+    charging is complete
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 20 Dec 2009 20:56:34 +0200
+
+linux-2.6 (2.6.29-34) zelazny; urgency=low
+
+  * metronomefb: Add forgotten initialization of autorefresh interval
+    attribute
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 07 Dec 2009 18:25:06 +0200
+
+linux-2.6 (2.6.29-33) zelazny; urgency=low
+
+  * metronomefb: Increase default autorefresh interval to 256 and add
+    sysfs attribute for it
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 07 Dec 2009 17:56:39 +0200
+
+linux-2.6 (2.6.29-32) asimov; urgency=low
+
+  * ALSA n516: Make headphones detection working
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sat, 05 Dec 2009 01:06:21 +0200
+
+linux-2.6 (2.6.29-31) asimov; urgency=low
+
+  * metronomefb: Make metronome_display_cmd() non-blocking
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 01 Dec 2009 23:55:53 +0200
+
+linux-2.6 (2.6.29-30) asimov; urgency=low
+
+  * Enable JFFS2 summary feature
+  * Revert using SLOB instead of SLAB: SLOB is pretty slow on
+    our workloads.
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Mon, 16 Nov 2009 09:49:31 +0600
+
+linux-2.6 (2.6.29-29) asimov; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Do not override defio delay specified in driver
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 16 Nov 2009 01:16:13 +0200
+
+linux-2.6 (2.6.29-28) asimov; urgency=low
+
+  * metronomefb: Change counting of changed pixels to area-based
+    algorithm
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Wed, 28 Oct 2009 00:16:14 +0200
+
+linux-2.6 (2.6.29-27) asimov; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Use SLOB instead of SLAB: embedded devices rarely have 4TB of NUMA
+    memory
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Wed, 21 Oct 2009 14:59:24 +0300
+
+linux-2.6 (2.6.29-26) asimov; urgency=low
+
+  * N516: Disable kernel preemption
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 20 Oct 2009 00:43:26 +0300
+
+linux-2.6 (2.6.29-25) asimov; urgency=low
+
+  * ALSA N516: Make headphone jack permanently enabled
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 19 Oct 2009 09:50:20 +0300
+
+linux-2.6 (2.6.29-24) asimov; urgency=low
+
+  * jzcodec: Disable HP output with DAPM
+  * N516: Remove wrong __gpio_unmask()
+  * ALSA: Add board-specific driver for N516
+  * V3, V3ext: Decrease kernel image size by disabling debug simbols
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 18 Oct 2009 23:48:52 +0300
+
+linux-2.6 (2.6.29-23) asimov; urgency=low
+
+  * Merge with 2.6.29.6
+  * Enable Oprofile in kernel configs
+  * Disable kernel preemption on n516
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 16 Oct 2009 14:42:00 +0300
+
+linux-2.6 (2.6.29-22) asimov; urgency=low
+
+  [ David Brownell ]
+  * USB: RNDIS gadget, fix issues talking from PXA
+
+  [ Qiuping Chen ]
+  * USB: gadget: rndis conformance tweak
+
+  [ Maulik Mankad ]
+  * USB: gadget : Fix RNDIS code to pass USB Compliance tests (USBCV)
+    with g_ether
+
+  [ Yauhen Kharuzhy ]
+  * jzcodec: Rewrite power management. Not completed yet
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 27 Sep 2009 23:04:05 +0300
+
+linux-2.6 (2.6.29-21) asimov; urgency=low
+
+  * n516-usb: Suppress false USB connect/disconnect events
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 21 Sep 2009 00:41:23 +0300
+
+linux-2.6 (2.6.29-20) asimov; urgency=low
+
+  * N516: Enable pull-up resistor on UART0 Rx pin
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 21 Sep 2009 00:03:53 +0300
+
+linux-2.6 (2.6.29-19) asimov; urgency=low
+
+  * i2c-jz47xx: Stop I2C clock when I2C is not used
+  * i2c-jz47xx: Increase I2C clock rate to 100 kHz
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 14 Sep 2009 13:11:35 +0300
+
+linux-2.6 (2.6.29-18) asimov; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * rtc-jz: Make alarm works
+  * JZ4740: Enable waking up by RTC
+  * n516-lpc: Do not suspend when event has been received during
+    suspending of system
+  * i2c-jz47xx: Increase timeout and add error handling
+  * ALSA SOC: Make JZ4740 drivers working
+  * metronomefb: Decrease adaptive refresh treshold to 5%
+
+  [ Mikhail Gusarov ]
+  * Mount root filesystem on V3/V3ext with noatime option.
+
+  [ Yauhen Kharuzhy ]
+  * metronomefb: Enable border update with white color
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sat, 05 Sep 2009 01:21:21 +0300
+
+linux-2.6 (2.6.29-17) asimov; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Make RTC_DRV_JZ depend on JZSOC
+  * eink_apollofb: make default deferred_io delay configurable
+
+  [ Yauhen Kharuzhy ]
+  * JZ4740: Make sound drivers compilable
+
+  [ Mikhail Gusarov ]
+  * Update debian/config-*v3* with FB_EINK_APOLLO_DEFAULT_DELAY=300
+
+  [ Yauhen Kharuzhy ]
+  * lbookv3_keys: Add generation of longpress events to power button
+  * video: Change default value for FB_EINK_APOLLO_DEFAULT_DELAY to 200
+    ms
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 07 Aug 2009 16:31:55 +0300
+
+linux-2.6 (2.6.29-16) asimov; urgency=low
+
+  * n516-lpc: Fix emitting a lot of uevents on battery discharge (bug
+    #318)
+  * n516-lpc: Change battery levels map
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 24 Jul 2009 10:55:42 +0300
+
+linux-2.6 (2.6.29-15) asimov; urgency=low
+
+  * n516-lpc: Fix kernel oops at driver initializing
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Wed, 22 Jul 2009 19:07:48 +0300
+
+linux-2.6 (2.6.29-14) asimov; urgency=low
+
+  * jzlcd: Remove mdelay(200) from resume function
+  * N516 Metronome support: Add some debug. Disable LCD controller at
+    Metronome power off
+  * metronomefb: Add error handling
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 21 Jul 2009 23:41:37 +0300
+
+linux-2.6 (2.6.29-13) asimov; urgency=low
+
+  * metronomefb: Add locking for avoid race conditions
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 16 Jul 2009 12:17:42 +0300
+
+linux-2.6 (2.6.29-12) asimov; urgency=low
+
+  * N516: Enable g_file_storage module
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 14 Jul 2009 00:35:42 +0300
+
+linux-2.6 (2.6.29-11) asimov; urgency=low
+
+  * jz4740_udc: Fix gadget driver unbinding. Fix data part of Control
+    Requests handling
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sat, 11 Jul 2009 16:30:21 +0300
+
+linux-2.6 (2.6.29-10) asimov; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * jz4740_udc: Fix Oops at module unloading
+  * jz4740_udc: Temporary disable DMA by default. Add some debug
+  * Remove display clearing at driver initialization
+  * n516-lpc: Get initial battery level from module parameter
+
+  [ Mikhail Gusarov ]
+  * lbookv3_keys: Remap UP/DOWN keys to RIGHT/LEFT keys
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 09 Jul 2009 23:36:28 +0300
+
+linux-2.6 (2.6.29-9) asimov; urgency=low
+
+  * N516: Enable UBI MTD emulation
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 15 Jun 2009 13:26:02 +0300
+
+linux-2.6 (2.6.29-8) asimov; urgency=low
+
+  * JZ: Move JZ RTC driver to proper location and port it to new API
+  * N516: Add platform device for RTC
+  * MIPS: Remove setting system time from RTC on autosuspend exit
+  * N516: Update configs
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 04 Jun 2009 17:44:38 +0300
+
+linux-2.6 (2.6.29-7) asimov; urgency=low
+
+  * jz4740_nand: Add support of cmdline partition parsing
+  * N516: Change NAND layout from static table to cmdline parsing
+  * metronomefb: Remove __devinit from load_waveform definition
+  * N516: Update config
+  * N516: Disable display controller at board initialization
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 17 May 2009 22:27:23 +0300
+
+linux-2.6 (2.6.29-6) asimov; urgency=low
+
+  * jz4740_udc: various fixes
+  * PM: dirty hack for make hotplug working during resume process
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 27 Apr 2009 17:06:18 +0300
+
+linux-2.6 (2.6.29-5) asimov; urgency=low
+
+  * metronomefb: Set RST to 0 on suspend
+  * n516-lpc: Fix kernel oops on driver initialization
+  * MIPS PM: Fix building with autosuspend disabled
+  * V3: Reduce kernel size to < 1M
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 27 Apr 2009 14:18:20 +0300
+
+linux-2.6 (2.6.29-4) asimov; urgency=low
+
+  * Revert "pm: rework disabling of user mode helpers during
+    suspend/hibernation"
+  * N516: Remove IRQF_DISABLE flag from shared IRQs
+  * MIPS: Autosuspend on idle support
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 14 Apr 2009 15:32:36 +0300
+
+linux-2.6 (2.6.29-3) asimov; urgency=low
+
+  * n516-usb power supply: Rename power supply to 'usb' for
+    compatibility
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 14 Apr 2009 12:24:53 +0300
+
+linux-2.6 (2.6.29-2) asimov; urgency=low
+
+  * Disable debug board network support in N516 kernel
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 14 Apr 2009 09:01:14 +0300
+
+linux-2.6 (2.6.29-1) asimov; urgency=low
+
+  * New upstream version
+  * Merge N516 support
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 12 Apr 2009 20:51:49 +0300
+
+linux-2.6 (2.6.28-4) asimov; urgency=low
+
+  * debian/rules: fixed problem in installing kernels in kernel-image
+    packages.
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Wed, 18 Mar 2009 16:34:07 +0600
+
+linux-2.6 (2.6.28-3) asimov; urgency=low
+  
+  * First build for IPlinux-enabled OpenInkpot.
+
+ -- Mikhail Gusarov <dottedmag@dottedmag.net>  Wed, 18 Mar 2009 04:33:31 +0600
+
+linux-2.6 (2.6.28-2) asimov; urgency=low
+
+  * s3cmci: Fix hangup in do_pio_write()
+  * eink_apollofb: Reduce picture loading time
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 01 Jan 2009 13:36:36 +0200
+
+linux-2.6 (2.6.28-1) asimov; urgency=low
+
+  * New upstream version
+  * Initial Sony PRS-505 support
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Wed, 31 Dec 2008 18:51:12 +0200
+
+linux-2.6 (2.6.27-3) asimov; urgency=low
+
+  * Merge with 2.6.27.8
+  * Fix BSoD in Windows when device is connected to PC via USB
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 07 Dec 2008 22:47:09 +0200
+
+linux-2.6 (2.6.27-2) asimov; urgency=low
+
+  * eink_apollofb: Test version of double-buffering API
+  * lbookv3_battery: Introduce new status: Low charge
+  * eink_apollofb: Fix double-buffering API
+  * Lbook V3 speaker driver
+  * Change default trigger for red LED to "lbookv3_battery-charging"
+  * New OI release
+  * New configs
+  * lbookv3_keys: Increase poll interval to 50 ms
+  * Build lbookv3_spkr as module (for avoiding /dev/event* confusion)
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 13 Nov 2008 21:32:17 +0200
+
+linux-2.6 (2.6.27-1) asimov; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * lbookv3_keys: Fix using of GPIO functions
+  * rtc-s3c: Fix section mismatch warnings
+  * Revert "MMC: Fix race condition in card detect functions"
+  * MMC: Fix race condition in resume/card detect code
+
+  [ Dallas Foley ]
+  * [ARM] S3C24XX: pwm-clock set_parent mask fix
+
+  [ Nelson Castillo ]
+  * [ARM] S3C24XX: Fix redefine of DEFINE_TIMER() in s3c24xx pwm-clock.c
+
+  [ Yauhen Kharuzhy ]
+  * V3 mach: move ADC suspend/resume to battery driver
+  * RTC S3C: Add device_init_wakeup() invokation
+  * Add gpio_to_irq() to s3c2410 arch
+  * V3 arch: Add blinking by red LED on panic
+  * V3 arch: remove s3c_device_hsmmc from platform devices
+  * MMC: Replace mmc_delay() by mdelay() in mmc_power_up()
+  * lbookv3_keys: Add tweaks for poll interval and longpress timeout
+  * lbookv3_battery: Add workaround for buggy hardware. Closes: #155
+  * Update configs
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 24 Oct 2008 01:18:33 +0300
+
+linux-2.6 (2.6.25-20) asimov; urgency=low
+
+  * Revert "mach V3: Revert erroneous commented timings for V3ext NAND"
+  * lbookv3_keys: Increase polling interval
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 14 Oct 2008 17:31:53 +0300
+
+linux-2.6 (2.6.25-19) asimov; urgency=low
+
+  * MTD NAND: Add dumb badblock translation to large page devices
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 14 Oct 2008 11:21:55 +0300
+
+linux-2.6 (2.6.25-18) asimov; urgency=low
+
+  * PM: Run rtc_hctosys after resume from autosuspend
+  * Add autosaving time to RTC on settimeofday()
+  * Update configs for new RTC changes
+  * FTC: forgotten systohc.c added
+  * eink_apollofb: Add full redraw with screen refresh
+  * eink_apollofb: Make sleep mode work without refreshing after wakeup
+  * mach V3: Revert erroneous commented timings for V3ext NAND
+  * MMC: Fix race condition in card detect functions
+  * PM: delay autosuspend when timers are scheduled in next timeout
+    interval
+  * lbookv3_keys: Rewrite driver
+  * V3: Update configs
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 13 Oct 2008 18:41:16 +0300
+
+linux-2.6 (2.6.25-17) unstable; urgency=low
+
+  * Fix STORAGE partition size on V3ext.
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sat, 04 Oct 2008 22:41:26 +0300
+
+linux-2.6 (2.6.25-16) unstable; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * lbookv3_battery: Add external_power_changed() to lbookv3_battery
+  * eink_apollofb: 'Smart refresh' feature
+  * eink_apollofb: smart refresh improvement
+  * PM: Add green led flashing on suspend/resume.
+  * mach V3ext: Increase STORAGE partition size
+  * configs: Remove debug messages from console
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sat, 04 Oct 2008 13:47:17 +0300
+
+linux-2.6 (2.6.25-15) unstable; urgency=low
+
+  [ Mikhail Gusarov ]
+  * Clean up garbage
+  * Introduced $flavours in debian/rules to decrease amount of
+    copy-paste code
+  * KEY_KP<N> keys changed to KEY_<N> to avoid unwanted
+    interaction with virtual NumLock state
+
+  [ Yauhen Kharuzhy ]
+  * PM: Now autosuspend works correctly
+  * Fix hotplug on resume
+  * Revert "lbookv3_battery: remove unneeded properties"
+  * lbookv3_battery: removed properties CHARGE_DESIGN_* are came back
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 23 Sep 2008 23:37:33 +0300
+
+linux-2.6 (2.6.25-14) unstable; urgency=low
+
+  * Configs: remove unnesesary options
+  * lbookv3_battery: remove unneeded properties
+  * lbookv3_battery: fix charge calculation below 5%
+  * Autosuspend: use schedule_work() instead
+  * schedule_delayed_work()
+  * Enable autosuspend by default
+  * PM: voodoo from Jinke kernel
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 19 Sep 2008 21:30:49 +0300
+
+linux-2.6 (2.6.25-13) unstable; urgency=low
+
+  * Fix typo in Kconfig (non-working autosuspend)
+  * lbookv3_battery: Add USB power supply
+  * lbookv3_battery: Remove APM emulation support
+  * lbookv3_battery: code cleanup
+  * lbookv3_battery: add IRQ handlers for USB & battery events
+  * PM: disable GPG1 & GPG2 reconfiguring on suspend
+  * PM: autosuspend on idle improvements
+  * New configs
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 18 Sep 2008 01:49:56 +0300
+
+linux-2.6 (2.6.25-12) unstable; urgency=low
+
+  * lbookv3_battery: Add enabling charge on load (not needed, but...)
+  * LBOOKV3: assign mmc0 trigger to red LED by default
+  * lbookv3_battery: Fix constants in voltage&capacity calculation
+  * lbookv3_battery: Remove debug output on ADC read
+  * s3c2410_udc: Enable device wakeup on USB connect
+  * First, dirty, version of autosuspend on idle feature
+  * New configs (enable autosuspend)
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 16 Sep 2008 17:01:39 +0300
+
+linux-2.6 (2.6.25-11) unstable; urgency=low
+
+  * s3cmci: Enable wakeup on card change
+  * s3cmci: Set delay for card change detect to 1 jiffie
+  * s3cmci: Reduce debug verbosity
+  * s3cmci: Change delay time in mmc_detect_change() to 50 ms
+  * config: enable MMC_UNSAFE_RESUME
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 02 Sep 2008 01:14:37 +0300
+
+linux-2.6 (2.6.25-10) unstable; urgency=low
+
+  * s3c2410_udc: set USBSUSPND* bits in MISCCR before going to suspend
+  * Add WDT and ext2 drivers
+  * Add postinstall scripts
+
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 22 Aug 2008 21:53:16 +0300
+
+linux-2.6 (2.6.25-9) unstable; urgency=low
+
+  * PM: Fix battery discharging issue
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 22 Aug 2008 17:43:49 +0300
+
+linux-2.6 (2.6.25-8) unstable; urgency=low
+
+  * eink_apollofb: Increase picture loading speed
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 15 Aug 2008 22:22:44 +0300
+
+linux-2.6 (2.6.25-7) unstable; urgency=low
+
+  * V3ext packages have been added
+  * NAND S3C2410: fix HW ECC calculation for large page devices
+  * NAND: Fix dumb badblocks translation
+  * Add V3ext modification of V3 into Kconfig
+  * eink_apollofb: Fix deadlocks in flash reading/writing functions
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 14 Aug 2008 17:36:16 +0300
+
+linux-2.6 (2.6.25-6) unstable; urgency=low
+
+  * fbcon: Act like 1-bit color depth screen
+  * Invert fbcon colors
+  * eink_apollofb: Add void blank() function
+  * s3cmci: Fix use of s3c2410_dma_request()
+  * Enable default green led trigger 'nand-disk'
+  * New config
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 13 Jul 2008 14:58:07 +0300
+
+linux-2.6 (2.6.25-5) unstable; urgency=low
+
+  * Fix kernel cmdline
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 11 Jul 2008 22:26:17 +0300
+
+linux-2.6 (2.6.25-4) unstable; urgency=low
+
+  * Fix broken resume function
+  * Remove unneeded 'total display update' routines
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 10 Jul 2008 01:03:20 +0300
+
+linux-2.6 (2.6.25-3) unstable; urgency=low
+
+  * Apollo sleep & resume work now.
+  * Debug in keypad code has been removed.
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Fri, 04 Jul 2008 21:39:04 +0300
+
+linux-2.6 (2.6.25-2) unstable; urgency=low
+
+  * Fix palette inversion in eink_apollofb driver
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 23 Jun 2008 01:30:11 +0300
+
+linux-2.6 (2.6.25-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Thu, 22 May 2008 17:54:48 +0300
+
+linux-2.6 (2.6.24-1) unstable; urgency=low
+
+  * Initial release for OpenInkpot
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Sun, 18 May 2008 15:19:04 +0300
+
