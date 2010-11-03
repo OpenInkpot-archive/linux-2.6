@@ -45,15 +45,6 @@ comment "Watchdog Device Drivers"
 
 # Architecture Independent
 
-config JZ_WDT
-	bool 'JzSoC On-Chip watchdog'
-	help
-	  Watchdog timer embedded into JZSOC chips. This will reboot your
-	  system when the timeout is reached.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called jz_wdt.
-
 config SOFT_WATCHDOG
 	tristate "Software watchdog"
 	help
@@ -869,6 +860,16 @@ config INDYDOG
 	  watchdog timer that will reboot the machine after a 60 second
 	  timer expired and no process has written to /dev/watchdog during
 	  that time.
+
+config JZ_WDT
+	tristate 'JzSoC On-Chip watchdog'
+	depends on MACH_JZ4740
+	help
+	  Watchdog timer embedded into JZSOC chips. This will reboot your
+	  system when the timeout is reached.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called jz_wdt.
 
 config WDT_MTX1
 	tristate "MTX-1 Hardware Watchdog"
