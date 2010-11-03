@@ -33,6 +33,7 @@
 #include <linux/types.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
+#include <linux/memblock.h>
 #include <linux/timer.h>
 #include <linux/init.h>
 #include <linux/sysdev.h>
@@ -594,6 +595,11 @@ static void __init lbookv3_init(void)
 	s3c_pm_init();
 }
 
+static void __init lbookv3_reserve(void)
+{
+	memblock_reserve(0x3026f000, 0x1400);
+}
+
 MACHINE_START(LBOOK_V3, "LBOOK_V3") /* @TODO: request a new identifier and switch
 				    * to LBOOK_V3 */
 	/* Maintainer: Yauhen Kharuzhy */
@@ -601,6 +607,7 @@ MACHINE_START(LBOOK_V3, "LBOOK_V3") /* @TODO: request a new identifier and switc
 	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
 	.boot_params	= S3C2410_SDRAM_PA + 0x100,
 	.map_io		= lbookv3_map_io,
+	.reserve	= lbookv3_reserve,
 	.init_irq	= s3c24xx_init_irq,
 	.init_machine	= lbookv3_init,
 	.timer		= &s3c24xx_timer,
