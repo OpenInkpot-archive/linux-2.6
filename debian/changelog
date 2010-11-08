@@ -1,3 +1,40 @@
+linux-2.6 (2.6.32-18) zelazny; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * ARM i.MX1: Add platform device definition for LCD controller
+  * ARM i.MX1: Remove clk_lookup definitions from __initdata section
+  * ARM imxfb: Fix pixel clock rate calculation
+  * ARM imxfb: Set bit PCR_COLOR in PCR register for all TFT displays
+  * ARM imxfb: Make driver working with "hotplugged" device
+  * ARM i.MX1: Setup LCD interface pins for Sony PRS-505
+  * Metronomefb: Add double-wide framebuffers support
+  * PRS-505: Make display driver working
+  * ARM imxfb: Fix incorrect dev_dbg() call
+  * N516 display: Set par->metromem_wfm_csum during initialization
+
+  [ Anton Vorontsov ]
+  * sdhci-pltfm: implement platform data passing
+  * sdhci-pltfm: do not print errors in case of an extended iomem size
+  * sdhci-pltfm: switch to module device table matching
+  * sdhci-pltfm: add support for CNS3xxx SoC devices
+
+  [ Matt Fleming ]
+  * sdhci: build fix: rename SDHCI I/O accessor functions
+
+  [ Yauhen Kharuzhy ]
+  * SDHCI: Add quirk for hosts with broken PIO block reading
+  * SDHCI: Add support for R5C807 controller in Sony's PRS-505
+    bookreader
+  * ARM MX1: Add SDHCI support to PRS-505 board
+  * USB s1r72xxx_udc: Don't disable charging at start in PRS-505
+  * eink_apollofb: Fix dumb typo in suspend/resume methods
+  * s1r72xxx_udc: Add spinlock initialization. Fix
+    s1r72xxx_usbc_remove() invocation
+  * N516 display: Increase PWR timings
+  * Metronomefb: Move bootup process after resume into delayed work.
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Mon, 08 Nov 2010 13:20:21 +0200
+
 linux-2.6 (2.6.32-17) zelazny; urgency=low
 
   * n516-lpc: Code cleanup. Debug is disabled now.
