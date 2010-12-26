@@ -181,6 +181,7 @@ static void apollo_wakeup(struct apollofb_par *par)
 	par->ops->set_ctl_pin(H_DS, 0);
 	apollo_wait_for_ack(par);
 	par->ops->set_ctl_pin(H_WUP, 0);
+	udelay(5);
 	par->ops->set_ctl_pin(H_DS, 1);
 	apollo_wait_for_ack_clear(par);
 }
