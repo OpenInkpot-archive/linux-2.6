@@ -2621,7 +2621,7 @@ static int s1r72xxx_usbc_resume(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_MACH_SONY_PRS505
-# define __REG(x)     (*((volatile u32 *)IO_ADDRESS(x)))
+# define __REG(x)     (*((volatile u32 *)MX1_IO_ADDRESS(x)))
 static void s1r72v_start_gpio_setting(void)
 {
 	unsigned long flags;
@@ -2629,8 +2629,8 @@ static void s1r72v_start_gpio_setting(void)
 
 	local_irq_save(flags);
 
-	__REG(EIM_BASE_ADDR + 0x20) = 0x00000900;
-	__REG(EIM_BASE_ADDR + 0x24) = 0x54540d01;
+	__REG(MX1_EIM_BASE_ADDR + 0x20) = 0x00000900;
+	__REG(MX1_EIM_BASE_ADDR + 0x24) = 0x54540d01;
 
 //	imx_gpio_mode(GPIO_PORTC|GPIO_GIUS|GPIO_IN|GPIO_AIN|GPIO_AOUT|GPIO_BOUT|3);
 //	imx_gpio_mode(GPIO_PORTB|GPIO_GIUS|GPIO_IN|GPIO_AIN|GPIO_AOUT|GPIO_BOUT|19);   //USB_VBUS
