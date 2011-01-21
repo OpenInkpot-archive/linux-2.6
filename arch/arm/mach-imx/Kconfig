@@ -28,17 +28,18 @@ config MACH_SCB9328
 	  Say Y here if you are using a Synertronixx scb9328 board
 
 config MACH_SONY_PRS505
-       bool "Sony PRS-505 book reader"
-       help
-         Say Y here if you are using the Sony PRS-505 book reader.
+	bool "Sony PRS-505 book reader"
+	select IMX_HAVE_PLATFORM_IMX_UART
+	help
+	  Say Y here if you are using the Sony PRS-505 book reader.
 
 config SONY_PRS505_DISPLAY
-       tristate "Sony PRS-505 book reader display support"
-       depends on MACH_SONY_PRS505
-       help
-         Say Y here if you are using the Sony PRS-505 book reader and want
-         to have display working. Note that this only glue between metronomefb
-         and imxfb drivers. They also must be enabled.
+	tristate "Sony PRS-505 book reader display support"
+	depends on MACH_SONY_PRS505
+	help
+	  Say Y here if you are using the Sony PRS-505 book reader and want
+	  to have display working. Note that this only glue between metronomefb
+	  and imxfb drivers. They also must be enabled.
 
 endif
 

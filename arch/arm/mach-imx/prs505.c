@@ -33,11 +33,11 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 
+#include "devices-imx1.h"
 #include "devices.h"
-#include "crm_regs.h"
 
-#define PRS505_FLASH_PHYS	IMX_CS0_PHYS
-#define PRS505_FLASH_SIZE	IMX_CS0_SIZE
+#define PRS505_FLASH_PHYS	MX1_CS0_PHYS
+#define PRS505_FLASH_SIZE	MX1_CS0_SIZE
 
 /*the bitwise definition of UCR1*/
 #define SNDBRK		0x00000010
@@ -62,22 +62,22 @@
 #define UCR1_TRDYEN		0x00002000
 #define UCR1_TXMPTYEN	0x00000040
 
-# define __REG(x)     (*((volatile u32 *)IO_ADDRESS(x)))
+# define __REG(x)     (*((volatile u32 *)MX1_IO_ADDRESS(x)))
 
 /*  08/5/27 */
 #define _reg_PORTC_GIUS			GIUS(2)
 #define _reg_PORTC_GPR			GPR(2)
-#define _reg_UART1_URXD		__REG(UART1_BASE_ADDR + 0x0)
-#define _reg_UART1_UTXD		__REG(UART1_BASE_ADDR + 0x40)
-#define _reg_UART1_UCR1		__REG(UART1_BASE_ADDR + 0x80)
-#define _reg_UART1_UCR2		__REG(UART1_BASE_ADDR + 0x84)
-#define _reg_UART1_UCR3		__REG(UART1_BASE_ADDR + 0x88)
-#define _reg_UART1_UCR4		__REG(UART1_BASE_ADDR + 0x8C)
-#define _reg_UART1_UFCR		__REG(UART1_BASE_ADDR + 0x90)
-#define _reg_UART1_USR1		__REG(UART1_BASE_ADDR + 0x94)
-#define _reg_UART1_USR2		__REG(UART1_BASE_ADDR + 0x98)
-#define _reg_UART1_UBIR			__REG(UART1_BASE_ADDR + 0xA4)
-#define _reg_UART1_UBMR		__REG(UART1_BASE_ADDR + 0xA8)
+#define _reg_UART1_URXD		__REG(MX1_UART1_BASE_ADDR + 0x0)
+#define _reg_UART1_UTXD		__REG(MX1_UART1_BASE_ADDR + 0x40)
+#define _reg_UART1_UCR1		__REG(MX1_UART1_BASE_ADDR + 0x80)
+#define _reg_UART1_UCR2		__REG(MX1_UART1_BASE_ADDR + 0x84)
+#define _reg_UART1_UCR3		__REG(MX1_UART1_BASE_ADDR + 0x88)
+#define _reg_UART1_UCR4		__REG(MX1_UART1_BASE_ADDR + 0x8C)
+#define _reg_UART1_UFCR		__REG(MX1_UART1_BASE_ADDR + 0x90)
+#define _reg_UART1_USR1		__REG(MX1_UART1_BASE_ADDR + 0x94)
+#define _reg_UART1_USR2		__REG(MX1_UART1_BASE_ADDR + 0x98)
+#define _reg_UART1_UBIR			__REG(MX1_UART1_BASE_ADDR + 0xA4)
+#define _reg_UART1_UBMR		__REG(MX1_UART1_BASE_ADDR + 0xA8)
 #define _reg_AITC_INTSRCL		__REG(IMX_AITC_BASE + 0x4C)
 
 /*dma transmitting*/
@@ -102,9 +102,9 @@
 #define PRS505_GPIO_USB_CHRG	(GPIO_PORTA | 6)
 #define PRS505_GPIO_PCR5C	(GPIO_PORTA | 12)
 #define PRS505_GPIO_SRR5C	(GPIO_PORTA | 10)
-#define PRS505_GPIO_PCR5CCLK	(GPIO_PORTB | GPIO_GPIO | GPIO_OUT | 9)
-#define PRS505_GPIO_PCSDCARD	(GPIO_PORTB | GPIO_GPIO | GPIO_OUT | 29)
-#define PRS505_GPIO_PCMSCARD	(GPIO_PORTB | GPIO_GPIO | GPIO_OUT | 28)
+#define PRS505_GPIO_PCR5CCLK	(GPIO_PORTB | 9)
+#define PRS505_GPIO_PCSDCARD	(GPIO_PORTB | 29)
+#define PRS505_GPIO_PCMSCARD	(GPIO_PORTB | 28)
 
 /*
  * UARTs platform data
@@ -195,8 +195,8 @@ static struct platform_nand_data prs505_nand_flash_data = {
 
 static struct resource prs505_nand_resource[] = {
 	[0] = {
-		.start = IMX_CS1_PHYS,
-		.end   = IMX_CS1_PHYS + IMX_CS1_SIZE - 1,
+		.start = MX1_CS1_PHYS,
+		.end   = MX1_CS1_PHYS + MX1_CS1_SIZE - 1,
 		.flags = IORESOURCE_MEM,
 	}
 };
@@ -319,7 +319,7 @@ static struct platform_device *devices[] __initdata = {
 	&ebook_usb_s1r72v17_device,
 	&prs505_device_nor,
 	&prs505_device_nand,
-	&prs505_sdhci,
+//	&prs505_sdhci,
 };
 
 static void ebook_power_off(void)
@@ -438,7 +438,7 @@ static void __init prs505_sdhci_init(void)
 	gpio_direction_output(PRS505_GPIO_PCR5CCLK, 0);
 
 	gpio_request(PRS505_GPIO_PCSDCARD, "PCSDCARD");
-	mxc_gpio_mode(PRS505_GPIO_PCSDCARD);
+//	mxc_gpio_mode(PRS505_GPIO_PCSDCARD | GPIO_GPIO | GPIO_OUT);
 	gpio_direction_output(PRS505_GPIO_PCSDCARD, 1);
 
 	gpio_request(PRS505_GPIO_PCR5C, "PCR5C");
@@ -451,7 +451,7 @@ static void __init prs505_sdhci_init(void)
 
 	set_irq_type(IRQ_GPIOA(11), IRQF_TRIGGER_LOW);
 
-	base = ioremap(IMX_CS3_PHYS, IMX_CS3_SIZE);
+	base = ioremap(MX1_CS3_PHYS, MX1_CS3_SIZE);
 	if (!base) {
 		printk(KERN_ERR "Failed to remap CS3\n");
 		return;
@@ -468,15 +468,15 @@ static void __init prs505_sdhci_init(void)
 static void __init prs505_init(void)
 {
 
-	__REG(EIM_BASE_ADDR + 0x18) = 0x0000E000;
-	__REG(EIM_BASE_ADDR + 0x1c) = 0x66660D01;
+	__REG(MX1_EIM_BASE_ADDR + 0x18) = 0x0000E000;
+	__REG(MX1_EIM_BASE_ADDR + 0x1c) = 0x66660D01;
 
 	prs505_gpio_setup();
 	prs505_sdhci_init();
 
 	/* UART */
-	mxc_register_device(&imx_uart2_device, &uart_pdata[1]);
-	mxc_register_device(&imx_uart1_device, &uart_pdata[0]);
+	imx1_add_imx_uart0(&uart_pdata[0]);
+	imx1_add_imx_uart1(&uart_pdata[1]);
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 
 	pm_power_off = ebook_power_off;
