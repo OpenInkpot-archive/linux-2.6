@@ -163,12 +163,12 @@ struct platform_device imx_usb_device = {
  */
 static struct resource imx_fb[] = {
 	{
-		.start = LCDC_BASE_ADDR,
-		.end   = LCDC_BASE_ADDR + 0xFFF,
+		.start = MX1_LCDC_BASE_ADDR,
+		.end   = MX1_LCDC_BASE_ADDR + 0xFFF,
 		.flags = IORESOURCE_MEM,
 	}, {
-		.start = LCDC_INT,
-		.end   = LCDC_INT,
+		.start = MX1_LCDC_INT,
+		.end   = MX1_LCDC_INT,
 		.flags = IORESOURCE_IRQ,
 	}
 };
