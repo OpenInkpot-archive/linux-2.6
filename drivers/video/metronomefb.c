@@ -539,12 +539,6 @@ static int __devinit metronome_init_regs(struct metronomefb_par *par)
 	if (par->board->power_ctl)
 		par->board->power_ctl(par, METRONOME_POWER_ON);
 
-	res = par->board->setup_io(par);
-	if (res) {
-		printk(KERN_ERR "metronomefb: setup_io() failed\n");
-		return res;
-	}
-
 	res =  metronome_bootup(par);
 
 	return res;
