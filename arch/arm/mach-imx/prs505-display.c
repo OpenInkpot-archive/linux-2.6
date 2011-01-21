@@ -116,7 +116,7 @@ static int prs505_init_gpio_regs(struct metronomefb_par *par)
 
 err_req_gpio:
 	while (i > 0)
-		gpio_free(gpios[i--]);
+		gpio_free(gpios[--i]);
 
 	return err;
 }
