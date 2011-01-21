@@ -58,6 +58,7 @@ static inline void flush(void)
 }
 
 #define MX1_UART1_BASE_ADDR	0x00206000
+#define MX1_UART2_BASE_ADDR	0x00207000
 #define MX25_UART1_BASE_ADDR	0x43f90000
 #define MX2X_UART1_BASE_ADDR	0x1000a000
 #define MX3X_UART1_BASE_ADDR	0x43F90000
@@ -67,6 +68,9 @@ static inline void flush(void)
 static __inline__ void __arch_decomp_setup(unsigned long arch_id)
 {
 	switch (arch_id) {
+	case MACH_TYPE_SONY_PRS505:
+		uart_base = MX1_UART2_BASE_ADDR;
+		break;
 	case MACH_TYPE_MX1ADS:
 	case MACH_TYPE_SCB9328:
 		uart_base = MX1_UART1_BASE_ADDR;
