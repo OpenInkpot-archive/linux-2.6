@@ -14,12 +14,13 @@
 
 #ifdef CONFIG_ARCH_MX1
 #include <mach/mx1.h>
+#include <mach/hardware.h>
 #ifdef CONFIG_MACH_SONY_PRS505
 #define UART_PADDR	UART2_BASE_ADDR
 #else
 #define UART_PADDR	UART1_BASE_ADDR
 #endif
-#define UART_VADDR	IO_ADDRESS(UART_PADDR)
+#define UART_VADDR	(MX1_IO_ADDRESS(UART_PADDR))
 #endif
 
 #ifdef CONFIG_ARCH_MX25

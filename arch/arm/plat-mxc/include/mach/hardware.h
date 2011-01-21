@@ -22,10 +22,14 @@
 
 #include <asm/sizes.h>
 
+#ifdef __ASSEMBLER__
+#define IMX_IO_ADDRESS(addr, module)	((addr) - (module ## _BASE_ADDR) + (module ## _BASE_ADDR_VIRT))
+#else
+#define IMX_IOMEM(x)	((void __force __iomem *)(x))
 #define IMX_IO_ADDRESS(addr, module)					\
-	((void __force __iomem *)					\
-	 (((unsigned long)((addr) - (module ## _BASE_ADDR)) < module ## _SIZE) ?\
+	(IMX_IOMEM(((unsigned long)((addr) - (module ## _BASE_ADDR)) < module ## _SIZE) ?\
 	 (addr) - (module ## _BASE_ADDR) + (module ## _BASE_ADDR_VIRT) : 0))
+#endif
 
 #ifdef CONFIG_ARCH_MX5
 #include <mach/mx51.h>

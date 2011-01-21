@@ -17,6 +17,10 @@
 #define __ASM_ARCH_MXC_VMALLOC_H__
 
 /* vmalloc ending address */
+#ifdef __ASSEMBLER__
+#define VMALLOC_END       0xf4000000
+#else
 #define VMALLOC_END       0xf4000000UL
+#endif
 
 #endif /* __ASM_ARCH_MXC_VMALLOC_H__ */
