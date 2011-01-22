@@ -319,7 +319,7 @@ static struct platform_device *devices[] __initdata = {
 	&ebook_usb_s1r72v17_device,
 	&prs505_device_nor,
 	&prs505_device_nand,
-//	&prs505_sdhci,
+	&prs505_sdhci,
 };
 
 static void ebook_power_off(void)
@@ -494,8 +494,6 @@ struct sys_timer prs505_timer = {
 
 MACHINE_START(SONY_PRS505, "Sony PRS-505 (Motorola DragonBall MX1)")
 	/* Maintainer: Yauhen Kharuzhy */
-	.phys_io	= 0x00200000,
-	.io_pg_offst	= ((0xe0000000) >> 18) & 0xfffc,
 	.boot_params	= 0x08000100,
 	.map_io		= mx1_map_io,
 	.init_irq	= mx1_init_irq,
