@@ -616,6 +616,10 @@ static int imx_startup(struct uart_port *port)
 
 	writel(temp & ~UCR4_DREN, sport->port.membase + UCR4);
 
+	/* Disable TRDY interrupt before requesting IRQs */
+	temp = readl(sport->port.membase + UCR1);
+	writel(temp & ~UCR1_TRDYEN, sport->port.membase + UCR1);
+
 	if (USE_IRDA(sport)) {
 		/* reset fifo's and state machines */
 		int i = 100;
