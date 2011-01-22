@@ -2723,7 +2723,8 @@ static void __exit USBC_EXIT(void)
  *			in case of error, return error code.
  */
 /* ========================================================================= */
-int usb_gadget_register_driver(struct usb_gadget_driver *driver)
+int usb_gadget_probe_driver(struct usb_gadget_driver *driver,
+		int (*bind)(struct usb_gadget *))
 {
 	S1R72XXX_USBC_DEV	*usbc_dev;	/* USB hardware informations */
 	int					retval;		/* returned value */
@@ -2743,11 +2744,11 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	 *  - in case of error, return -EINVAL.
 	 */
 	if (driver)
-		printk("driver->bind = %p, driver->unbind = %p,"
-				"driver->disconnect = %p, driver->setup = %p\n", driver->bind, driver->unbind,
+		printk("bind = %p, driver->unbind = %p,"
+				"driver->disconnect = %p, driver->setup = %p\n", bind, driver->unbind,
 				driver->disconnect, driver->setup);
 	if ( (driver == NULL)
-		|| (driver->bind == NULL)
+		|| (bind == NULL)
 		|| (driver->disconnect == NULL) || (driver->setup == NULL)){
 		DEBUG_MSG("%s, pointer error\n", __FUNCTION__);
 		return -EINVAL;
@@ -2766,7 +2767,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	 *  - call bind() to bind gadget driver. in case of error, return error
 	 *    code from bind().
 	 */
-	retval = driver->bind(&usbc_dev->gadget);
+	retval = bind(&usbc_dev->gadget);
 	if (retval) {
 		DEBUG_MSG("bind to driver %s --> error %d\n",
 			 driver->driver.name, retval);
@@ -2818,7 +2819,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	 */
 	return 0;
 }
-EXPORT_SYMBOL(usb_gadget_register_driver);
+EXPORT_SYMBOL(usb_gadget_probe_driver);
 
 /* ========================================================================= */
 /**
