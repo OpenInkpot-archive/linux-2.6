@@ -32,9 +32,10 @@ static void __iomem *adc_base;
 static struct clk* adc_clk;
 
 #define ADC_BATTERY_CH 0
-#define EB600_MAX_VOLT 3727
-#define EB600_MIN_VOLT 3150
-#define EB600_5PERC_VOLT 3540
+#define EB600_MAX_VOLT 4120
+#define EB600_MIN_VOLT 3562
+#define EB600_5PERC_VOLT 3613
+#define MAGIC_NUMBER 6317
 
 static unsigned int adc_get_val (unsigned int ch)
 {
@@ -59,7 +60,7 @@ static int eb600_battery_get_voltage(struct power_supply *b)
 		return 0;
 	}
 
-	return (adc_data * 5861) / 1000;
+	return (adc_data * MAGIC_NUMBER) / 1000;
 }
 
 static int eb600_battery_get_capacity(struct power_supply *b)
@@ -71,11 +72,10 @@ static int eb600_battery_get_capacity(struct power_supply *b)
 	if (voltage < EB600_MIN_VOLT)
 		voltage = EB600_MIN_VOLT;
 
-	if (voltage > EB600_5PERC_VOLT)
-		return ((voltage - EB600_5PERC_VOLT) * 95)/(EB600_MAX_VOLT-EB600_5PERC_VOLT);
-	else
-		return ((voltage - EB600_MIN_VOLT) * 5) / (EB600_5PERC_VOLT - EB600_MIN_VOLT);
+	if (voltage > EB600_MAX_VOLT)
+		voltage = EB600_MAX_VOLT;
 
+	return ((voltage - EB600_MIN_VOLT) * 100 / (EB600_MAX_VOLT - EB600_MIN_VOLT));
 }
 
 static int eb600_usb_connected (void)
