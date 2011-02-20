@@ -73,6 +73,7 @@
 
 #include <plat/common-smdk.h>
 
+#include <sound/s3c24xx_uda134x.h>
 #include <linux/clk.h>
 
 #define EB600_GREEN_LED_PIN S3C2410_GPB8
@@ -412,6 +413,21 @@ static struct s3c24xx_mci_pdata eb600_mmc_cfg = {
 	.ocr_avail      = MMC_VDD_32_33,
 };
 
+/* Audio */
+
+static struct s3c24xx_uda134x_platform_data eb600_audio_pins = {
+	.l3_clk = S3C2410_GPB4,
+	.l3_mode = S3C2410_GPB2,
+	.l3_data = S3C2410_GPB3,
+	.model = UDA134X_UDA1341
+};
+
+static struct platform_device eb600_audio = {
+	.name           = "s3c24xx_uda134x",
+	.id             = 0,
+	.dev            = {
+		.platform_data  = &eb600_audio_pins,
+	},
 };
 
 /* UDC */
@@ -450,7 +466,8 @@ static struct platform_device *eb600_devices[] __initdata = {
 	&eb600_led_green,
 	&eb600_apollo,
 	&eb600_keys,
-	&eb600_battery
+	&eb600_battery,
+	&eb600_audio,
 };
 
 static void eb600_power_off(void)
