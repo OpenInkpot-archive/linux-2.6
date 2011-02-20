@@ -378,7 +378,7 @@ static struct eink_apollofb_platdata eb600_apollofb_platdata = {
 		.send_data_fast = apollo_send_data_fast,
 		.initialize = apollo_init,
 	},
-	.defio_delay = HZ / 2,
+	.defio_delay = HZ / 20,
 };
 
 static struct platform_device eb600_apollo = {
