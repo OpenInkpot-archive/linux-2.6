@@ -50,6 +50,7 @@
 #include <plat/regs-serial.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-lcd.h>
+#include <mach/regs-clock.h>
 
 #include <mach/idle.h>
 #include <mach/fb.h>
@@ -71,6 +72,8 @@
 #include <plat/pm.h>
 
 #include <plat/common-smdk.h>
+
+#include <linux/clk.h>
 
 #define EB600_GREEN_LED_PIN S3C2410_GPB8
 
@@ -474,6 +477,21 @@ static void __init eb600_init_gpio(void)
 	s3c2410_gpio_setpin(S3C2410_GPH8, 1);
 	// Pulling up DP
 	eb600_udc_command(S3C2410_UDC_P_ENABLE);
+
+	// set GPF1 to 0
+	s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPIO_OUTPUT);
+	s3c2410_gpio_setpin(S3C2410_GPF1, 0);
+
+	__raw_writel(0xfff, S3C2410_GPBUP);
+	__raw_writel(0x155555, S3C2410_GPBCON);
+	__raw_writel(0x1a0, S3C2410_GPBDAT);
+
+	__raw_writel(0xEFFF, S3C2410_GPCUP);
+
+	__raw_writel(0xFFFF, S3C2410_GPDUP);
+	__raw_writel(0xD5555555, S3C2410_GPDCON);
+	__raw_writel(0x0, S3C2410_GPDDAT);
+
 }
 
 static void __init eb600_machine_init(void)
@@ -491,6 +509,17 @@ static void __init eb600_machine_init(void)
 	pm_power_off = &eb600_power_off;
 	panic_blink = eb600_panic_blink;
 	s3c2410_pm_init();
+
+	clk_disable(clk_get(NULL, "usb-host"));
+	clk_disable(clk_get(NULL, "lcd"));
+
+	/* doesn't work
+	   clk_disable(clk_get(NULL, "camif"));
+	   clk_disable(clk_get(NULL, "ac97"));
+	*/
+
+	// disable unneeded clocks manually
+	__raw_writel(0x00E780, S3C2410_CLKCON);
 }
 
 MACHINE_START(EB600, "Netronix EB-600")
