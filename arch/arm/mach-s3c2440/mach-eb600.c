@@ -259,34 +259,65 @@ static void apollo_set_data_pins_as_input(void)
 
 static void apollo_write_value(unsigned char val)
 {
-	unsigned char pin;
-	unsigned char mask;
-	
-	mask = 0x1;
-	for (pin=H_D0; pin<=H_D7; pin++)
-	{
-		apollo_set_ctl_pin(pin, (val & mask)==mask ? 1 : 0 );
-		mask <<= 1;
-	}
+	unsigned long int gpc;
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	gpc = __raw_readl(S3C2410_GPCDAT);
+	gpc &= ~0xff;
+	gpc |= val;
+	__raw_writel(gpc, S3C2410_GPCDAT);
+
+	local_irq_restore(flags);
 }
 
 static unsigned char apollo_read_value(void)
 {
 	unsigned char res = 0;
-	unsigned char mask;
-	unsigned char pin;
+	unsigned long flags;
 
 	apollo_set_data_pins_as_input();
 
-	mask = 0x1;
-	for (pin=H_D0; pin<=H_D7; pin++)
-	{
-		if (apollo_get_ctl_pin(pin) == 1)
-			res |= mask;
-		mask <<= 1;
-	}
-	
+	local_irq_save(flags);
+	res = __raw_readl(S3C2410_GPCDAT);
+	local_irq_restore(flags);
+
 	apollo_set_data_pins_as_output();
+
+	return res;
+}
+
+int apollo_send_data_fast(void *foo, unsigned char data)
+{
+	int res = 0;
+	unsigned long int gpc;
+	unsigned long flags;
+	unsigned long timeout = jiffies + 2 * HZ;
+
+	local_irq_save(flags);
+
+	gpc = __raw_readl(S3C2410_GPCDAT);
+	gpc &= ~0xff;
+	gpc |= data;
+	__raw_writel(gpc, S3C2410_GPCDAT);
+
+	gpc &= ~0x0200;
+	__raw_writel(gpc, S3C2410_GPCDAT);
+
+	while (__raw_readl(S3C2410_GPCDAT) & 0x1000)
+		if (time_before(jiffies, timeout)) {
+		} else {
+			printk(KERN_ERR "%s: Wait for H_ACK == %u, timeout\n",
+					__func__, 0);
+			res = 1;
+		}
+
+	gpc = __raw_readl(S3C2410_GPCDAT);
+	gpc |= 0x0200;
+	__raw_writel(gpc, S3C2410_GPCDAT);
+
+	local_irq_restore(flags);
 
 	return res;
 }
@@ -341,6 +372,7 @@ static struct eink_apollofb_platdata eb600_apollofb_platdata = {
 		.get_ctl_pin	= apollo_get_ctl_pin,
 		.read_value	= apollo_read_value,
 		.write_value	= apollo_write_value,
+		.send_data_fast = apollo_send_data_fast,
 		.initialize = apollo_init,
 	},
 	.defio_delay = HZ / 2,
