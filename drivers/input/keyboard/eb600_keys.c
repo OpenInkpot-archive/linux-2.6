@@ -50,15 +50,15 @@ static struct eb600_key_info eb600_keys[] = {
 	{S3C2410_GPG0, S3C2410_GPG0_EINT8, KEY_UP},
 	{S3C2410_GPG1, S3C2410_GPG1_EINT9, KEY_DOWN},
 	{S3C2410_GPF7, S3C2410_GPF7_EINT7, KEY_ENTER},
-	
-	{S3C2410_GPF6, S3C2410_GPF6_EINT6, KEY_DELETE},
+
+	{S3C2410_GPF6, S3C2410_GPF6_EINT6, KEY_DIRECTION},
 	{S3C2410_GPF5, S3C2410_GPF5_EINT5, KEY_ESC},
-	{S3C2410_GPF4, S3C2410_GPF4_EINT4, KEY_MEDIA},
+	{S3C2410_GPF4, S3C2410_GPF4_EINT4, KEY_PLAYPAUSE},
 	{S3C2410_GPF3, S3C2410_GPF3_EINT3, KEY_MENU},
-	
-	{S3C2410_GPG4, S3C2410_GPG4_EINT12, KEY_VOLUMEUP},
-	{S3C2410_GPG5, S3C2410_GPG5_EINT13, KEY_VOLUMEDOWN},
-	
+
+	{S3C2410_GPG4, S3C2410_GPG4_EINT12, KEY_KPPLUS},
+	{S3C2410_GPG5, S3C2410_GPG5_EINT13, KEY_KPMINUS},
+
 	{S3C2410_GPF0, S3C2410_GPF0_EINT0, KEY_POWER},
 };
 
@@ -97,7 +97,7 @@ static void eb600_keys_kb_timer(unsigned long data)
 		} else {
 			if (key_state[i]) {
 				unsigned char key = eb600_keys[i].key_code;
-					if (key_state[i] > 1) {
+				if (key_state[i] > 1) {
 					if (time_after(jiffies, key_state[i])) {
 						generate_longpress_event(input, key);
 					} else {
@@ -106,9 +106,14 @@ static void eb600_keys_kb_timer(unsigned long data)
 						input_sync(input);
 					}
 				}
-					key_state[i] = 0;
+				key_state[i] = 0;
 			}
 		}
+	}
+
+	if(pressed && !timer_pending(&kb_timer)) {
+		kb_timer.expires = jiffies + poll_interval;
+		add_timer(&kb_timer);
 	}
 }
 
@@ -176,6 +181,8 @@ static int __init eb600_keys_init(void)
 	
 	for (i=0;i<ARRAY_SIZE(eb600_keys);i++)
 		input_set_capability(input, EV_KEY, eb600_keys[i].key_code);
+
+	input_set_capability(input, EV_KEY, KEY_LEFTALT);
 		
 	error = input_register_device(input);
 	if (error) {
