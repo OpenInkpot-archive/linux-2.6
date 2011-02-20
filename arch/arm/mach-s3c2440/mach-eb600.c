@@ -389,13 +389,29 @@ static struct platform_device eb600_apollo = {
 	},
 };
 
+static void set_mmc_power(unsigned char power_mode, unsigned short vdd)
+{
+	switch (power_mode) {
+		case MMC_POWER_OFF:
+			s3c2410_gpio_setpin(S3C2410_GPB6, 0);
+			break;
+		case MMC_POWER_UP:
+		case MMC_POWER_ON:
+			s3c2410_gpio_setpin(S3C2410_GPB6, 1);
+			break;
+		default:
+			break;
+	}
+}
 
 /* MMC driver info */
 
 static struct s3c24xx_mci_pdata eb600_mmc_cfg = {
-        .gpio_detect    = S3C2410_GPG7,
-        .set_power      = NULL,
-        .ocr_avail      = MMC_VDD_32_33,
+	.gpio_detect    = S3C2410_GPG7,
+	.set_power      = set_mmc_power,
+	.ocr_avail      = MMC_VDD_32_33,
+};
+
 };
 
 /* UDC */
