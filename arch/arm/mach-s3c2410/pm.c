@@ -33,6 +33,10 @@
 #include <asm/mach-types.h>
 
 #include <mach/regs-gpio.h>
+#include <mach/regs-dsc.h>
+#include <mach/regs-mem.h>
+#include <mach/regs-clock.h>
+
 #include <mach/h1940.h>
 
 #include <plat/cpu.h>
@@ -90,6 +94,22 @@ static void s3c2410_pm_prepare(void)
 		s3c_gpio_cfgpin(S3C2410_GPG(13), S3C2410_GPIO_INPUT);
 		s3c_gpio_cfgpin(S3C2410_GPG(14), S3C2410_GPIO_INPUT);
 		s3c_gpio_cfgpin(S3C2410_GPG(15), S3C2410_GPIO_INPUT);
+	}
+
+	if(machine_is_eb600()) {
+		__raw_writel(0x0, S3C2410_GPADAT);
+
+		// mmc power pin magic
+		__raw_writel(0x1e0, S3C2410_GPBDAT);
+
+		__raw_writel(__raw_readl(S3C2410_GPCDAT) & 0x3000, S3C2410_GPCDAT);
+		__raw_writel(0xefff, S3C2410_GPCUP);
+
+		__raw_writel((__raw_readl(S3C2410_GPHCON) & ~0xffff) | 0x5555, S3C2410_GPHCON);
+		__raw_writel(__raw_readl(S3C2410_GPHDAT) & ~0xffff, S3C2410_GPHDAT);
+
+		__raw_writel(0x01559aaa, S3C2410_GPGCON);
+		__raw_writel(0xffff, S3C2410_GPGUP);
 	}
 
 	if (machine_is_lbook_v3()) {
