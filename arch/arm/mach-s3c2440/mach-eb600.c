@@ -458,9 +458,9 @@ static void eb600_power_off(void)
 	int pin_state = 1;
 	while (pin_state)
 	{
-		s3c2410_gpio_cfgpin(S3C2410_GPA14,S3C2410_GPIO_OUTPUT);
-		s3c2410_gpio_setpin(S3C2410_GPA14,0);
-		pin_state = s3c2410_gpio_getpin(S3C2410_GPA14);
+		s3c2410_gpio_cfgpin(S3C2410_GPB5,S3C2410_GPIO_OUTPUT);
+		s3c2410_gpio_setpin(S3C2410_GPB5,0);
+		pin_state = s3c2410_gpio_getpin(S3C2410_GPB5);
 	}
 }
 
