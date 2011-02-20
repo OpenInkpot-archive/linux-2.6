@@ -108,7 +108,7 @@ static struct clk s3c2440_clk_ac97 = {
 	.name		= "ac97",
 	.id		= -1,
 	.enable		= s3c2410_clkcon_enable,
-	.ctrlbit	= S3C2440_CLKCON_CAMERA,
+	.ctrlbit	= S3C2440_CLKCON_AC97,
 };
 
 static int s3c2440_clk_add(struct sys_device *sysdev)
