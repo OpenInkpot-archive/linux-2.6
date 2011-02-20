@@ -198,6 +198,12 @@ static void apollofb_apollo_update_part(struct apollofb_par *par,
 	unsigned int pixels_in_byte = 8 / bpp;
 	unsigned char *buf = (unsigned char __force *)info->screen_base;
 	unsigned char tmp, mask;
+	int(*func_send_data_fast)(struct apollofb_par*, unsigned char);
+
+	if(par->ops->send_data_fast)
+		func_send_data_fast = par->ops->send_data_fast;
+	else
+		func_send_data_fast = apollo_send_data_fast;
 
 	dev_dbg(info->dev, "%s called\n", __FUNCTION__);
 	y1 -= y1 % 4;
@@ -234,7 +240,7 @@ static void apollofb_apollo_update_part(struct apollofb_par *par,
 			tmp = (tmp << bpp) | (buf[i * width + j] & mask);
 			k++;
 			if (k % pixels_in_byte == 0)
-				apollo_send_data_fast(par, tmp);
+				func_send_data_fast(par, tmp);
 		}
 
 	dev_dbg(info->dev, "%s: stop loading\n", __FUNCTION__);

@@ -25,6 +25,7 @@ struct eink_apollo_operations {
 	int (*get_ctl_pin)(unsigned int pin);
 	void (*write_value)(unsigned char val);
 	unsigned char (*read_value)(void);
+	int (*send_data_fast)(void*, unsigned char data);
 };
 
 /* Apollo controller commands */
