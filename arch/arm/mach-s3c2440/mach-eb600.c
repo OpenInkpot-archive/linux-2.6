@@ -439,7 +439,7 @@ static struct s3c2410_udc_mach_info eb600_udc_platform_data = {
 };
 
 static struct platform_device *eb600_devices[] __initdata = {
-	&s3c_device_nand,
+	//&s3c_device_nand,
 	&s3c_device_usb,
 	&s3c_device_usbgadget,
 	&s3c_device_wdt,
@@ -514,7 +514,7 @@ static void __init eb600_machine_init(void)
 {
 	s3c_i2c0_set_platdata(NULL);
 
-	s3c_device_nand.dev.platform_data = &eb600_nand_info;
+	//s3c_device_nand.dev.platform_data = &eb600_nand_info;
 	s3c_device_sdi.dev.platform_data = &eb600_mmc_cfg;
 	s3c_device_usbgadget.dev.platform_data = &eb600_udc_platform_data;
 
