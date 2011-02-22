@@ -77,12 +77,14 @@ static struct eb600_key_info eb600_keys[] = {
 	{S3C2440_GPJ10, S3C2410_GPIO_INPUT, KEY_PAGEUP},
 	{S3C2440_GPJ11, S3C2410_GPIO_INPUT, KEY_KPENTER},
 	{S3C2440_GPJ12, S3C2410_GPIO_INPUT, KEY_PAGEDOWN},
+
+	{S3C2410_GPF0, S3C2410_GPF0_EINT0, KEY_POWER},
 };
 
-	
-static unsigned long key_state[ARRAY_SIZE(eb600_keys)];	
 
-static struct timer_list kb_timer;	
+static unsigned long key_state[ARRAY_SIZE(eb600_keys)];
+
+static struct timer_list kb_timer;
 
 static void generate_longpress_event(struct input_dev *input, unsigned char key)
 {
@@ -180,7 +182,7 @@ static int __init eb600_keys_init(void)
 	int i, error;
 	for (i=0;i<ARRAY_SIZE(eb600_keys);i++)
 		s3c2410_gpio_cfgpin(eb600_keys[i].pin, S3C2410_GPIO_INPUT);
-		
+
 	input = input_allocate_device();
 	if (!input)
 		return -ENOMEM;
@@ -196,12 +198,12 @@ static int __init eb600_keys_init(void)
 	input->id.version = 0x0100;
 
 	setup_timer(&kb_timer, eb600_keys_kb_timer, (unsigned long)input);
-	
+
 	for (i=0;i<ARRAY_SIZE(eb600_keys);i++)
 		input_set_capability(input, EV_KEY, eb600_keys[i].key_code);
 
 	input_set_capability(input, EV_KEY, KEY_LEFTALT);
-		
+
 	error = input_register_device(input);
 	if (error) {
 		printk(KERN_ERR "Unable to register eb600-keys input device\n");
@@ -259,14 +261,14 @@ static int __init eb600_keys_init(void)
 		}
 		enable_irq_wake(irq);
 	}
-	
+
 	return 0;
-	
+
 fail_reg_irqs:
 	for (i = i - 1; i >= 0; i--)
 		free_irq(s3c2410_gpio_getirq(eb600_keys[i].pin), input);
 	device_remove_file(&input->dev, &dev_attr_poll_interval);
-	
+
 err_add_poll_interval:
 	device_remove_file(&input->dev, &dev_attr_longpress_time);
 err_add_longpress_time:
