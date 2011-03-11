@@ -108,7 +108,7 @@ static int apollo_send_data(struct apollofb_par *par, unsigned char data)
 {
 	int res = 0;
 
-	res = apollo_wait_for_ack_clear(par);
+	/* res = apollo_wait_for_ack_clear(par); */ /* high impendance, see 8.3.1 */
 	par->ops->write_value(data);
 	par->ops->set_ctl_pin(H_DS, 0);
 	if (likely(!res))
@@ -149,7 +149,7 @@ static unsigned char apollo_read_data(struct apollofb_par *par)
 	apollo_wait_for_ack(par);
 	res = par->ops->read_value();
 	par->ops->set_ctl_pin(H_DS, 1);
-	apollo_wait_for_ack_clear(par);
+	/* apollo_wait_for_ack_clear(par); */ /* high impendance, see 8.3 */
 	par->ops->set_ctl_pin(H_RW, 0);
 
 	return res;
@@ -183,7 +183,7 @@ static void apollo_wakeup(struct apollofb_par *par)
 	par->ops->set_ctl_pin(H_WUP, 0);
 	udelay(5);
 	par->ops->set_ctl_pin(H_DS, 1);
-	apollo_wait_for_ack_clear(par);
+	/* apollo_wait_for_ack_clear(par); */ /* high impendance, see 9.1.4 */
 }
 
 static void apollofb_apollo_update_part(struct apollofb_par *par,
