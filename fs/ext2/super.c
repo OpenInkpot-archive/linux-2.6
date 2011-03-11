@@ -1160,6 +1160,7 @@ static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
  */
 static int ext2_sync_fs(struct super_block *sb, int wait)
 {
+#if 0
 	struct ext2_sb_info *sbi = EXT2_SB(sb);
 	struct ext2_super_block *es = EXT2_SB(sb)->s_es;
 
@@ -1170,6 +1171,7 @@ static int ext2_sync_fs(struct super_block *sb, int wait)
 	}
 	spin_unlock(&sbi->s_lock);
 	ext2_sync_super(sb, es, wait);
+#endif
 	return 0;
 }
 
