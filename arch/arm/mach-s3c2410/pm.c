@@ -27,6 +27,7 @@
 #include <linux/sysdev.h>
 #include <linux/gpio.h>
 #include <linux/io.h>
+#include <linux/interrupt.h>
 
 #include <mach/hardware.h>
 

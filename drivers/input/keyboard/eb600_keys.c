@@ -25,6 +25,7 @@
 #include <linux/proc_fs.h>
 #include <linux/delay.h>
 #include <linux/input.h>
+#include <linux/gpio.h>
 
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -45,21 +46,21 @@ struct eb600_key_info
 };
 
 static struct eb600_key_info eb600_keys[] = {
-	{S3C2410_GPG2, S3C2410_GPG2_EINT10, KEY_LEFT},
-	{S3C2410_GPG3, S3C2410_GPG3_EINT11, KEY_RIGHT},
-	{S3C2410_GPG0, S3C2410_GPG0_EINT8, KEY_UP},
-	{S3C2410_GPG1, S3C2410_GPG1_EINT9, KEY_DOWN},
-	{S3C2410_GPF7, S3C2410_GPF7_EINT7, KEY_ENTER},
+	{S3C2410_GPG(2), S3C2410_GPG2_EINT10, KEY_LEFT},
+	{S3C2410_GPG(3), S3C2410_GPG3_EINT11, KEY_RIGHT},
+	{S3C2410_GPG(0), S3C2410_GPG0_EINT8, KEY_UP},
+	{S3C2410_GPG(1), S3C2410_GPG1_EINT9, KEY_DOWN},
+	{S3C2410_GPF(7), S3C2410_GPF7_EINT7, KEY_ENTER},
 
-	{S3C2410_GPF6, S3C2410_GPF6_EINT6, KEY_DIRECTION},
-	{S3C2410_GPF5, S3C2410_GPF5_EINT5, KEY_ESC},
-	{S3C2410_GPF4, S3C2410_GPF4_EINT4, KEY_PLAYPAUSE},
-	{S3C2410_GPF3, S3C2410_GPF3_EINT3, KEY_MENU},
+	{S3C2410_GPF(6), S3C2410_GPF6_EINT6, KEY_DIRECTION},
+	{S3C2410_GPF(5), S3C2410_GPF5_EINT5, KEY_ESC},
+	{S3C2410_GPF(4), S3C2410_GPF4_EINT4, KEY_PLAYPAUSE},
+	{S3C2410_GPF(3), S3C2410_GPF3_EINT3, KEY_MENU},
 
-	{S3C2410_GPG4, S3C2410_GPG4_EINT12, KEY_KPPLUS},
-	{S3C2410_GPG5, S3C2410_GPG5_EINT13, KEY_KPMINUS},
+	{S3C2410_GPG(4), S3C2410_GPG4_EINT12, KEY_KPPLUS},
+	{S3C2410_GPG(5), S3C2410_GPG5_EINT13, KEY_KPMINUS},
 
-	{S3C2410_GPF0, S3C2410_GPF0_EINT0, KEY_POWER},
+	{S3C2410_GPF(0), S3C2410_GPF0_EINT0, KEY_POWER},
 };
 
 	
@@ -83,7 +84,7 @@ static void eb600_keys_kb_timer(unsigned long data)
 	struct input_dev *input = (struct input_dev *)data;
 
 	for (i = 0; i < ARRAY_SIZE(eb600_keys); i++) {
-		if (!s3c2410_gpio_getpin(eb600_keys[i].pin)) {
+		if (!gpio_get_value(eb600_keys[i].pin)) {
 			if (!key_state[i]) {
 				key_state[i] = jiffies + longpress_time;
 			} else {
@@ -161,8 +162,8 @@ static int __init eb600_keys_init(void)
 {
 	int i, error;
 	for (i=0;i<ARRAY_SIZE(eb600_keys);i++)
-		s3c2410_gpio_cfgpin(eb600_keys[i].pin, S3C2410_GPIO_INPUT);
-		
+		s3c_gpio_cfgpin(eb600_keys[i].pin, S3C2410_GPIO_INPUT);
+
 	input = input_allocate_device();
 	if (!input)
 		return -ENOMEM;
@@ -178,12 +179,12 @@ static int __init eb600_keys_init(void)
 	input->id.version = 0x0100;
 
 	setup_timer(&kb_timer, eb600_keys_kb_timer, (unsigned long)input);
-	
+
 	for (i=0;i<ARRAY_SIZE(eb600_keys);i++)
 		input_set_capability(input, EV_KEY, eb600_keys[i].key_code);
 
 	input_set_capability(input, EV_KEY, KEY_LEFTALT);
-		
+
 	error = input_register_device(input);
 	if (error) {
 		printk(KERN_ERR "Unable to register eb600-keys input device\n");
@@ -202,13 +203,13 @@ static int __init eb600_keys_init(void)
 	eb600_keys_isr(0, input);
 
 	for (i = 0; i < ARRAY_SIZE(eb600_keys); i++) {
-		int irq = s3c2410_gpio_getirq(eb600_keys[i].pin);
+		int irq = gpio_to_irq(eb600_keys[i].pin);
 
-		s3c2410_gpio_cfgpin(eb600_keys[i].pin, eb600_keys[i].pin_config);
-		s3c2410_gpio_pullup(eb600_keys[i].pin, 1);
+		s3c_gpio_cfgpin(eb600_keys[i].pin, eb600_keys[i].pin_config);
+		s3c_gpio_setpull(eb600_keys[i].pin, S3C_GPIO_PULL_NONE);
 
-		set_irq_type(irq, IRQ_TYPE_EDGE_BOTH);
-		error = request_irq(irq, eb600_keys_isr, IRQF_SAMPLE_RANDOM,
+		error = request_irq(irq, eb600_keys_isr, IRQF_SAMPLE_RANDOM | 
+					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				    "eb600_keys", input);
 		if (error) {
 			printk(KERN_ERR "eb600-keys: unable to claim irq %d; error %d\n",
@@ -217,14 +218,14 @@ static int __init eb600_keys_init(void)
 		}
 		enable_irq_wake(irq);
 	}
-	
+
 	return 0;
-	
+
 fail_reg_irqs:
 	for (i = i - 1; i >= 0; i--)
-		free_irq(s3c2410_gpio_getirq(eb600_keys[i].pin), input);
+		free_irq(gpio_to_irq(eb600_keys[i].pin), input);
 	device_remove_file(&input->dev, &dev_attr_poll_interval);
-	
+
 err_add_poll_interval:
 	device_remove_file(&input->dev, &dev_attr_longpress_time);
 err_add_longpress_time:
@@ -237,7 +238,7 @@ static void __exit eb600_keys_exit(void)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(eb600_keys); i++) {
-		int irq = s3c2410_gpio_getirq(eb600_keys[i].pin);
+		int irq = gpio_to_irq(eb600_keys[i].pin);
 
 		disable_irq_wake(irq);
 		free_irq(irq, input);

@@ -18,6 +18,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/interrupt.h>
+#include <linux/gpio.h>
 
 #include <mach/regs-gpio.h>
 #include <plat/regs-adc.h>
@@ -25,7 +26,7 @@
 #include <asm/mach/map.h>
 #include <asm/io.h>
 
-#define EB600_USBCK_PIN	S3C2410_GPF2
+#define EB600_USBCK_PIN	S3C2410_GPF(2)
 #define EB600_USBCK_IRQ	S3C2410_GPF2_EINT2
 
 static void __iomem *adc_base;
@@ -80,7 +81,7 @@ static int eb600_battery_get_capacity(struct power_supply *b)
 
 static int eb600_usb_connected (void)
 {
-	return s3c2410_gpio_getpin(EB600_USBCK_PIN) ? 0 : 1;
+	return gpio_get_value(EB600_USBCK_PIN) ? 0 : 1;
 }
 
 static int eb600_battery_charging (void)
@@ -236,8 +237,8 @@ static int eb600_battery_probe(struct platform_device *dev)
 	if(ret != 0)
 		goto err1;
 
-	s3c2410_gpio_cfgpin(EB600_USBCK_PIN, S3C2410_GPIO_INPUT);	//USB_pin
-	s3c2410_gpio_cfgpin(EB600_USBCK_PIN, EB600_USBCK_IRQ);
+	s3c_gpio_cfgpin(EB600_USBCK_PIN, S3C2410_GPIO_INPUT);	//USB_pin
+	s3c_gpio_cfgpin(EB600_USBCK_PIN, EB600_USBCK_IRQ);
 
 	ret = power_supply_register(NULL, &eb600_battery);
 	if(ret != 0)
@@ -252,7 +253,7 @@ static int eb600_battery_probe(struct platform_device *dev)
 		goto err_reg_usb;
 	}
 
-	irq = s3c2410_gpio_getirq(EB600_USBCK_PIN);
+	irq = gpio_to_irq(EB600_USBCK_PIN);
 	ret = request_irq(irq, eb600_usb_change_irq,
 			IRQF_DISABLED | IRQF_TRIGGER_RISING
 			| IRQF_TRIGGER_FALLING | IRQF_SHARED,
@@ -267,7 +268,7 @@ static int eb600_battery_probe(struct platform_device *dev)
 
 	return ret;
 
-	free_irq(s3c2410_gpio_getirq(EB600_USBCK_PIN), &eb600_usb);
+	free_irq(gpio_to_irq(EB600_USBCK_PIN), &eb600_usb);
 err_usb_irq:
 	power_supply_unregister(&eb600_usb);
 err_reg_usb:
@@ -281,8 +282,8 @@ err1:
 
 static int eb600_battery_remove(struct platform_device *dev)
 {
-	disable_irq_wake(s3c2410_gpio_getirq(EB600_USBCK_PIN));
-	free_irq(s3c2410_gpio_getirq(EB600_USBCK_PIN), &eb600_usb);
+	disable_irq_wake(gpio_to_irq(EB600_USBCK_PIN));
+	free_irq(gpio_to_irq(EB600_USBCK_PIN), &eb600_usb);
 
 	power_supply_unregister(&eb600_usb);
 	power_supply_unregister(&eb600_battery);
