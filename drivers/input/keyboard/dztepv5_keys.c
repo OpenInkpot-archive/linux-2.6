@@ -25,6 +25,7 @@
 #include <linux/proc_fs.h>
 #include <linux/delay.h>
 #include <linux/input.h>
+#include <linux/gpio.h>
 
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -46,39 +47,38 @@ struct eb600_key_info
 };
 
 static struct eb600_key_info eb600_keys[] = {
-	{S3C2410_GPG8, S3C2410_GPG8_EINT16, KEY_LEFT},
-	{S3C2410_GPG3, S3C2410_GPG3_EINT11, KEY_RIGHT},
-	{S3C2410_GPG0, S3C2410_GPG0_EINT8, KEY_UP},
-	{S3C2410_GPG1, S3C2410_GPG1_EINT9, KEY_DOWN},
-	{S3C2410_GPF7, S3C2410_GPF7_EINT7, KEY_ENTER},
+	{S3C2410_GPG(8), S3C2410_GPG8_EINT16, KEY_LEFT},
+	{S3C2410_GPG(3), S3C2410_GPG3_EINT11, KEY_RIGHT},
+	{S3C2410_GPG(0), S3C2410_GPG0_EINT8, KEY_UP},
+	{S3C2410_GPG(1), S3C2410_GPG1_EINT9, KEY_DOWN},
+	{S3C2410_GPF(7), S3C2410_GPF7_EINT7, KEY_ENTER},
 
-	{S3C2410_GPF6, S3C2410_GPF6_EINT6, KEY_DIRECTION},
-	{S3C2410_GPF5, S3C2410_GPF5_EINT5, KEY_ESC},
-	{S3C2410_GPF4, S3C2410_GPF4_EINT4, KEY_PLAYPAUSE},
-	{S3C2410_GPF3, S3C2410_GPF3_EINT3, KEY_MENU},
+	{S3C2410_GPF(6), S3C2410_GPF6_EINT6, KEY_DIRECTION},
+	{S3C2410_GPF(5), S3C2410_GPF5_EINT5, KEY_ESC},
+	{S3C2410_GPF(4), S3C2410_GPF4_EINT4, KEY_PLAYPAUSE},
+	{S3C2410_GPF(3), S3C2410_GPF3_EINT3, KEY_MENU},
 
-	{S3C2410_GPG9, S3C2410_GPG9_EINT17, KEY_KPPLUS},
-	{S3C2410_GPG12, S3C2410_GPG12_EINT20, KEY_KPMINUS},
+	{S3C2410_GPG(12), S3C2410_GPG9_EINT17, KEY_KPPLUS},
+	{S3C2410_GPG(9), S3C2410_GPG12_EINT20, KEY_KPMINUS},
 
+	{S3C2410_GPD(13), S3C2410_GPIO_INPUT, KEY_5},
+	{S3C2410_GPD(14), S3C2410_GPIO_INPUT, KEY_6},
+	{S3C2410_GPD(15), S3C2410_GPIO_INPUT, KEY_9},
 
-	{S3C2410_GPD13, S3C2410_GPIO_INPUT, KEY_5},
-	{S3C2410_GPD14, S3C2410_GPIO_INPUT, KEY_6},
-	{S3C2410_GPD15, S3C2410_GPIO_INPUT, KEY_9},
+	{S3C2410_GPJ(0), S3C2410_GPIO_INPUT, KEY_0},
+	{S3C2410_GPJ(1), S3C2410_GPIO_INPUT, KEY_1},
+	{S3C2410_GPJ(2), S3C2410_GPIO_INPUT, KEY_2},
+	{S3C2410_GPJ(3), S3C2410_GPIO_INPUT, KEY_3},
+	{S3C2410_GPJ(4), S3C2410_GPIO_INPUT, KEY_4},
 
-	{S3C2440_GPJ0, S3C2410_GPIO_INPUT, KEY_0},
-	{S3C2440_GPJ1, S3C2410_GPIO_INPUT, KEY_1},
-	{S3C2440_GPJ2, S3C2410_GPIO_INPUT, KEY_2},
-	{S3C2440_GPJ3, S3C2410_GPIO_INPUT, KEY_3},
-	{S3C2440_GPJ4, S3C2410_GPIO_INPUT, KEY_4},
+	{S3C2410_GPJ(7), S3C2410_GPIO_INPUT, KEY_7},
+	{S3C2410_GPJ(8), S3C2410_GPIO_INPUT, KEY_8},
 
-	{S3C2440_GPJ7, S3C2410_GPIO_INPUT, KEY_7},
-	{S3C2440_GPJ8, S3C2410_GPIO_INPUT, KEY_8},
+	{S3C2410_GPJ(10), S3C2410_GPIO_INPUT, KEY_PAGEUP},
+	{S3C2410_GPJ(11), S3C2410_GPIO_INPUT, KEY_KPENTER},
+	{S3C2410_GPJ(12), S3C2410_GPIO_INPUT, KEY_PAGEDOWN},
 
-	{S3C2440_GPJ10, S3C2410_GPIO_INPUT, KEY_PAGEUP},
-	{S3C2440_GPJ11, S3C2410_GPIO_INPUT, KEY_KPENTER},
-	{S3C2440_GPJ12, S3C2410_GPIO_INPUT, KEY_PAGEDOWN},
-
-	{S3C2410_GPF0, S3C2410_GPF0_EINT0, KEY_POWER},
+	{S3C2410_GPF(0), S3C2410_GPF0_EINT0, KEY_POWER},
 };
 
 
@@ -102,7 +102,7 @@ static void eb600_keys_kb_timer(unsigned long data)
 	struct input_dev *input = (struct input_dev *)data;
 
 	for (i = 0; i < ARRAY_SIZE(eb600_keys); i++) {
-		if (!s3c2410_gpio_getpin(eb600_keys[i].pin)) {
+		if (!gpio_get_value(eb600_keys[i].pin)) {
 			if (!key_state[i]) {
 				key_state[i] = jiffies + longpress_time;
 			} else {
@@ -138,7 +138,6 @@ static void eb600_keys_kb_timer(unsigned long data)
 
 static irqreturn_t eb600_keys_isr(int irq, void *dev_id)
 {
-	printk("EB600_KEYS_ISR\n");
 	eb600_keys_kb_timer((unsigned long)(dev_id));
 	return IRQ_HANDLED;
 }
@@ -181,7 +180,7 @@ static int __init eb600_keys_init(void)
 {
 	int i, error;
 	for (i=0;i<ARRAY_SIZE(eb600_keys);i++)
-		s3c2410_gpio_cfgpin(eb600_keys[i].pin, S3C2410_GPIO_INPUT);
+		s3c_gpio_cfgpin(eb600_keys[i].pin, S3C2410_GPIO_INPUT);
 
 	input = input_allocate_device();
 	if (!input)
@@ -229,13 +228,13 @@ static int __init eb600_keys_init(void)
 			continue;
 		}
 
-		irq = s3c2410_gpio_getirq(eb600_keys[i].pin);
+		irq = gpio_to_irq(eb600_keys[i].pin);
 
-		s3c2410_gpio_cfgpin(eb600_keys[i].pin, eb600_keys[i].pin_config);
-		s3c2410_gpio_pullup(eb600_keys[i].pin, 1);
+		s3c_gpio_cfgpin(eb600_keys[i].pin, eb600_keys[i].pin_config);
+		s3c_gpio_setpull(eb600_keys[i].pin, S3C_GPIO_PULL_NONE);
 
-		set_irq_type(irq, IRQ_TYPE_EDGE_BOTH);
-		error = request_irq(irq, eb600_keys_isr, IRQF_SAMPLE_RANDOM,
+		error = request_irq(irq, eb600_keys_isr, IRQF_SAMPLE_RANDOM | 
+					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				    "eb600_keys", input);
 		if (error) {
 			printk(KERN_ERR "eb600-keys: unable to claim irq %d; error %d\n",
@@ -246,13 +245,13 @@ static int __init eb600_keys_init(void)
 	}
 
 	{
-		int irq = s3c2410_gpio_getirq(S3C2410_GPF1);
+		int irq = gpio_to_irq(S3C2410_GPF(1));
 
-		s3c2410_gpio_cfgpin(S3C2410_GPF1, S3C2410_GPF1_EINT1);
-		s3c2410_gpio_pullup(S3C2410_GPF1, 1);
+		s3c_gpio_cfgpin(S3C2410_GPF(1), S3C2410_GPF1_EINT1);
+		s3c_gpio_setpull(S3C2410_GPF(1), S3C_GPIO_PULL_NONE);
 
-		set_irq_type(irq, IRQ_TYPE_EDGE_BOTH);
-		error = request_irq(irq, eb600_keys_isr, IRQF_SAMPLE_RANDOM,
+		error = request_irq(irq, eb600_keys_isr, IRQF_SAMPLE_RANDOM | 
+					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				    "eb600_keys", input);
 		if (error) {
 			printk(KERN_ERR "eb600-keys: unable to claim irq %d; error %d\n",
@@ -266,7 +265,7 @@ static int __init eb600_keys_init(void)
 
 fail_reg_irqs:
 	for (i = i - 1; i >= 0; i--)
-		free_irq(s3c2410_gpio_getirq(eb600_keys[i].pin), input);
+		free_irq(gpio_to_irq(eb600_keys[i].pin), input);
 	device_remove_file(&input->dev, &dev_attr_poll_interval);
 
 err_add_poll_interval:
@@ -281,7 +280,7 @@ static void __exit eb600_keys_exit(void)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(eb600_keys); i++) {
-		int irq = s3c2410_gpio_getirq(eb600_keys[i].pin);
+		int irq = gpio_to_irq(eb600_keys[i].pin);
 
 		disable_irq_wake(irq);
 		free_irq(irq, input);

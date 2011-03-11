@@ -46,4 +46,5 @@ obj-$(CONFIG_KEYBOARD_TWL4030)		+= twl4030_keypad.o
 obj-$(CONFIG_KEYBOARD_XTKBD)		+= xtkbd.o
 obj-$(CONFIG_KEYBOARD_W90P910)		+= w90p910_keypad.o
 obj-$(CONFIG_KEYBOARD_LBOOK_V3)		+= lbookv3_keys.o
-obj-$(CONFIG_KEYBOARD_EB600)	+= eb600_keys.o
+obj-$(CONFIG_KEYBOARD_EB600)		+= eb600_keys.o
+obj-$(CONFIG_KEYBOARD_DZTEPV5)		+= dztepv5_keys.o

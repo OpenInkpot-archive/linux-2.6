@@ -517,6 +517,15 @@ config KEYBOARD_EB600
          Driver for Netronix EB-600 eink reader keys.
 
          To compile this driver as a module, choose M here: the
-         module will be called gpio-keys.
+         module will be called eb600_keys.
+
+config KEYBOARD_DZTEPV5
+       tristate "Dztep V5 reader buttons"
+       depends on GENERIC_GPIO && ARCH_EB600
+       help
+         Driver for Dztep V5 eink reader keys.
+
+         To compile this driver as a module, choose M here: the
+         module will be called dztepv5_keys.
 
 endif
