@@ -603,8 +603,6 @@ static void __init lbookv3_reserve(void)
 MACHINE_START(LBOOK_V3, "LBOOK_V3") /* @TODO: request a new identifier and switch
 				    * to LBOOK_V3 */
 	/* Maintainer: Yauhen Kharuzhy */
-	.phys_io	= S3C2410_PA_UART,
-	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
 	.boot_params	= S3C2410_SDRAM_PA + 0x100,
 	.map_io		= lbookv3_map_io,
 	.reserve	= lbookv3_reserve,
