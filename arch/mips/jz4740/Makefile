@@ -12,9 +12,6 @@ obj-$(CONFIG_DEBUG_FS) += clock-debugfs.o
 # board specific support
 
 obj-$(CONFIG_JZ4740_QI_LB60)	+= board-qi_lb60.o
-obj-$(CONFIG_JZ4740_N516)	+= board-n516.o
-obj-$(CONFIG_JZ4740_N516v2)	+= board-n516v2.o
-obj-$(CONFIG_JZ4740_N516_DISPLAY)	+= board-n516-display.o
 
 # PM support
 

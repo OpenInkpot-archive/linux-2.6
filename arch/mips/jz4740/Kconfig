@@ -6,16 +6,6 @@ choice
 config JZ4740_QI_LB60
 	bool "Qi Hardware Ben NanoNote"
 
-config JZ4740_N516
-	bool "Hanvon N516 eBook reader"
-	select DMA_NONCOHERENT
-	select SOC_JZ4740
-
-config JZ4740_N516v2
-	bool "Hanvon N516 eBook reader, version 2 (with Epson display controller)"
-	select DMA_NONCOHERENT
-	select SOC_JZ4740
-
 endchoice
 
 config HAVE_PWM
