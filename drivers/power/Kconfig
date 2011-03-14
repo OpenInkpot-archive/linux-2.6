@@ -191,13 +191,6 @@ config BATTERY_LBOOKV3
 	help
 	  Say Y to enable support for the battery in HanLin/lBook eReader V3.
 
-config CHARGER_GPIO
-	tristate "GPIO charger"
-	depends on GPIOLIB
-	help
-	  Say Y to include support for chargers indicating their status through
-	  a GPIO pin.
-
 config BATTERY_EB600
 	tristate "Netronix EB-600 battery and USB power supply"
 	depends on ARCH_EB600
