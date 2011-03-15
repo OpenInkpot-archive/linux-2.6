@@ -88,21 +88,6 @@ static struct platform_device n516_leds_device = {
 	},
 };
 
-static struct mtd_partition n516_partitions[] = {
-	{ .name = "NAND BOOT partition",
-	  .offset = 0 * 0x100000,
-	  .size = 4 * 0x100000,
-	},
-	{ .name = "NAND KERNEL partition",
-	  .offset = 4 * 0x100000,
-	  .size = 4 * 0x100000,
-	},
-	{ .name = "NAND ROOTFS partition",
-	  .offset = 8 * 0x100000,
-	  .size = 504 * 0x100000,
-	},
-};
-
 static struct nand_ecclayout n516_ecclayout = {
 	.eccbytes = 36,
 	.eccpos = {
@@ -125,8 +110,8 @@ static struct nand_ecclayout n516_ecclayout = {
 
 static struct jz_nand_platform_data n516_nand_pdata = {
 	.ecc_layout = &n516_ecclayout,
-	.partitions = n516_partitions,
-	.num_partitions = ARRAY_SIZE(n516_partitions),
+	/* cmdline parsing only */
+	.num_partitions = 0,
 	.busy_gpio = 94,
 };
 
