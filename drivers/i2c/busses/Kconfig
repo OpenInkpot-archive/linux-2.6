@@ -433,7 +433,7 @@ config I2C_IXP2000
 
 config I2C_JZ47XX
 	tristate "JZ4740 I2C Interface"
-	depends on ARCH_JZ4740
+	depends on MACH_JZ4740
 	help
 	  Say Y here if you want support for the I2C controller found on Ingenic
 	  JZ47XX based SoCs.
