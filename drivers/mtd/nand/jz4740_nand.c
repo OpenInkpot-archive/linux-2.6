@@ -252,7 +252,7 @@ static int jz_nand_correct_ecc_rs(struct mtd_info *mtd, uint8_t *dat,
 }
 
 #ifdef CONFIG_MTD_CMDLINE_PARTS
-static const char *part_probes[] = {"cmdline", NULL};
+static const char *part_probes[] = {"cmdlinepart", NULL};
 #endif
 
 static int jz_nand_ioremap_resource(struct platform_device *pdev,
