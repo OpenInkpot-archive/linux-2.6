@@ -194,7 +194,7 @@ static void __init n516_presetup_fb(void)
 	*/
 
 	n516_board_info.fw = 800;
-	n516_board_info.fh = 624;
+	n516_board_info.fh = 600;
 
 	/* waveform must be 16k + 2 for checksum */
 	n516_board_info.wfm_size = roundup(16*1024 + 2, n516_board_info.fw);
@@ -253,11 +253,11 @@ static void n516_power_ctl(struct metronomefb_par *par, int cmd)
 	switch (cmd) {
 	case METRONOME_POWER_OFF:
 		gpio_set_value(GPIO_DISPLAY_OFF_N, 1);
-		n516_enable_hostfb(false);
+		fb_blank(n516_board_info.host_fbinfo, FB_BLANK_NORMAL);
 		break;
 	case METRONOME_POWER_ON:
 		gpio_set_value(GPIO_DISPLAY_OFF_N, 0);
-		n516_enable_hostfb(true);
+		fb_blank(n516_board_info.host_fbinfo, FB_BLANK_UNBLANK);
 		break;
 	}
 }
@@ -358,6 +358,8 @@ static struct metronome_board n516_board __initdata = {
 	.met_wait_event_intr	= n516_wait_event_intr,
 	.get_panel_type		= n516_get_panel_type,
 	.cleanup		= n516_cleanup,
+	.panel_rotation = FB_ROTATE_CW,
+	.pwr_timings            = {1024, 1024, 2048},
 };
 
 static int __init n516_init(void)
