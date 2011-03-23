@@ -10,7 +10,7 @@
  * Layout is based on skeletonfb.c by James Simmons and Geert Uytterhoeven.
  *
  * This work was made possible by help and equipment support from E-Ink
- * Corporation. http://www.eink.com/
+ * Corporation. http://support.eink.com/community
  *
  * This driver is written to be used with the Metronome display controller.
  * It is intended to be architecture independent. A board specific driver
@@ -24,6 +24,7 @@
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <linux/mm.h>
+#include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -347,8 +348,6 @@ static int load_waveform(u8 *mem, size_t size, int m, int t,
 	}
 	par->frame_count = (mem_idx_real - par->epd_frame->fw) / 64;
 
-	*par->metromem_wfm_csum = cs;
-
 	par->current_wf_mode = m;
 	par->current_wf_temp = t;
 
@@ -429,7 +428,7 @@ static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 		if (par->board->pwr_timings[i])
 			par->metromem_cmd->args[i] = par->board->pwr_timings[i];
 		else
-			par->metromem_cmd->args[i] = 100; /* reasonable default for fast powerup */
+			par->metromem_cmd->args[i] = 1000;
 
 		cs += par->metromem_cmd->args[i];
 	}
@@ -1068,6 +1067,18 @@ DEVICE_ATTR(temp, 0644,
 DEVICE_ATTR(autorefresh_interval, 0644,
 		metronomefb_autorefresh_interval_show, metronomefb_autorefresh_interval_store);
 
+#ifdef CONFIG_PM
+static void metronomefb_resume_worker(struct work_struct *work)
+{
+	struct delayed_work *dwork =
+		container_of(work, struct delayed_work, work);
+	struct metronomefb_par *par =
+		container_of(dwork, struct metronomefb_par, resume_work);
+
+	metronome_bootup(par);
+	mutex_unlock(&par->lock);
+}
+#endif
 
 static int __devinit metronomefb_probe(struct platform_device *dev)
 {
@@ -1126,6 +1137,9 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	}
 
 	par = info->par;
+#ifdef CONFIG_PM
+	INIT_DELAYED_WORK(&par->resume_work, metronomefb_resume_worker);
+#endif
 
 	fw = epd_frame_table[epd_dt_index].fw;
 	fh = epd_frame_table[epd_dt_index].fh;
@@ -1242,7 +1256,7 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	if (retval < 0)
 		goto err_free_irq;
 
-	info->flags = FBINFO_FLAG_DEFAULT | FBINFO_VIRTFB;
+	info->flags = FBINFO_FLAG_DEFAULT;
 
 	info->fbdefio = &metronomefb_defio;
 	fb_deferred_io_init(info);
@@ -1368,8 +1382,7 @@ static int metronomefb_resume(struct platform_device *pdev)
 		par->board->power_ctl(par, METRONOME_POWER_ON);
 
 	mutex_lock(&par->lock);
-	metronome_bootup(par);
-	mutex_unlock(&par->lock);
+	schedule_delayed_work(&par->resume_work, 1);
 
 	return 0;
 }

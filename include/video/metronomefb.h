@@ -58,6 +58,9 @@ struct metronomefb_par {
 	unsigned is_first_update:1;
 
 	struct mutex lock;
+#ifdef CONFIG_PM
+	struct delayed_work resume_work;
+#endif
 };
 
 #define METRONOME_POWER_OFF	0
