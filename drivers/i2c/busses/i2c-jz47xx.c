@@ -257,7 +257,10 @@ num)
 
 	printk("xfer ret: %d\n", ret);
 
-	return ret;
+	if (ret)
+		return ret;
+	else
+		return i;
 }
 
 static u32 jz47xx_i2c_functionality(struct i2c_adapter *adap)
