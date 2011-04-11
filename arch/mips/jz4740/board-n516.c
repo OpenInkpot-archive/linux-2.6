@@ -141,6 +141,7 @@ static struct platform_device *n516_devices[] __initdata = {
 	&jz4740_mmc_device,
 	&jz4740_i2s_device,
 	&jz4740_codec_device,
+	&jz4740_pcm_device,
 	&jz4740_rtc_device,
 	&jz4740_udc_device,
 	&jz4740_i2c_device,

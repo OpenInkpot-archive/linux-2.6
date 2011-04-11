@@ -152,7 +152,7 @@ config SND_SOC_CX20442
 	tristate
 
 config SND_SOC_JZ4740_CODEC
-	tristate
+       tristate "JZ4740 internal codec"
 
 config SND_SOC_L3
        tristate

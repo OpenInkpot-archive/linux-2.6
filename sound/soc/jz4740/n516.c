@@ -24,7 +24,6 @@
 #include <linux/gpio.h>
 #include <linux/workqueue.h>
 
-#include "../codecs/jzcodec.h"
 #include "jz4740-pcm.h"
 #include "jz4740-i2s.h"
 
@@ -85,7 +84,7 @@ static int n516_headphone_event(struct snd_soc_dapm_widget *widget,
 			     struct snd_kcontrol *ctrl, int event)
 {
 	/* We can't call soc_dapm_sync from a event handler */
-	if (event & (SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD))
+	if (event & (SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_POST_PMD))
 		schedule_work(&n516_headphone_work);
 	return 0;
 }
@@ -135,22 +134,57 @@ static const struct snd_kcontrol_new n516_controls[] = {
 			SND_SOC_DAIFMT_NB_NF | \
 			SND_SOC_DAIFMT_CBM_CFM)
 
-static int n516_codec_init(struct snd_soc_codec *codec)
+static struct snd_soc_jack n516_hp_jack;
+
+static struct snd_soc_jack_pin n516_hp_pin = {
+	.pin = "Headphone",
+	.mask = SND_JACK_HEADPHONE,
+};
+
+static struct snd_soc_jack_gpio n516_hp_gpio = {
+	.gpio = GPIO_HPHONE_DETECT,
+	.name = "Headphone detect",
+	.report = SND_JACK_HEADPHONE,
+	.debounce_time = 100,
+};
+
+static int n516_add_headphone_jack(void)
 {
 	int ret;
-	struct snd_soc_dai *cpu_dai = codec->socdev->card->dai_link->cpu_dai;
-	struct snd_soc_dai *codec_dai = codec->socdev->card->dai_link->codec_dai;
+
+	ret = snd_soc_jack_new(n516_codec, "Headphone jack",
+		SND_JACK_HEADPHONE, &n516_hp_jack);
+	if (ret)
+		return ret;
+
+	ret = snd_soc_jack_add_pins(&n516_hp_jack, 1, &n516_hp_pin);
+	if (ret)
+		return ret;
+
+	ret = snd_soc_jack_add_gpios(&n516_hp_jack, 1, &n516_hp_gpio);
+
+	return ret;
+}
+
+static int n516_codec_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 
 	n516_codec = codec;
 
 	snd_soc_dapm_nc_pin(codec, "LIN");
 	snd_soc_dapm_nc_pin(codec, "RIN");
 
+    /*
 	ret = snd_soc_dai_set_fmt(codec_dai, N516_DAIFMT);
 	if (ret < 0) {
 		dev_err(codec->dev, "Failed to set codec dai format: %d\n", ret);
 		return ret;
 	}
+    */
 
 	ret = snd_soc_dai_set_fmt(cpu_dai, N516_DAIFMT);
 	if (ret < 0) {
@@ -158,12 +192,14 @@ static int n516_codec_init(struct snd_soc_codec *codec)
 		return ret;
 	}
 
-	ret = snd_soc_dai_set_sysclk(codec_dai, JZCODEC_SYSCLK, 111,
+    /*
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 111,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0) {
 		dev_err(codec->dev, "Failed to set codec dai sysclk: %d\n", ret);
 		return ret;
 	}
+	*/
 
 	ret = snd_soc_add_controls(codec, n516_controls,
 		ARRAY_SIZE(n516_controls));
@@ -171,7 +207,6 @@ static int n516_codec_init(struct snd_soc_codec *codec)
 		dev_err(codec->dev, "Failed to add controls: %d\n", ret);
 		return ret;
 	}
-
 
 	ret = snd_soc_dapm_new_controls(codec, n516_widgets,
 		ARRAY_SIZE(n516_widgets));
@@ -188,14 +223,21 @@ static int n516_codec_init(struct snd_soc_codec *codec)
 
 	snd_soc_dapm_sync(codec);
 
+	ret = n516_add_headphone_jack();
+	/* We can live without it, so just print a warning */
+	if (ret)
+		pr_warning("n516 snd: Failed to initalise headphone jack: %d\n", ret);
+
 	return 0;
 }
 
 static struct snd_soc_dai_link n516_dai = {
-	.name = "jz-codec",
-	.stream_name = "JZCODEC",
-	.cpu_dai = &jz4740_i2s_dai,
-	.codec_dai = &jz_codec_dai,
+	.name = "jz4740",
+	.stream_name = "jz4740",
+	.cpu_dai_name = "jz4740-i2s",
+	.platform_name = "jz4740-pcm-audio",
+	.codec_dai_name = "jz4740-hifi",
+	.codec_name = "jz4740-codec",
 	.init = n516_codec_init,
 };
 
@@ -203,47 +245,9 @@ static struct snd_soc_card n516_card = {
 	.name = "N516",
 	.dai_link = &n516_dai,
 	.num_links = 1,
-	.platform = &jz4740_soc_platform,
-};
-
-static struct snd_soc_device n516_snd_devdata = {
-	.card = &n516_card,
-	.codec_dev = &soc_codec_dev_jzcodec,
 };
 
 static struct platform_device *n516_snd_device;
-
-static struct snd_soc_jack n516_hp_jack;
-
-static struct snd_soc_jack_pin n516_hp_pin = {
-	.pin = "Headphone",
-	.mask = SND_JACK_HEADPHONE,
-};
-
-static struct snd_soc_jack_gpio n516_hp_gpio = {
-	.gpio = GPIO_HPHONE_DETECT,
-	.name = "Headphone detect",
-	.report = SND_JACK_HEADPHONE,
-	.debounce_time = 100,
-};
-
-static int __init n516_add_headphone_jack(void)
-{
-	int ret;
-
-	ret = snd_soc_jack_new(&n516_card, "Headphone jack",
-		SND_JACK_HEADPHONE, &n516_hp_jack);
-	if (ret)
-		return ret;
-
-	ret = snd_soc_jack_add_pins(&n516_hp_jack, 1, &n516_hp_pin);
-	if (ret)
-		return ret;
-
-	ret = snd_soc_jack_add_gpios(&n516_hp_jack, 1, &n516_hp_gpio);
-
-	return ret;
-}
 
 static int __init n516_init(void)
 {
@@ -264,18 +268,12 @@ static int __init n516_init(void)
 	gpio_direction_output(GPIO_SPEAKER_ENABLE, 0);
 	INIT_WORK(&n516_headphone_work, n516_headphone_event_work);
 
-	platform_set_drvdata(n516_snd_device, &n516_snd_devdata);
-	n516_snd_devdata.dev = &n516_snd_device->dev;
+	platform_set_drvdata(n516_snd_device, &n516_card);
 	ret = platform_device_add(n516_snd_device);
 	if (ret) {
 		pr_err("n516 snd: Failed to add snd soc device: %d\n", ret);
 		goto err_unset_pdata;
 	}
-
-	ret = n516_add_headphone_jack();
-	/* We can live without it, so just print a warning */
-	if (ret)
-		pr_warning("n516 snd: Failed to initalise headphone jack: %d\n", ret);
 
 	return 0;
 
