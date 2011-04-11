@@ -868,17 +868,17 @@ static int metronome_check_var(struct fb_var_screeninfo *var, struct fb_info *in
 	switch (rotation) {
 	case FB_ROTATE_CW:
 	case FB_ROTATE_CCW:
-		if (par->epd_frame->fw == var->yres && par->epd_frame->fh == var->xres)
-			return 0;
+		var->xres = var->xres_virtual = par->epd_frame->fh;
+		var->yres = var->yres_virtual = par->epd_frame->fw;
 		break;
 	case FB_ROTATE_UD:
 	default:
-		if (par->epd_frame->fw == var->xres && par->epd_frame->fh == var->yres)
-			return 0;
+		var->xres = var->xres_virtual = par->epd_frame->fw;
+		var->yres = var->yres_virtual = par->epd_frame->fh;
 		break;
 	}
 
-	return -EINVAL;
+	return 0;
 }
 
 static int metronomefb_set_par(struct fb_info *info)
@@ -897,10 +897,6 @@ static int metronomefb_set_par(struct fb_info *info)
 		info->fix.line_length = par->epd_frame->fw;
 		break;
 	}
-
-	mutex_lock(&par->lock);
-	metronomefb_dpy_update(info->par, 1);
-	mutex_unlock(&par->lock);
 
 	return 0;
 }
