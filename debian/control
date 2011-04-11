@@ -2,7 +2,7 @@ Source: linux-2.6
 Section: core
 Priority: optional
 Maintainer: Yauhen Kharuzhy <jekhor@gmail.com>
-Uploaders: Mikhail Gusarov <dottedmag@dottedmag.net>
+Uploaders: Mikhail Gusarov <dottedmag@dottedmag.net>, Alexander Kerner <lunohod@openinkpot.org>
 Build-Depends: debhelper (>= 7), dpatch, module-init-tools
 XCS-Cross-Host-Build-Depends: debhelper (>= 7), dpatch, module-init-tools, uboot-mkimage
 Standards-Version: 3.8.0
