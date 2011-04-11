@@ -715,20 +715,22 @@ static void metronomefb_dpy_update(struct metronomefb_par *par, int clear_all)
 	*par->metromem_img_csum = __cpu_to_le16(cksum);
 
 	if (clear_all || par->is_first_update ||
-		(par->partial_updates_count == par->partial_autorefresh_interval)) {
+		(par->partial_updates_count >= par->partial_autorefresh_interval)) {
 		m = WF_MODE_GC;
 		par->partial_updates_count = 0;
 	} else {
 		int change_count = metronomefb_get_change_count(par);
-		if (change_count < fbsize / 100 * par->manual_refresh_threshold)
+		if (change_count < fbsize / 100 * par->manual_refresh_threshold) {
 			m = WF_MODE_GU;
-		else
+			++par->partial_updates_count;
+		} else {
 			m = WF_MODE_GC;
+			par->partial_updates_count = 0;
+		}
 
 		dev_dbg(&par->pdev->dev, "change_count = %u, treshold = %u%% (%u pixels)\n",
 				change_count, par->manual_refresh_threshold,
 				fbsize / 100 * par->manual_refresh_threshold);
-		++par->partial_updates_count;
 	}
 
 	if (m != par->current_wf_mode)
