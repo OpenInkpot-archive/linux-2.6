@@ -43,11 +43,11 @@
 #include <asm/unaligned.h>
 
 /*
- * 12 is ok to avoid refreshing whole screen while small elements are changed,
+ * 88 is ok to avoid refreshing whole screen while small elements are changed,
  * while forcing full refresh if largish dialog boxes or menus are
  * shown/dismissed.
  */
-#define DEFAULT_MANUAL_REFRESH_THRESHOLD 12
+#define DEFAULT_MANUAL_REFRESH_THRESHOLD 88
 
 #define WF_MODE_INIT	0 /* Initialization */
 #define WF_MODE_MU	1 /* Monochrome update */
