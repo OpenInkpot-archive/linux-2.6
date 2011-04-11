@@ -5,10 +5,10 @@
 
 DEB_HOST_ARCH ?= $(dpkg-architecture -qDEB_HOST_ARCH)
 
-LINUX_VERSION = 2.6.32
+LINUX_VERSION = 2.6.37
 
 ifeq (armel,$(DEB_HOST_ARCH))
-  flavours := v3 v3ext nfsroot-v3 nfsroot-prs505
+  flavours := v3 v3ext nfsroot-v3 nfsroot-prs505 eb600
   kernel_arch := arm
 else
  ifeq (mipsel,$(DEB_HOST_ARCH))
@@ -47,7 +47,7 @@ build-arch-stamp:
 	for FLAVOUR in $(flavours); do \
 		mkdir -p build-$$FLAVOUR && \
 		cp $(CURDIR)/debian/config-$$FLAVOUR $(CURDIR)/.config && \
-		if [ "$$FLAVOUR" == "n516" ]; then image=uImage; else image=zImage; fi && \
+		if [ "$$FLAVOUR" == "n516" ]; then image=vmlinux.bin; else image=zImage; fi && \
 		$(MAKE) EXTRAVERSION=-$$FLAVOUR ARCH=$(kernel_arch) CROSS_COMPILE=$(DEB_HOST_GNU_TYPE)- INSTALL_MOD_PATH=build-$$FLAVOUR/ oldconfig && \
 		$(MAKE) EXTRAVERSION=-$$FLAVOUR ARCH=$(kernel_arch) CROSS_COMPILE=$(DEB_HOST_GNU_TYPE)- INSTALL_MOD_PATH=build-$$FLAVOUR/ $$image modules && \
 		$(MAKE) EXTRAVERSION=-$$FLAVOUR ARCH=$(kernel_arch) CROSS_COMPILE=$(DEB_HOST_GNU_TYPE)- INSTALL_MOD_PATH=build-$$FLAVOUR/ modules_install && \
@@ -72,7 +72,13 @@ install:
 	dh_installdirs -s
 	for FLAVOUR in $(flavours); do \
 		mkdir -p $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot; \
-		if [ "$$FLAVOUR" == "n516" ]; then image=uImage; else image=zImage; fi && \
+		if [ "$$FLAVOUR" == "n516" ]; then \
+			image=uImage; \
+			gzip -9 -c $(CURDIR)/build-$$FLAVOUR/vmlinux.bin > vmlinux.bin.gz; \
+			entry_addr=$$($(DEB_HOST_GNU_TYPE)-nm $(CURDIR)/vmlinux | grep "kernel_entry" | cut -d' ' -f1;); \
+			mkimage -A mips -O linux -T kernel -a 0x80010000 -C gzip -e 0x$$entry_addr -n 'Linux-$(LINUX_VERSION)-$$(FLAVOUR)' -d vmlinux.bin.gz $(CURDIR)/build-$$FLAVOUR/$$image; \
+			rm -f vmlinux.bin.gz \
+		else image=zImage; fi && \
 		install -m 0644 $(CURDIR)/build-$$FLAVOUR/$$image $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot/vmlinuz-$(LINUX_VERSION)-$$FLAVOUR; \
 		install -m 0644 $(CURDIR)/build-$$FLAVOUR/System.map $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot/System.map-$(LINUX_VERSION)-$$FLAVOUR; \
 		install -m 0644 $(CURDIR)/build-$$FLAVOUR/.config $(CURDIR)/debian/linux-image-$(LINUX_VERSION)-$$FLAVOUR/boot/config-$(LINUX_VERSION)-$$FLAVOUR; \
