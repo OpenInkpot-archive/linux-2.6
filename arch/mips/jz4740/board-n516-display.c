@@ -226,6 +226,7 @@ static int n516_setup_fb(struct metronomefb_par *par)
 	 * we can use its value to calculate the other entries */
 	par->metromem_cmd = (struct metromem_cmd *) n516_board_info.metromem;
 	par->metromem_wfm = n516_board_info.metromem + n516_board_info.fw;
+	par->metromem_wfm_csum = (u16 *)(par->metromem_wfm + 16384);
 	par->metromem_img = par->metromem_wfm + n516_board_info.wfm_size;
 	par->metromem_img_csum = (u16 *) (par->metromem_img + (n516_board_info.fw * n516_board_info.fh));
 	par->metromem_dma = n516_board_info.host_fbinfo->fix.smem_start;

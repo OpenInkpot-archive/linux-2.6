@@ -348,6 +348,8 @@ static int load_waveform(u8 *mem, size_t size, int m, int t,
 	}
 	par->frame_count = (mem_idx_real - par->epd_frame->fw) / 64;
 
+	*par->metromem_wfm_csum = cs;
+
 	par->current_wf_mode = m;
 	par->current_wf_temp = t;
 
