@@ -70,7 +70,7 @@ static struct gpio_led n516_leds[] = {
 	{
 		.name = "n516:blue:power",
 		.gpio = GPIO_LED_ENABLE,
-		.default_state = LEDS_GPIO_DEFSTATE_ON,
+		.default_state = LEDS_GPIO_DEFSTATE_OFF,
 		.default_trigger = "nand-disk",
 	}
 };
