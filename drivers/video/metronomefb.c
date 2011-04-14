@@ -916,7 +916,7 @@ static struct fb_ops metronomefb_ops = {
 };
 
 static struct fb_deferred_io metronomefb_defio = {
-	.delay		= HZ / 4,
+	.delay		= 50 * HZ / 1000,
 	.deferred_io	= metronomefb_dpy_deferred_io,
 };
 
