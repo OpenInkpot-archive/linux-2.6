@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/mips 2.6.37-n516 Kernel Configuration
-# Mon Apr 11 20:26:17 2011
+# Thu Apr 14 21:14:17 2011
 #
 CONFIG_MIPS=y
 
@@ -575,6 +575,7 @@ CONFIG_INPUT_KEYBOARD=y
 # CONFIG_KEYBOARD_GPIO_POLLED is not set
 # CONFIG_KEYBOARD_TCA6416 is not set
 # CONFIG_KEYBOARD_MATRIX is not set
+# CONFIG_KEYBOARD_LM8323 is not set
 # CONFIG_KEYBOARD_MAX7359 is not set
 # CONFIG_KEYBOARD_MCS is not set
 # CONFIG_KEYBOARD_NEWTON is not set
@@ -973,14 +974,33 @@ CONFIG_MMC_BLOCK_MINORS=8
 CONFIG_MMC_JZ4740=y
 # CONFIG_MEMSTICK is not set
 CONFIG_NEW_LEDS=y
-# CONFIG_LEDS_CLASS is not set
+CONFIG_LEDS_CLASS=y
 
 #
 # LED drivers
 #
+CONFIG_LEDS_GPIO=y
+CONFIG_LEDS_GPIO_PLATFORM=y
+# CONFIG_LEDS_LP3944 is not set
+# CONFIG_LEDS_LP5521 is not set
+# CONFIG_LEDS_LP5523 is not set
+# CONFIG_LEDS_PCA955X is not set
+# CONFIG_LEDS_PWM is not set
+# CONFIG_LEDS_BD2802 is not set
+# CONFIG_LEDS_LT3593 is not set
+CONFIG_LEDS_TRIGGERS=y
 
 #
 # LED Triggers
+#
+CONFIG_LEDS_TRIGGER_TIMER=m
+# CONFIG_LEDS_TRIGGER_HEARTBEAT is not set
+# CONFIG_LEDS_TRIGGER_BACKLIGHT is not set
+CONFIG_LEDS_TRIGGER_GPIO=m
+CONFIG_LEDS_TRIGGER_DEFAULT_ON=m
+
+#
+# iptables trigger is under Netfilter config (LED target)
 #
 # CONFIG_ACCESSIBILITY is not set
 CONFIG_RTC_LIB=y
