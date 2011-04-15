@@ -3,7 +3,7 @@ linux-2.6 (2.6.37-1) zelazny; urgency=low
   * update to 2.6.37
   * new device EB600
 
- -- Alexander Kerner <lunohod@openinkpot.ogr>  Mon, 11 Apr 2011 22:20:58 +0000
+ -- Alexander Kerner <lunohod@openinkpot.org>  Mon, 11 Apr 2011 22:20:58 +0000
 
 linux-2.6 (2.6.32-17) zelazny; urgency=low
 
