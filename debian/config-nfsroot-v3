@@ -394,7 +394,7 @@ CONFIG_ALIGNMENT_TRAP=y
 #
 CONFIG_ZBOOT_ROM_TEXT=0x0
 CONFIG_ZBOOT_ROM_BSS=0x0
-CONFIG_CMDLINE="noinitrd root=/dev/nfs nfsroot=192.168.111.2:/srv/nfs/openinkpot-root  console=tty1 console=ttySAC0 loglevel=8 ip=192.168.111.1"
+CONFIG_CMDLINE="noinitrd root=/dev/nfs nfsroot=192.168.111.2:/srv/nfs/openinkpot-root  console=tty1 console=ttySAC0 mem=32M loglevel=8 ip=192.168.111.1"
 CONFIG_CMDLINE_FORCE=y
 # CONFIG_XIP_KERNEL is not set
 CONFIG_KEXEC=y
