@@ -548,8 +548,8 @@ static int __devinit metronome_init_regs(struct metronomefb_par *par)
 static uint16_t metronomefb_update_img_buffer_rotated(struct metronomefb_par *par)
 {
 	int x, y;
-	int xstep, ystep;
-	int i, j;
+	int xstep, nextxstep, ystep;
+	int i, tmp_i, j;
 	uint16_t cksum = 0;
 	uint8_t *buf = par->info->screen_base;
 	uint32_t *img = (uint32_t *)(par->metromem_img);
@@ -559,61 +559,102 @@ static uint16_t metronomefb_update_img_buffer_rotated(struct metronomefb_par *pa
 	uint32_t *fxbuckets = par->fxbuckets;
 	uint32_t *fybuckets = par->fybuckets;
 	uint32_t diff;
-	uint32_t tmp;
+	uint32_t tmp, img_p;
+	unsigned int gap;
 
-	switch (par->rotation) {
-	case FB_ROTATE_CW:
-		xstep = -fh;
-		ystep = fw * fh + 1;
-		j = (fw - 1) * fh;
-		break;
-	case FB_ROTATE_UD:
-		xstep = -1;
-		ystep = 0;
-		j = fw * fh - 1;
-		break;
-	case FB_ROTATE_CCW:
-		xstep = fh;
-		ystep = -fw * fh - 1;
-		j = fh - 1;
-		break;
-	default:
-		BUG();
-		break;
+	inline uint32_t get_rotated_byte(uint8_t *p, int step) {
+		uint32_t tmp;
+
+		tmp = *p << 5;
+		p += step;
+		tmp |= *p << 13;
+		p += step;
+		tmp |= *p << 21;
+		p += step;
+		tmp |= *p << 29;
+
+		tmp &= 0xe0e0e0e0;
+
+		return tmp;
 	}
+
+	if(par->gap)
+		gap = par->gap / sizeof(*img);
 
 	memset(fxbuckets, 0, fw_buf * sizeof(*fxbuckets));
 	memset(fybuckets, 0, fh * sizeof(*fybuckets));
 
-	i = 0;
-	for (y = 0; y < fh; y++) {
-		if (par->gap && (y % 2))
-			i += par->gap / sizeof(*img);
-
-		for(x = 0; x < fw_buf; x++, i++) {
-			tmp = (buf[j] << 5);
-			j += xstep;
-			tmp |= (buf[j] << 13);
-			j += xstep;
-			tmp |= (buf[j] << 21);
-			j += xstep;
-			tmp |= (buf[j] << 29);
-			j += xstep;
-			tmp &= 0xe0e0e0e0;
-
-			img[i] &= 0xf0f0f0f0;
-			diff = img[i] ^ tmp;
-
-			fxbuckets[x] |= diff;
-			fybuckets[y] |= diff;
-
-			img[i] = (img[i] >> 4) | tmp;
-			cksum += img[i] & 0x0000ffff;
-			cksum += (img[i] >> 16);
-
+	if (par->rotation == FB_ROTATE_CW || par->rotation == FB_ROTATE_CCW) {
+		if (par->rotation == FB_ROTATE_CW) {
+			xstep = -fh;
+			ystep = 1;
+			nextxstep = -5 *fh;
+			j = (fw - 1) * fh;
+		} else {
+			xstep = fh;
+			ystep = -1;
+			nextxstep = 5 * fh;
+			j = fh - 1;
 		}
-		j += ystep;
-	}
+
+		i = 0;
+		for (x = 0; x < fw_buf; x++) {
+			uint32_t fxbucket = fxbuckets[x];
+			tmp_i = i;
+			for (y = 0; y < fh; y++) {
+
+				tmp = get_rotated_byte(buf+j, xstep);
+				j += ystep;
+
+				img_p = img[i];
+				img_p &= 0xf0f0f0f0;
+				diff = img_p ^ tmp;
+
+				fxbucket |= diff;
+				fybuckets[y] |= diff;
+
+				img_p = (img_p >> 4) | tmp;
+				cksum += img_p & 0x0000ffff;
+				cksum += (img_p >> 16);
+				img[i] = img_p;
+
+				i += fw_buf;
+				if ((y % 2) == 0)
+					i += gap;
+			}
+			j += nextxstep;
+			i = tmp_i + 1;
+			fxbuckets[x] = fxbucket;
+		}
+	} else if (par->rotation == FB_ROTATE_UD) {
+		j = fw * fh - 1;
+		i = 0;
+		for (y = 0; y < fh; y++) {
+			uint32_t fybucket = fybuckets[y];
+
+			if (par->gap && (y % 2))
+				i += gap;
+
+			for(x = 0; x < fw_buf; x++, i++) {
+				tmp = get_rotated_byte(buf+j, -1);
+				j -= 4;
+
+				img_p = img[i];
+				img_p &= 0xf0f0f0f0;
+				diff = img_p ^ tmp;
+
+				fxbuckets[x] |= diff;
+				fybucket |= diff;
+
+				img_p = (img_p >> 4) | tmp;
+				cksum += img_p & 0x0000ffff;
+				cksum += (img_p >> 16);
+				img[i] = img_p;
+			}
+			fybuckets[y] = fybucket;
+		}
+	} else
+		BUG();
 
 	return cksum;
 }
@@ -625,7 +666,7 @@ static uint16_t metronomefb_update_img_buffer_normal(struct metronomefb_par *par
 	uint32_t *buf = (uint32_t __force *)par->info->screen_base;
 	uint32_t *img = (uint32_t *)(par->metromem_img);
 	uint32_t diff;
-	uint32_t tmp;
+	uint32_t tmp, img_p;
 	int fw = par->epd_frame->fw;
 	int fh = par->epd_frame->fh;
 	int fw_buf = fw / sizeof(*buf);
@@ -643,15 +684,18 @@ static uint16_t metronomefb_update_img_buffer_normal(struct metronomefb_par *par
 
 		for(x = 0; x < fw_buf; x++, i++, j++) {
 			tmp = (buf[i] << 5) & 0xe0e0e0e0;
-			img[j] &= 0xf0f0f0f0;
-			diff = img[j] ^ tmp;
+			img_p = img[j];
+
+			img_p &= 0xf0f0f0f0;
+			diff = img_p ^ tmp;
 
 			fxbuckets[x] |= diff;
 			fybuckets[y] |= diff;
 
-			img[j] = (img[j] >> 4) | tmp;
-			cksum += img[j] & 0x0000ffff;
-			cksum += (img[j] >> 16);
+			img_p = (img_p >> 4) | tmp;
+			cksum += img_p & 0x0000ffff;
+			cksum += (img_p >> 16);
+			img[j] = img_p;
 		}
 	}
 
