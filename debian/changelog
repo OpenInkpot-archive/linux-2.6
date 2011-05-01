@@ -1,3 +1,15 @@
+linux-2.6 (2.6.37-3) zelazny; urgency=low
+
+  * metronomefb: speed up screen update
+  * Remove obsolete drivers/mmc/host/jz4740_mmc.c
+  * MMC: jz4740 host: enable wake-up on card detect interrupt
+  * MMC: remove garbage from previously committed MMC_DEFERRED_RESUME
+    patch
+  * MMC: fix card removal and insertion when using deferred resume
+  * N516: enable deferred mmc resume
+
+ -- Alexander Kerner <lunohod@openinkpot.org>  Mon, 02 May 2011 00:20:54 +0200
+
 linux-2.6 (2.6.37-2) zelazny; urgency=low
 
   * Add mem=32M to V3 cmdline
