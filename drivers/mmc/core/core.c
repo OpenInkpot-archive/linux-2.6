@@ -1563,17 +1563,6 @@ void mmc_rescan(struct work_struct *work)
 out_fail:
 		mmc_release_host(host);
 		mmc_power_off(host);
-//	} else {
-//		if (host->bus_ops->detect && !host->bus_dead)
-//			host->bus_ops->detect(host);
-//
-//		/* If the card was removed the bus will be marked
-//		 * as dead - extend the wakelock so userspace
-//		 * can respond */
-//		//if (host->bus_dead)
-//		//	extend_wakelock = 1;
-//
-//		//mmc_bus_put(host);
 	}
 out:
 	if (host->caps & MMC_CAP_NEEDS_POLL)
