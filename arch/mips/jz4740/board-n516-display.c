@@ -383,6 +383,7 @@ static struct metronome_board n516_board __initdata = {
 	.get_panel_type		= n516_get_panel_type,
 	.cleanup		= n516_cleanup,
 	.panel_rotation = FB_ROTATE_CW,
+	.pwr_timings		= {1024, 1024, 2048},
 };
 
 static int __init n516_init(void)

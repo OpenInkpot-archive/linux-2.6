@@ -430,7 +430,7 @@ static int __devinit metronome_powerup_cmd(struct metronomefb_par *par)
 		if (par->board->pwr_timings[i])
 			par->metromem_cmd->args[i] = par->board->pwr_timings[i];
 		else
-			par->metromem_cmd->args[i] = 100; /* reasonable default for fast powerup */
+			par->metromem_cmd->args[i] = 1000;
 
 		cs += par->metromem_cmd->args[i];
 	}
@@ -1069,6 +1069,18 @@ DEVICE_ATTR(temp, 0644,
 DEVICE_ATTR(autorefresh_interval, 0644,
 		metronomefb_autorefresh_interval_show, metronomefb_autorefresh_interval_store);
 
+#ifdef CONFIG_PM
+static void metronomefb_resume_worker(struct work_struct *work)
+{
+	struct delayed_work *dwork =
+		container_of(work, struct delayed_work, work);
+	struct metronomefb_par *par =
+		container_of(dwork, struct metronomefb_par, resume_work);
+
+	metronome_bootup(par);
+	mutex_unlock(&par->lock);
+}
+#endif
 
 static int __devinit metronomefb_probe(struct platform_device *dev)
 {
@@ -1127,6 +1139,9 @@ static int __devinit metronomefb_probe(struct platform_device *dev)
 	}
 
 	par = info->par;
+#ifdef CONFIG_PM
+	INIT_DELAYED_WORK(&par->resume_work, metronomefb_resume_worker);
+#endif
 
 	fw = epd_frame_table[epd_dt_index].fw;
 	fh = epd_frame_table[epd_dt_index].fh;
@@ -1369,8 +1384,7 @@ static int metronomefb_resume(struct platform_device *pdev)
 		par->board->power_ctl(par, METRONOME_POWER_ON);
 
 	mutex_lock(&par->lock);
-	metronome_bootup(par);
-	mutex_unlock(&par->lock);
+	schedule_delayed_work(&par->resume_work, 1);
 
 	return 0;
 }
