@@ -325,7 +325,7 @@ static int imxfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	struct imxfb_info *fbi = info->par;
 	struct imxfb_rgb *rgb;
 	const struct imx_fb_videomode *imxfb_mode;
-	unsigned long lcd_clk;
+	unsigned long lcd_clk, freq, freq1;
 	u32 pcr;
 
 	if (var->xres < MIN_XRES)
@@ -356,6 +356,12 @@ static int imxfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	lcd_clk = clk_get_rate(fbi->clk);
 
 	pcr = (unsigned int)(lcd_clk / var->pixclock);
+
+	freq = lcd_clk / pcr;
+	freq1 = lcd_clk / (pcr + 1);
+
+	if ((freq != var->pixclock) && ((var->pixclock - freq1) < (var->pixclock - freq)))
+		pcr++;
 
 	if (pcr > 0x40) {
 		pcr = 0x40;
