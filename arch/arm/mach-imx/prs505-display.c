@@ -72,6 +72,7 @@ struct imx_fb_videomode prs505_fb_modes[] = {
 struct imx_fb_platform_data prs505_fb_data = {
 	.mode		= prs505_fb_modes,
 	.num_modes	= ARRAY_SIZE(prs505_fb_modes),
+	.dmacr		= DMACR_BURST | DMACR_HM(8) | DMACR_TM(4),
 };
 
 #define STDBY_GPIO_PIN		(GPIO_PORTD | 10)
