@@ -188,6 +188,7 @@ struct imx_port {
 	struct timer_list	timer;
 	unsigned int		old_status;
 	int			txirq,rxirq,rtsirq;
+	int			suspended;
 	unsigned int		have_rtscts:1;
 	unsigned int		use_irda:1;
 	unsigned int		irda_inv_rx:1;
@@ -648,7 +649,7 @@ static int imx_startup(struct uart_port *port)
 			goto error_out2;
 
 		/* do not use RTS IRQ on IrDA */
-		if (!USE_IRDA(sport)) {
+		if (!USE_IRDA(sport) && (!sport->suspended || !device_may_wakeup(port->dev))) {
 			retval = request_irq(sport->rtsirq, imx_rtsint,
 				     (sport->rtsirq < MAX_INTERNAL_IRQ) ? 0 :
 				       IRQF_TRIGGER_FALLING |
@@ -770,7 +771,7 @@ static void imx_shutdown(struct uart_port *port)
 	 * Free the interrupts
 	 */
 	if (sport->txirq > 0) {
-		if (!USE_IRDA(sport))
+		if (!USE_IRDA(sport) && !device_may_wakeup(port->dev))
 			free_irq(sport->rtsirq, sport);
 		free_irq(sport->txirq, sport);
 		free_irq(sport->rxirq, sport);
@@ -782,7 +783,11 @@ static void imx_shutdown(struct uart_port *port)
 	 */
 
 	temp = readl(sport->port.membase + UCR1);
-	temp &= ~(UCR1_TXMPTYEN | UCR1_RRDYEN | UCR1_RTSDEN | UCR1_UARTEN);
+	temp &= ~(UCR1_TXMPTYEN | UCR1_RRDYEN | UCR1_UARTEN);
+
+	if (!device_may_wakeup(port->dev))
+		temp &= ~(UCR1_RTSDEN);
+
 	if (USE_IRDA(sport))
 		temp &= ~(UCR1_IREN);
 
@@ -1212,8 +1217,13 @@ static int serial_imx_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct imx_port *sport = platform_get_drvdata(dev);
 
-	if (sport)
+	if (sport) {
+		if (device_may_wakeup(&dev->dev))
+			enable_irq_wake(sport->rtsirq);
+
 		uart_suspend_port(&imx_reg, &sport->port);
+		sport->suspended = 1;
+	}
 
 	return 0;
 }
@@ -1222,8 +1232,14 @@ static int serial_imx_resume(struct platform_device *dev)
 {
 	struct imx_port *sport = platform_get_drvdata(dev);
 
-	if (sport)
+	if (sport) {
 		uart_resume_port(&imx_reg, &sport->port);
+
+		if (device_may_wakeup(&dev->dev))
+			disable_irq_wake(sport->rtsirq);
+
+		sport->suspended = 0;
+	}
 
 	return 0;
 }
@@ -1294,6 +1310,8 @@ static int serial_imx_probe(struct platform_device *pdev)
 		if (ret)
 			goto clkput;
 	}
+
+	device_init_wakeup(&pdev->dev, 1);
 
 	ret = uart_add_one_port(&imx_reg, &sport->port);
 	if (ret)
