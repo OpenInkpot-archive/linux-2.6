@@ -8,7 +8,7 @@ obj-y	:=  devices.o
 
 obj-$(CONFIG_IMX_HAVE_DMA_V1) += dma-v1.o
 
-obj-$(CONFIG_ARCH_MX1) += clock-imx1.o mm-imx1.o
+obj-$(CONFIG_ARCH_MX1) += clock-imx1.o mm-imx1.o pm-imx1.o
 obj-$(CONFIG_MACH_MX21) += clock-imx21.o mm-imx21.o
 
 obj-$(CONFIG_MACH_MX27) += cpu-imx27.o pm-imx27.o
