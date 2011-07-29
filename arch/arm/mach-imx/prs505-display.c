@@ -412,7 +412,7 @@ static struct metronome_board prs505_board = {
 	.met_wait_event_intr	= prs505_wait_event_intr,
 	.get_panel_type		= prs505_get_panel_type,
 	.cleanup		= prs505_cleanup,
-	.panel_rotation		= FB_ROTATE_CW,
+	.panel_rotation		= FB_ROTATE_CCW,
 	/* values for next fields were picked from original PRS-505 kernel sources */
 	.double_width_data	= {
 		.ddw		= 399,
