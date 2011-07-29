@@ -494,7 +494,7 @@ static int __devinit metronome_init_cmd(struct metronomefb_par *par)
 
 	/* set the args ( 2 bytes ) for init */
 	i = 0;
-	par->metromem_cmd->args[i] = 0x0007;
+	par->metromem_cmd->args[i] = 0x0001;
 	cs += par->metromem_cmd->args[i++];
 
 	/* the rest are 0 */
