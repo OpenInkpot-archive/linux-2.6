@@ -18,14 +18,12 @@ static int mx1_suspend_enter(suspend_state_t state)
 	u32 cscr;
 	switch (state) {
 	case PM_SUSPEND_MEM:
-        printk("suspend\n");
 		/* Clear MPEN and SPEN to disable MPLL/SPLL */
 		cscr = __raw_readl(MX1_IO_ADDRESS(MX1_CCM_BASE_ADDR));
 		cscr &= 0xFFFFFFFC;
 		__raw_writel(cscr, MX1_IO_ADDRESS(MX1_CCM_BASE_ADDR));
 		/* Executes WFI */
 		arch_idle();
-        printk("wakeup!\n");
 		break;
 
 	default:
