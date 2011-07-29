@@ -102,10 +102,16 @@ static void mxc_unmask_irq(unsigned int irq)
 	__raw_writel(irq, avic_base + AVIC_INTENNUM);
 }
 
+static int mxc_irq_set_wake(struct irq_data *data, unsigned int on)
+{
+	return 0;
+}
+
 static struct irq_chip mxc_avic_chip = {
 	.ack = mxc_mask_irq,
 	.mask = mxc_mask_irq,
 	.unmask = mxc_unmask_irq,
+	.irq_set_wake = mxc_irq_set_wake,
 };
 
 /*
