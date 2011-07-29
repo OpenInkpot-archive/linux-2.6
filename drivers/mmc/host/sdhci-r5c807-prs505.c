@@ -61,6 +61,6 @@ static struct sdhci_ops prs505_sdhci_ops = {
 
 struct sdhci_pltfm_data sdhci_r5c807_prs505_pdata = {
 	.ops	= &prs505_sdhci_ops,
-	.quirks	= SDHCI_QUIRK_BROKEN_BLOCK_PIO_READ,
+	.quirks	= SDHCI_QUIRK_BROKEN_BLOCK_PIO_READ | SDHCI_QUIRK_NO_MULTIBLOCK,
 };
 
