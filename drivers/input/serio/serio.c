@@ -946,7 +946,7 @@ static int serio_suspend(struct device *dev)
 {
 	struct serio *serio = to_serio_port(dev);
 
-	serio_cleanup(serio);
+//	serio_cleanup(serio);
 
 	return 0;
 }
@@ -959,7 +959,7 @@ static int serio_resume(struct device *dev)
 	 * Driver reconnect can take a while, so better let kseriod
 	 * deal with it.
 	 */
-	serio_queue_event(serio, NULL, SERIO_RECONNECT_PORT);
+//	serio_queue_event(serio, NULL, SERIO_RECONNECT_PORT);
 
 	return 0;
 }
