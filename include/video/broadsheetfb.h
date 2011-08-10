@@ -27,6 +27,7 @@
 #define BS_CMD_RD_WFM_INFO	0x30
 #define BS_CMD_UPD_INIT		0x32
 #define BS_CMD_UPD_FULL		0x33
+#define BS_CMD_UPD_PART		0x35
 #define BS_CMD_UPD_GDRV_CLR	0x37
 
 /* Broadsheet register interface defines */
