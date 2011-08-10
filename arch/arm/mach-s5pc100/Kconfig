@@ -77,4 +77,37 @@ config MACH_SMDKC100
 	help
 	  Machine support for the Samsung SMDKC100
 
+config MACH_SAMSUNG_E60
+	bool "SAMSUNG_E60"
+	select CPU_S5PC100
+	select S3C_DEV_HSMMC
+	select S3C_DEV_HSMMC1
+	select S3C_DEV_HSMMC2
+	select S3C_DEV_I2C1
+	select S3C_DEV_RTC
+	select S3C_DEV_WDT
+	select SAMSUNG_DEV_ADC
+	select SAMSUNG_DEV_IDE
+	select SAMSUNG_DEV_KEYPAD
+	select SAMSUNG_DEV_PWM
+	select SAMSUNG_DEV_TS
+	select S5PC100_SETUP_I2C1
+	select S5PC100_SETUP_IDE
+	select S5PC100_SETUP_KEYPAD
+	select S5PC100_SETUP_SDHCI
+	select S5P_DEV_FIMC0
+	select S5P_DEV_FIMC1
+	select S5P_DEV_FIMC2
+	select S3C_DEV_USB_HSOTG
+	help
+	  Machine support for the Samsung E60 ebook reader
+
+config SAMSUNG_E60_BROADSHEET
+	tristate "Enable broadsheet support for Samsung E60"
+	depends on  MACH_SAMSUNG_E60
+	help
+	  Say Y here if you are using the Samsung E600 book reader and want
+	  to have display working. Note that this only glue for broadsheetfb
+	  driver, which should be enabled too.
+
 endif

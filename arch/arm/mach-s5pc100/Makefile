@@ -19,6 +19,8 @@ obj-y				+= dma.o
 
 obj-$(CONFIG_MACH_SMDKC100)	+= mach-smdkc100.o
 
+obj-$(CONFIG_MACH_SAMSUNG_E60)	+= mach-e60.o e60-display.o
+
 # device support
 
 obj-y				+= dev-audio.o
