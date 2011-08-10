@@ -886,7 +886,7 @@ static void broadsheetfb_dpy_update_pages(struct broadsheetfb_par *par,
 	broadsheet_send_command(par, BS_CMD_LD_IMG_END);
 
 	args[0] = 0x4300;
-	broadsheet_send_cmdargs(par, BS_CMD_UPD_FULL, 1, args);
+	broadsheet_send_cmdargs(par, BS_CMD_UPD_PART, 1, args);
 
 	broadsheet_send_command(par, BS_CMD_WAIT_DSPE_TRG);
 
@@ -914,7 +914,7 @@ static void broadsheetfb_dpy_update(struct broadsheetfb_par *par)
 	broadsheet_send_command(par, BS_CMD_LD_IMG_END);
 
 	args[0] = 0x4300;
-	broadsheet_send_cmdargs(par, BS_CMD_UPD_FULL, 1, args);
+	broadsheet_send_cmdargs(par, BS_CMD_UPD_PART, 1, args);
 
 	broadsheet_send_command(par, BS_CMD_WAIT_DSPE_TRG);
 
