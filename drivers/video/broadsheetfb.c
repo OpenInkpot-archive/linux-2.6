@@ -831,6 +831,23 @@ static void __devinit broadsheet_init_display(struct broadsheetfb_par *par)
 
 	broadsheet_send_command(par, BS_CMD_WAIT_DSPE_FREND);
 
+	switch (par->rotation) {
+	case FB_ROTATE_CW:
+		args[0] = BS_ROTATE_CW;
+		break;
+	case FB_ROTATE_CCW:
+		args[0] = BS_ROTATE_CCW;
+		break;
+	case FB_ROTATE_UD:
+		args[0] = BS_ROTATE_UD;
+		break;
+	case FB_ROTATE_UR:
+	default:
+		args[0] = BS_ROTATE_UR;
+		break;
+	}
+	broadsheet_send_cmdargs(par, BS_CMD_INIT_ROTMODE, 1, args);
+
 	par->board->wait_for_rdy(par);
 }
 
@@ -1044,6 +1061,70 @@ static ssize_t broadsheetfb_write(struct fb_info *info, const char __user *buf,
 	return (err) ? err : count;
 }
 
+static int broadsheetfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
+{
+	struct broadsheetfb_par *par = info->par;
+	int rotation;
+
+	var->grayscale = 1;
+
+	rotation = (par->board->panel_rotation + var->rotate) % 4;
+	switch (rotation) {
+	case FB_ROTATE_CW:
+	case FB_ROTATE_CCW:
+		var->xres = var->xres_virtual = panel_table[par->panel_index].h;
+		var->yres = var->yres_virtual = panel_table[par->panel_index].w;
+		break;
+	case FB_ROTATE_UD:
+	default:
+		var->xres = var->xres_virtual = panel_table[par->panel_index].w;
+		var->yres = var->yres_virtual = panel_table[par->panel_index].h;
+		break;
+	}
+
+	return 0;
+}
+
+static int broadsheetfb_set_par(struct fb_info *info)
+{
+	u16 args[1];
+	struct broadsheetfb_par *par = info->par;
+
+	par->rotation = (par->board->panel_rotation + info->var.rotate) % 4;
+
+	switch (par->rotation) {
+	case FB_ROTATE_CW:
+	case FB_ROTATE_CCW:
+		info->fix.line_length = panel_table[par->panel_index].h;
+		break;
+	case FB_ROTATE_UD:
+	default:
+		info->fix.line_length = panel_table[par->panel_index].w;
+		break;
+	}
+
+	switch (par->rotation) {
+	case FB_ROTATE_CW:
+		args[0] = BS_ROTATE_CW;
+		break;
+	case FB_ROTATE_CCW:
+		args[0] = BS_ROTATE_CCW;
+		break;
+	case FB_ROTATE_UD:
+		args[0] = BS_ROTATE_UD;
+		break;
+	case FB_ROTATE_UR:
+	default:
+		args[0] = BS_ROTATE_UR;
+		break;
+	}
+	broadsheet_send_cmdargs(par, BS_CMD_INIT_ROTMODE, 1, args);
+	broadsheet_send_command(par, BS_CMD_WAIT_DSPE_TRG);
+	broadsheet_send_command(par, BS_CMD_WAIT_DSPE_FREND);
+
+	return 0;
+}
+
 static struct fb_ops broadsheetfb_ops = {
 	.owner		= THIS_MODULE,
 	.fb_read        = fb_sys_read,
@@ -1051,6 +1132,8 @@ static struct fb_ops broadsheetfb_ops = {
 	.fb_fillrect	= broadsheetfb_fillrect,
 	.fb_copyarea	= broadsheetfb_copyarea,
 	.fb_imageblit	= broadsheetfb_imageblit,
+	.fb_check_var	= broadsheetfb_check_var,
+	.fb_set_par	= broadsheetfb_set_par,
 };
 
 static struct fb_deferred_io broadsheetfb_defio = {
@@ -1108,16 +1191,29 @@ static int __devinit broadsheetfb_probe(struct platform_device *dev)
 	info->screen_base = (char *)videomemory;
 	info->fbops = &broadsheetfb_ops;
 
-	broadsheetfb_var.xres = dpyw;
-	broadsheetfb_var.yres = dpyh;
-	broadsheetfb_var.xres_virtual = dpyw;
-	broadsheetfb_var.yres_virtual = dpyh;
 	info->var = broadsheetfb_var;
-
-	broadsheetfb_fix.line_length = dpyw;
 	info->fix = broadsheetfb_fix;
+	switch (board->panel_rotation) {
+	case FB_ROTATE_CW:
+	case FB_ROTATE_CCW:
+		info->var.xres = dpyh;
+		info->var.yres = dpyw;
+		info->var.xres_virtual = dpyh;
+		info->var.yres_virtual = dpyw;
+		info->fix.line_length = dpyh;
+		break;
+	case FB_ROTATE_UD:
+	default:
+		info->var.xres = dpyw;
+		info->var.yres = dpyh;
+		info->var.xres_virtual = dpyw;
+		info->var.yres_virtual = dpyh;
+		info->fix.line_length = dpyw;
+		break;
+	}
 	info->fix.smem_len = videomemorysize;
 	par = info->par;
+	par->rotation = board->panel_rotation;
 	par->panel_index = panel_index;
 	par->info = info;
 	par->board = board;

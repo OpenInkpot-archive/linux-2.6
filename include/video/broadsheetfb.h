@@ -43,6 +43,13 @@
 #define BS_MMIO_CMD	0x01
 #define BS_MMIO_DATA	0x02
 
+/* Broadsheet rotation modes */
+
+#define BS_ROTATE_UR	(0 << 8)
+#define BS_ROTATE_CCW	(1 << 8)
+#define BS_ROTATE_UD	(2 << 8)
+#define BS_ROTATE_CW	(3 << 8)
+
 /* struct used by broadsheet. board specific stuff comes from *board */
 struct broadsheetfb_par {
 	struct fb_info *info;
@@ -52,6 +59,7 @@ struct broadsheetfb_par {
 	wait_queue_head_t waitq;
 	int panel_index;
 	struct mutex io_lock;
+	int rotation;
 };
 
 /* board specific routines */
@@ -71,5 +79,7 @@ struct broadsheet_board {
 	/* Functions for boards that have specialized MMIO */
 	void (*mmio_write)(struct broadsheetfb_par *, int type, u16);
 	u16 (*mmio_read)(struct broadsheetfb_par *);
+
+	int panel_rotation;
 };
 #endif
