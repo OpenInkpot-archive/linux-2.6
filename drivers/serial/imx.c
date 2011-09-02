@@ -771,7 +771,7 @@ static void imx_shutdown(struct uart_port *port)
 	 * Free the interrupts
 	 */
 	if (sport->txirq > 0) {
-		if (!USE_IRDA(sport) && !device_may_wakeup(port->dev))
+		if (!USE_IRDA(sport) && (!port->suspended || !device_may_wakeup(port->dev)))
 			free_irq(sport->rtsirq, sport);
 		free_irq(sport->txirq, sport);
 		free_irq(sport->rxirq, sport);
