@@ -150,10 +150,10 @@ static ssize_t serport_ldisc_read(struct tty_struct * tty, struct file * file, u
 	struct serio *serio;
 	char name[64];
 
-	if (test_and_set_bit(SERPORT_BUSY, &serport->flags))
-		return -EBUSY;
-
 	if (!serport->serio) {
+		if (test_and_set_bit(SERPORT_BUSY, &serport->flags))
+			return -EBUSY;
+
 		serport->serio = serio = kzalloc(sizeof(struct serio), GFP_KERNEL);
 		if (!serio)
 			return -ENOMEM;
