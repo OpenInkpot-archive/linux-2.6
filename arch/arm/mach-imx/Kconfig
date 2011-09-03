@@ -30,6 +30,7 @@ config MACH_SCB9328
 config MACH_SONY_PRS505
 	bool "Sony PRS-505 book reader"
 	select IMX_HAVE_PLATFORM_IMX_UART
+	select IMX_HAVE_PLATFORM_IMX_I2C
 	help
 	  Say Y here if you are using the Sony PRS-505 book reader.
 

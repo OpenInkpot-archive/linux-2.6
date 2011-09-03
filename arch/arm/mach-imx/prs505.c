@@ -32,6 +32,8 @@
 #include <mach/imx-uart.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/i2c.h>
+#include <mach/i2c.h>
 
 #include "devices-imx1.h"
 #include "devices.h"
@@ -465,6 +467,17 @@ static void __init prs505_sdhci_init(void)
 	iounmap(base);
 }
 
+static const struct imxi2c_platform_data prs505_i2c_data __initconst = {
+	.bitrate = 100000,
+};
+
+static const struct i2c_board_info prs505_i2c_board_info[] = {
+	{
+		.type		= "lm75a",
+		.addr		= 0x48,
+	}
+};
+
 static void __init prs505_init(void)
 {
 
@@ -478,6 +491,10 @@ static void __init prs505_init(void)
 	imx1_add_imx_uart0(&uart_pdata[0]);
 	imx1_add_imx_uart1(&uart_pdata[1]);
 	platform_add_devices(devices, ARRAY_SIZE(devices));
+
+	/* i2c */
+	i2c_register_board_info(0, prs505_i2c_board_info, ARRAY_SIZE(prs505_i2c_board_info));
+	imx1_add_imx_i2c(&prs505_i2c_data);
 
 	pm_power_off = ebook_power_off;
 }
