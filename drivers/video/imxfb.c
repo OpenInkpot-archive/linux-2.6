@@ -152,6 +152,7 @@ struct imxfb_info {
 	struct platform_device  *pdev;
 	void __iomem		*regs;
 	struct clk		*clk;
+	bool			enabled;
 
 	/*
 	 * These are the addresses we mapped
@@ -544,7 +545,9 @@ static void imxfb_enable_controller(struct imxfb_info *fbi)
 
 	writel(RMCR_LCDC_EN, fbi->regs + LCDC_RMCR);
 
-	clk_enable(fbi->clk);
+	if (fbi->enabled == false)
+		clk_enable(fbi->clk);
+	fbi->enabled = true;
 
 	if (fbi->backlight_power)
 		fbi->backlight_power(1);
@@ -561,7 +564,9 @@ static void imxfb_disable_controller(struct imxfb_info *fbi)
 	if (fbi->lcd_power)
 		fbi->lcd_power(0);
 
-	clk_disable(fbi->clk);
+	if (fbi->enabled == true)
+		clk_disable(fbi->clk);
+	fbi->enabled = false;
 
 	writel(0, fbi->regs + LCDC_RMCR);
 }
