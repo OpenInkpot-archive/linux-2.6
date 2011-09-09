@@ -29,7 +29,7 @@
 #include <linux/input.h>
 #include <linux/serio.h>
 #include <linux/init.h>
-
+#include <linux/power_supply.h>
 
 #define DRIVER_DESC	"Driver for Sony PRS-505 subcpu"
 
@@ -38,6 +38,18 @@ struct prs505_subcpu_command {
 	uint8_t args[3];
 	uint8_t cksum;
 } __attribute__((packed));
+
+struct prs505_battery_lvl {
+	unsigned int value;
+	unsigned int level;
+} prs505_battery_levels[] = {
+	{ 0, 0 },
+	{ 6, 1 },
+	{ 12, 25 },
+	{ 17, 50 },
+	{ 22, 75 },
+	{ 31, 100 },
+};
 
 const struct prs505_subcpu_command cmd_ack = {0xa2, {0, 0, 0}, 0x5d};
 const struct prs505_subcpu_command cmd_nack = {0xa3, {0, 0, 0}, 0x5c};
@@ -78,7 +90,10 @@ struct prs505_subcpu_data {
 	unsigned char rx_buf[5];
 	int rx_count;
 	unsigned int battery_level;
+	unsigned int battery_status;
 };
+
+static struct prs505_subcpu_data *the_prs505;
 
 static int prs505_subcpu_send_cmd(struct serio *serio, const struct prs505_subcpu_command *cmd)
 {
@@ -111,9 +126,69 @@ static void prs505_subcpu_keypress(struct prs505_subcpu_data *prs505)
 	}
 }
 
+static int prs505_bat_get_property(struct power_supply *b,
+		enum power_supply_property psp,
+		union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_STATUS:
+		val->intval = the_prs505->battery_status;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = 100;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_EMPTY_DESIGN:
+		val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+		val->intval = the_prs505->battery_level;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static enum power_supply_property prs505_bat_properties[] = {
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_EMPTY_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
+};
+
+static struct power_supply prs505_battery = {
+	.name		= "prs505-battery",
+	.get_property	= prs505_bat_get_property,
+	.properties	= prs505_bat_properties,
+	.num_properties	= ARRAY_SIZE(prs505_bat_properties),
+};
+
 static void prs505_subcpu_battery_level(struct prs505_subcpu_data *prs505)
 {
-	prs505->battery_level = prs505->rx_buf[2] & 0x1f;
+	int i;
+	unsigned int l = prs505->rx_buf[2] & 0x1f;
+
+	for (i = 0; i < ARRAY_SIZE(prs505_battery_levels); i++) {
+		if (l <= prs505_battery_levels[i].value) {
+			prs505->battery_level = prs505_battery_levels[i].level;
+			return;
+		}
+	}
+}
+
+static void prs505_subcpu_battery_status(struct prs505_subcpu_data *prs505)
+{
+	switch (prs505->rx_buf[1] & 0x3) {
+	case 0:
+		prs505->battery_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		break;
+	case 1:
+		prs505->battery_status = POWER_SUPPLY_STATUS_CHARGING;
+		break;
+	default:
+		prs505->battery_status = POWER_SUPPLY_STATUS_DISCHARGING;
+		break;
+	}
 }
 
 static void prs505_subcpu_process_cmd(struct prs505_subcpu_data *prs505)
@@ -143,6 +218,9 @@ static void prs505_subcpu_process_cmd(struct prs505_subcpu_data *prs505)
 		break;
 	case 0xb4:
 		prs505_subcpu_battery_level(prs505);
+		break;
+	case 0xd0:
+		prs505_subcpu_battery_status(prs505);
 		break;
 	default:
 		break;
@@ -177,6 +255,8 @@ static int prs505_subcpu_connect(struct serio *serio, struct serio_driver *drv)
 	if (!prs505)
 		return -ENOMEM;
 
+	the_prs505 = prs505;
+
 	input = input_allocate_device();
 	if (!input) {
 		ret = -ENOMEM;
@@ -204,6 +284,12 @@ static int prs505_subcpu_connect(struct serio *serio, struct serio_driver *drv)
 	if (ret)
 		goto err_input_register_device;
 
+	ret = power_supply_register(NULL, &prs505_battery);
+	if (ret) {
+		pr_err("Unable to register PRS505 battery\n");
+		goto err_bat_reg;
+	}
+
 	prs505->serio = serio;
 	prs505->input = input;
 
@@ -221,6 +307,8 @@ static int prs505_subcpu_connect(struct serio *serio, struct serio_driver *drv)
 
 	serio_close(serio);
 err_serio_open:
+	power_supply_unregister(&prs505_battery);
+err_bat_reg:
 	input_unregister_device(input);
 	input = NULL;
 err_input_register_device:
@@ -238,6 +326,8 @@ static void prs505_subcpu_disconnect(struct serio *serio)
 	struct prs505_subcpu_data *prs505 = serio_get_drvdata(serio);
 
 	serio_close(serio);
+
+	power_supply_unregister(&prs505_battery);
 
 	input_unregister_device(prs505->input);
 
