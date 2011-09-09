@@ -39,17 +39,15 @@ Description: Linux kernel modules for Hanlin eReader V3
  Hanlin/lBook eReader V3 linux kernel modules.
  Nfsroot version.
 
-Package: linux-image-2.6.37-nfsroot-prs505
+Package: linux-image-2.6.37-prs505
 Architecture: armel
 Description: Linux kernel image for Sony PRS-505
  Sony PRS-505 linux kernel image.
- Nfsroot version.
 
-Package: linux-modules-2.6.37-nfsroot-prs505
+Package: linux-modules-2.6.37-prs505
 Architecture: armel
 Description: Linux kernel modules for Sony PRS-505
  Sony PRS-505 linux kernel modules.
- Nfsroot version.
 
 Package: linux-image-2.6.37-n516
 Architecture: mipsel
