@@ -11,6 +11,31 @@
 #include <mach/gpio.h>
 #endif
 
+#include <linux/power_supply.h>
+
+static inline S1R72XXX_USBC_DEV *psy_to_usbc_dev(struct power_supply *psy)
+{
+	return container_of(psy, S1R72XXX_USBC_DEV, usb_ps);
+}
+
+static int usb_ps_get_property(struct power_supply *psy,
+		enum power_supply_property psp,
+		union power_supply_propval *val)
+{
+	S1R72XXX_USBC_DEV *usbc_dev = psy_to_usbc_dev(psy);
+
+	if (psp != POWER_SUPPLY_PROP_ONLINE)
+		return -EINVAL;
+
+	val->intval = usbc_dev->vbus_powered;
+
+	return 0;
+}
+
+static enum power_supply_property usb_ps_properies[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+};
+
 /******************************************
  * Declarations of function prototype
  ******************************************/
@@ -2238,6 +2263,17 @@ static int __devinit s1r72xxx_usbc_probe(struct platform_device *pdev)
 	}
 	create_proc_file();
 
+	usbc_dev->vbus_powered = false;
+	usbc_dev->usb_ps.name = "usb";
+	usbc_dev->usb_ps.type = POWER_SUPPLY_TYPE_USB;
+	usbc_dev->usb_ps.get_property = usb_ps_get_property;
+	usbc_dev->usb_ps.properties = usb_ps_properies;
+	usbc_dev->usb_ps.num_properties = ARRAY_SIZE(usb_ps_properies);
+
+	retval = power_supply_register(NULL, &usbc_dev->usb_ps);
+	if (retval)
+		pr_err("Unable to register s1r72xx USB power supply\n");
+
 	/**
 	 * - 11. Return:
 	 *  - return 0;
@@ -3206,6 +3242,8 @@ static int usbc_irq_VBUS(S1R72XXX_USBC_DEV *usbc_dev)
 			= change_driver_state(usbc_dev, usbc_dev->usbcd_state,
 				S1R72_GD_H_W_VBUS_H);
 
+		usbc_dev->vbus_powered = true;
+		power_supply_changed(&usbc_dev->usb_ps);
 	} else {
 		/**
 		 * - 2.1. Disconnect from USB bus:
@@ -3250,6 +3288,9 @@ static int usbc_irq_VBUS(S1R72XXX_USBC_DEV *usbc_dev)
 				S1R72_GD_H_W_VBUS_L);
 		retval = S1R72_PM_CHANGE_TO_SLEEP;
 		DEBUG_MSG("%s, VBUS = L\n", __FUNCTION__);
+
+		usbc_dev->vbus_powered = false;
+		power_supply_changed(&usbc_dev->usb_ps);
 	}
 
 	/**

@@ -18,6 +18,8 @@
 //#define S1R72_MASS_STORAGE_ONLY
 //#define PTU
 
+#include <linux/power_supply.h>
+
 /******************************************
  * macro for debug
  ******************************************/
@@ -550,6 +552,9 @@ typedef struct tag_S1R72XXX_USBC_DEV {
 	struct timer_list vbus_timer;		/** VBUS timer */
 	unsigned char vbus_timer_state;		/** VBUS timer state */
 	unsigned char previous_vbus_state;	/** VBUS state */
+
+	struct power_supply usb_ps;
+	bool vbus_powered;
 	/** Definitions of Hardware Specific */
 	S1R72XXX_USBC_EP usbc_ep[S1R72_MAX_ENDPOINT];
 } S1R72XXX_USBC_DEV;
