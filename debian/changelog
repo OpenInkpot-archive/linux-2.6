@@ -1,3 +1,31 @@
+linux-2.6 (2.6.37-4) zelazny; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * imxfb: Fix pixel clock rate calculation if HCLK is not divisible by requested clock
+  * PRS505: Setup DMACR register for IMX LCD controller
+  * serial imx: Add ability to wake system by RTS change
+  * MXC: Add irq_set_wake() placeholder for avoiding warnings about unbalanced set_irq_wake()
+  * IMX: Add PM support for IMX.1
+  * PRS505 display: Set display rotation properly
+  * SDHCI: Set SDHCI_QUIRK_NO_MULTIBLOCK for r5c807 on Sony PRS-505
+  * Metronome: Temporary disable WF & IMG checksum checking
+  * IMX1 PM: Remove forgotten debug statements
+  * serport: Don't unregister port at signal (-ERESTARTSYS)
+  * serio: Don't reconnect port on suspend/resume
+
+  [ Alexander Kerner ]
+  * serport: read should not return EBUSY when called again after suspend/resume
+  * serial imx: Free rts irq when the port is closed
+  * imxfb: Fix enabling/disabling clock
+  * PRS505: enable LM75
+  * sony-prs505-subcpu: Adjust key mapping
+  * sony-prs505-subcpu: Add battery power supply
+  * S1R72XXX: Add USB power supply
+  * Add config for PRS505
+  * Adjust debian/{control,rules} to build kernel for prs505
+
+ -- Alexander Kerner <lunohod@openinkpot.org>  Fri, 09 Sep 2011 20:24:33 +0200
+
 linux-2.6 (2.6.37-3) zelazny; urgency=low
 
   * metronomefb: speed up screen update
