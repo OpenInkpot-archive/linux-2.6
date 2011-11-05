@@ -1408,6 +1408,8 @@ static int metronomefb_suspend(struct platform_device *pdev, pm_message_t messag
 	struct fb_info *info = platform_get_drvdata(pdev);
 	struct metronomefb_par *par = info->par;
 
+	mutex_lock(&par->lock);
+	wait_for_rdy(par);
 	par->board->set_stdby(par, 0);
 	par->board->set_rst(par, 0);
 	if (par->board->power_ctl)
@@ -1425,7 +1427,6 @@ static int metronomefb_resume(struct platform_device *pdev)
 	if (par->board->power_ctl)
 		par->board->power_ctl(par, METRONOME_POWER_ON);
 
-	mutex_lock(&par->lock);
 	schedule_delayed_work(&par->resume_work, 1);
 
 	return 0;
