@@ -322,6 +322,7 @@ static struct platform_device *devices[] __initdata = {
 	&prs505_device_nor,
 	&prs505_device_nand,
 	&prs505_sdhci,
+	&imx_rtc_device,
 };
 
 static void ebook_power_off(void)
