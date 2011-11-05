@@ -319,9 +319,9 @@ static void imx_stop_rx(struct uart_port *port)
  */
 static void imx_enable_ms(struct uart_port *port)
 {
-	struct imx_port *sport = (struct imx_port *)port;
+//	struct imx_port *sport = (struct imx_port *)port;
 
-	mod_timer(&sport->timer, jiffies);
+//	mod_timer(&sport->timer, jiffies);
 }
 
 static inline void imx_transmit_buffer(struct imx_port *sport)
