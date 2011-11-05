@@ -87,7 +87,7 @@ static struct resource imx_rtc_resources[] = {
 };
 
 struct platform_device imx_rtc_device = {
-	.name           = "rtc-imx",
+	.name           = "mxc_rtc",
 	.id             = 0,
 	.resource       = imx_rtc_resources,
 	.num_resources  = ARRAY_SIZE(imx_rtc_resources),
