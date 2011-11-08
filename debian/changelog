@@ -1,3 +1,15 @@
+linux-2.6 (2.6.37-5) zelazny; urgency=low
+
+  [ Yauhen Kharuzhy ]
+  * PRS505: Add RTC platform device
+  * serial IMX: Don't poll modem status lines endlessly
+  * metronomefb: Don't go to sleep until all hardware operations is finished
+  * IMX RTC: Set name of RTC platform device properly
+  * RTC MXC: Fix setting time for MX1 SoC
+  * RTC MXC: Make alarm working
+
+ -- Alexander Kerner <lunohod@openinkpot.org>  Tue, 08 Nov 2011 16:52:11 +0100
+
 linux-2.6 (2.6.37-4) zelazny; urgency=low
 
   [ Yauhen Kharuzhy ]
