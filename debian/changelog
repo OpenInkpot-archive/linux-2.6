@@ -1,3 +1,9 @@
+linux-2.6 (2.6.37-6) zelazny; urgency=low
+
+  * PRS505: enable autosuspend with timers
+
+ -- Alexander Kerner <lunohod@openinkpot.org>  Wed, 09 Nov 2011 18:15:20 +0100
+
 linux-2.6 (2.6.37-5) zelazny; urgency=low
 
   [ Yauhen Kharuzhy ]
