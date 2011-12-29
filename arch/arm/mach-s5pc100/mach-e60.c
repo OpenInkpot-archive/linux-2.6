@@ -31,7 +31,6 @@
 #include <asm/mach/map.h>
 
 #include <mach/map.h>
-#include <mach/regs-fb.h>
 #include <mach/regs-gpio.h>
 
 #include <video/platform_lcd.h>
