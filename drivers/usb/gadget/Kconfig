@@ -524,6 +524,7 @@ config USB_GADGET_S1R72V17
 	boolean "EPSON S1R72V17"
 	depends on MACH_SONY_PRS505
 	select USB_GADGET_DUALSPEED
+	select POWER_SUPPLY
 	help
 	   EPSON S1R72V17 is USB device controller.
 	   S1R72V17 supports both full and high speed USB 2.0 data transfers.
