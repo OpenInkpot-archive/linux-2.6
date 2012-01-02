@@ -1,3 +1,11 @@
+linux-2.6 (2.6.37-7) zelazny; urgency=low
+
+  * s1r72xxx_udc: Don't emit unneeded power supply events
+  * Select POWER SUPPLY for s1r72v17 udc driver
+  * Select POWER SUPPLY for PRS505 subcpu driver
+
+ -- Yauhen Kharuzhy <jekhor@gmail.com>  Tue, 03 Jan 2012 01:17:42 +0300
+
 linux-2.6 (2.6.37-6) zelazny; urgency=low
 
   * PRS505: enable autosuspend with timers
