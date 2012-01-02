@@ -3242,8 +3242,10 @@ static int usbc_irq_VBUS(S1R72XXX_USBC_DEV *usbc_dev)
 			= change_driver_state(usbc_dev, usbc_dev->usbcd_state,
 				S1R72_GD_H_W_VBUS_H);
 
-		usbc_dev->vbus_powered = true;
-		power_supply_changed(&usbc_dev->usb_ps);
+		if (!usbc_dev->vbus_powered) {
+			usbc_dev->vbus_powered = true;
+			power_supply_changed(&usbc_dev->usb_ps);
+		}
 	} else {
 		/**
 		 * - 2.1. Disconnect from USB bus:
@@ -3289,8 +3291,10 @@ static int usbc_irq_VBUS(S1R72XXX_USBC_DEV *usbc_dev)
 		retval = S1R72_PM_CHANGE_TO_SLEEP;
 		DEBUG_MSG("%s, VBUS = L\n", __FUNCTION__);
 
-		usbc_dev->vbus_powered = false;
-		power_supply_changed(&usbc_dev->usb_ps);
+		if (usbc_dev->vbus_powered) {
+			usbc_dev->vbus_powered = false;
+			power_supply_changed(&usbc_dev->usb_ps);
+		}
 	}
 
 	/**
