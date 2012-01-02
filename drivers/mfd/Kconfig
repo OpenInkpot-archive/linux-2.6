@@ -610,6 +610,7 @@ config MFD_PRS505_SUBCPU
 	tristate "Support for Sony PRS-505 sub-cpu"
 	select SERIO
 	select SERIO_SERPORT
+	select POWER_SUPPLY
 	help
 	  Say yes here to enable support for Sony PRS-505 sub-cpu (PM/Keyboard controller).
 
