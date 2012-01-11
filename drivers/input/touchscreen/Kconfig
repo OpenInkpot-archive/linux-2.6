@@ -845,4 +845,14 @@ config TOUCHSCREEN_TPS6507X
 	  To compile this driver as a module, choose M here: the
 	  module will be called tps6507x_ts.
 
+config TOUCHSCREEN_SAMSUNG_E60
+	tristate "Samsung E60 touchscreen driver"
+	select SERIO
+	help
+	  Say Y here if you have a Samsung E60 and want to use its touchscreen.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here.
+
 endif
