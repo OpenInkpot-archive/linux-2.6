@@ -1107,6 +1107,8 @@ static int apollofb_resume(struct platform_device *pdev)
 	apollo_wakeup(par);
 	if (!par->options.use_sleep_mode)
 		apollo_set_normal_mode(par);
+	apollo_send_command(par, APOLLO_SET_DEPTH);
+	apollo_send_data(par, 0x02);
 	mutex_unlock(&par->lock);
 
 	return 0;
