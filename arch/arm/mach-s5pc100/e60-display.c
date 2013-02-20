@@ -62,7 +62,7 @@ static int e60_wait_event(struct broadsheetfb_par *par)
 	while (!gpio_get_value(RDY_GPIO_PIN) && time_before(jiffies, timeout))
 		;
 
-	if(!gpio_get_value(RD_GPIO_PIN)) {
+	if(!gpio_get_value(RDY_GPIO_PIN)) {
 		printk(KERN_ERR "%s: Wait for READY, timeout\n", __func__);
 		return 1;
 	}
