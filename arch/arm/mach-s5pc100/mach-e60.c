@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/input.h>
 
+#include <asm/hardware/vic.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 
@@ -44,7 +45,6 @@
 #include <plat/clock.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
-#include <plat/s5pc100.h>
 #include <plat/iic.h>
 #include <plat/ata.h>
 #include <plat/adc.h>
@@ -52,6 +52,8 @@
 #include <plat/ts.h>
 #include <plat/audio.h>
 #include <plat/udc-hs.h>
+
+#include "common.h"
 
 /* Following are default values for UCON, ULCON and UFCON UART registers */
 #define SMDKC100_UCON_DEFAULT	(S3C2410_UCON_TXILEVEL |	\
@@ -170,14 +172,12 @@ static struct s3c2410_ts_mach_info s3c_ts_platform __initdata = {
 
 static void __init smdkc100_map_io(void)
 {
-	s5p_init_io(NULL, 0, S5P_VA_CHIPID);
+	s5pc100_init_io(NULL, 0);
 	s3c24xx_init_clocks(12000000);
 	s3c24xx_init_uarts(smdkc100_uartcfgs, ARRAY_SIZE(smdkc100_uartcfgs));
 }
 
-static struct s3c_hsotg_plat s3c_hsotg_pdata __initdata = {
-    .is_osc = 1,
-};
+static struct s3c_hsotg_plat e60_hsotg_pdata;
 
 int __attribute__((weak)) e60_init(void)
 {
@@ -200,7 +200,7 @@ static void __init smdkc100_machine_init(void)
 
 	s5pc100_spdif_setup_gpio(S5PC100_SPDIF_GPD);
 
-	s3c_device_usb_hsotg.dev.platform_data = &s3c_hsotg_pdata;
+	s3c_hsotg_set_platdata(&e60_hsotg_pdata);
 	clk_xusbxti.rate = 12000000;
 
 	platform_add_devices(smdkc100_devices, ARRAY_SIZE(smdkc100_devices));
@@ -210,9 +210,11 @@ static void __init smdkc100_machine_init(void)
 
 MACHINE_START(SAMSUNG_E60, "SAMSUNG_E60")
 	/* Maintainer: Alexander Kerner <lunohod@openinkpot.org> */
-	.boot_params	= S5P_PA_SDRAM + 0x100,
+	.atag_offset	= 0x100,
 	.init_irq	= s5pc100_init_irq,
+	.handle_irq	= vic_handle_irq,
 	.map_io		= smdkc100_map_io,
 	.init_machine	= smdkc100_machine_init,
 	.timer		= &s3c24xx_timer,
+	.restart	= s5pc100_restart,
 MACHINE_END

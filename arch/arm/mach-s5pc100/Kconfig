@@ -50,6 +50,11 @@ config S5PC100_SETUP_SPI
 	help
 	  Common setup code for SPI GPIO configurations.
 
+config S5PC100_SETUP_USB_PHY
+   bool
+   help
+     Common setup code for USB PHY controller
+
 config MACH_SMDKC100
 	bool "SMDKC100"
 	select CPU_S5PC100
@@ -95,6 +100,7 @@ config MACH_SAMSUNG_E60
 	select S5PC100_SETUP_IDE
 	select S5PC100_SETUP_KEYPAD
 	select S5PC100_SETUP_SDHCI
+	select S5PC100_SETUP_USB_PHY
 	select S5P_DEV_FIMC0
 	select S5P_DEV_FIMC1
 	select S5P_DEV_FIMC2
